@@ -26,15 +26,41 @@ serve(async (req) => {
       });
     }
 
-    const { name, email, whatsapp, course_id, shift, tracking_id } = await req.json();
+    const { name, email, whatsapp, course_id, course_name, shift, tracking_id } = await req.json();
 
-    console.log('Dados recebidos:', { name, email, whatsapp, course_id, shift, tracking_id });
+    console.log('Dados recebidos:', { name, email, whatsapp, course_id, course_name, shift, tracking_id });
 
     if (!name || !email || !whatsapp) {
       return new Response('Missing required fields', { 
         status: 400,
         headers: corsHeaders 
       });
+    }
+
+    let finalCourseId = course_id;
+
+    // Se course_name foi fornecido e não há course_id, buscar o curso pelo nome
+    if (course_name && !course_id) {
+      console.log('Buscando curso pelo nome:', course_name);
+      
+      const { data: course, error: courseError } = await supabase
+        .from('courses')
+        .select('id')
+        .ilike('name', course_name)
+        .single();
+
+      if (courseError) {
+        console.log('Erro ao buscar curso:', courseError);
+        return new Response(`Course not found: ${course_name}`, { 
+          status: 400,
+          headers: corsHeaders 
+        });
+      }
+
+      if (course) {
+        finalCourseId = course.id;
+        console.log('Curso encontrado:', course);
+      }
     }
 
     let scanSessionId = null;
@@ -83,7 +109,7 @@ serve(async (req) => {
         name,
         email,
         whatsapp,
-        course_id,
+        course_id: finalCourseId,
         shift,
         event_id: eventId,
         scan_session_id: scanSessionId
@@ -122,6 +148,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({ 
       success: true, 
       lead_id: lead.id,
+      course_id: finalCourseId,
       tracking_id,
       session_linked: !!scanSessionId
     }), {
