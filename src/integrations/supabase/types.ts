@@ -251,7 +251,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_scan_sessions: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          qr_code_id: string
+          event_id: string
+          lead_id: string
+          scanned_at: string
+          user_agent: string
+          ip_address: string
+          qr_code: Json
+          event: Json
+          lead: Json
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

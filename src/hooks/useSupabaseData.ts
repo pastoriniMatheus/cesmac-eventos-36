@@ -1,4 +1,5 @@
 
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -259,32 +260,36 @@ export const useScanSessions = () => {
     queryKey: ['scan_sessions'],
     queryFn: async () => {
       // Usando uma query raw para acessar a tabela scan_sessions temporariamente
-      const { data, error } = await supabase
-        .rpc('get_scan_sessions');
-      
-      if (error) {
-        // Fallback: tentar query direta mesmo sem tipos
-        console.log('RPC failed, trying direct query:', error);
-        try {
-          const { data: directData, error: directError } = await (supabase as any)
-            .from('scan_sessions')
-            .select(`
-              *,
-              qr_code:qr_codes(short_url),
-              event:events(name),
-              lead:leads(name, email)
-            `)
-            .order('scanned_at', { ascending: false });
-          
-          if (directError) throw directError;
-          return directData || [];
-        } catch (fallbackError) {
-          console.error('Both queries failed:', fallbackError);
-          return [];
+      try {
+        const { data, error } = await (supabase as any).rpc('get_scan_sessions');
+        
+        if (error) {
+          // Fallback: tentar query direta mesmo sem tipos
+          console.log('RPC failed, trying direct query:', error);
+          try {
+            const { data: directData, error: directError } = await (supabase as any)
+              .from('scan_sessions')
+              .select(`
+                *,
+                qr_code:qr_codes(short_url),
+                event:events(name),
+                lead:leads(name, email)
+              `)
+              .order('scanned_at', { ascending: false });
+            
+            if (directError) throw directError;
+            return directData || [];
+          } catch (fallbackError) {
+            console.error('Both queries failed:', fallbackError);
+            return [];
+          }
         }
+        
+        return data || [];
+      } catch (error) {
+        console.error('Error fetching scan sessions:', error);
+        return [];
       }
-      
-      return data || [];
     }
   });
 };
@@ -351,3 +356,4 @@ export const useConversionMetrics = () => {
     }
   });
 };
+
