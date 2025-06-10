@@ -1,47 +1,57 @@
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Users, GraduationCap, Calendar, TrendingUp } from 'lucide-react';
+import { useLeads, useEvents, useCourses, useQRCodes } from '@/hooks/useSupabaseData';
 
 const Dashboard = () => {
-  const [dashboardData, setDashboardData] = useState({
-    totalLeads: 0,
-    leadsByEvent: [],
-    leadsByCourse: [],
-    topCourses: [],
-    topEvents: []
-  });
+  const { data: leads = [] } = useLeads();
+  const { data: events = [] } = useEvents();
+  const { data: courses = [] } = useCourses();
+  const { data: qrCodes = [] } = useQRCodes();
 
-  useEffect(() => {
-    // Simulated data - will be replaced with real API calls
-    setDashboardData({
-      totalLeads: 1247,
-      leadsByEvent: [
-        { name: 'Feira Estudante 23', leads: 345 },
-        { name: 'Open Day CESMAC', leads: 298 },
-        { name: 'Workshop TI', leads: 187 },
-        { name: 'Palestra Medicina', leads: 156 }
-      ],
-      leadsByCourse: [
-        { name: 'Medicina', leads: 412, color: '#8884d8' },
-        { name: 'Engenharia', leads: 298, color: '#82ca9d' },
-        { name: 'Direito', leads: 234, color: '#ffc658' },
-        { name: 'Administração', leads: 187, color: '#ff7c7c' },
-        { name: 'Psicologia', leads: 116, color: '#8dd1e1' }
-      ],
-      topCourses: [
-        { rank: 1, course: 'Medicina', leads: 412 },
-        { rank: 2, course: 'Engenharia', leads: 298 },
-        { rank: 3, course: 'Direito', leads: 234 }
-      ],
-      topEvents: [
-        { rank: 1, event: 'Feira Estudante 23', leads: 345 },
-        { rank: 2, event: 'Open Day CESMAC', leads: 298 },
-        { rank: 3, event: 'Workshop TI', leads: 187 }
-      ]
-    });
-  }, []);
+  // Calcular dados reais do banco
+  const totalLeads = leads.length;
+  const totalEvents = events.length;
+  const totalCourses = courses.length;
+  const totalScans = qrCodes.reduce((sum: number, qr: any) => sum + (qr.scans || 0), 0);
+
+  // Leads por evento
+  const leadsByEvent = events.map((event: any) => ({
+    name: event.name,
+    leads: leads.filter((lead: any) => lead.event_id === event.id).length
+  })).filter(item => item.leads > 0);
+
+  // Leads por curso
+  const leadsByCourse = courses.map((course: any) => ({
+    name: course.name,
+    leads: leads.filter((lead: any) => lead.course_id === course.id).length,
+    color: `hsl(${Math.random() * 360}, 70%, 50%)`
+  })).filter(item => item.leads > 0);
+
+  // Top cursos
+  const topCourses = leadsByCourse
+    .sort((a, b) => b.leads - a.leads)
+    .slice(0, 3)
+    .map((course, index) => ({
+      rank: index + 1,
+      course: course.name,
+      leads: course.leads
+    }));
+
+  // Top eventos
+  const topEvents = leadsByEvent
+    .sort((a, b) => b.leads - a.leads)
+    .slice(0, 3)
+    .map((event, index) => ({
+      rank: index + 1,
+      event: event.name,
+      leads: event.leads
+    }));
+
+  // Calcular taxa de conversão (leads/scans se houver scans)
+  const conversionRate = totalScans > 0 ? ((totalLeads / totalScans) * 100).toFixed(1) : '0.0';
 
   return (
     <div className="p-6 space-y-6">
@@ -60,8 +70,8 @@ const Dashboard = () => {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{dashboardData.totalLeads.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">+12% do mês anterior</p>
+            <div className="text-2xl font-bold">{totalLeads.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">Leads capturados</p>
           </CardContent>
         </Card>
 
@@ -71,8 +81,8 @@ const Dashboard = () => {
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{dashboardData.leadsByEvent.length}</div>
-            <p className="text-xs text-muted-foreground">4 eventos em andamento</p>
+            <div className="text-2xl font-bold">{totalEvents}</div>
+            <p className="text-xs text-muted-foreground">Eventos cadastrados</p>
           </CardContent>
         </Card>
 
@@ -82,8 +92,8 @@ const Dashboard = () => {
             <GraduationCap className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{dashboardData.leadsByCourse.length}</div>
-            <p className="text-xs text-muted-foreground">Cursos com leads</p>
+            <div className="text-2xl font-bold">{totalCourses}</div>
+            <p className="text-xs text-muted-foreground">Cursos disponíveis</p>
           </CardContent>
         </Card>
 
@@ -93,8 +103,8 @@ const Dashboard = () => {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">23.5%</div>
-            <p className="text-xs text-muted-foreground">+2.1% do mês anterior</p>
+            <div className="text-2xl font-bold">{conversionRate}%</div>
+            <p className="text-xs text-muted-foreground">Leads por scan</p>
           </CardContent>
         </Card>
       </div>
@@ -107,15 +117,21 @@ const Dashboard = () => {
             <CardDescription>Quantidade de leads capturados por evento</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={dashboardData.leadsByEvent}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="leads" fill="#8884d8" />
-              </BarChart>
-            </ResponsiveContainer>
+            {leadsByEvent.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={leadsByEvent}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="leads" fill="#8884d8" />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                Nenhum dado de eventos disponível
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -125,25 +141,31 @@ const Dashboard = () => {
             <CardDescription>Distribuição de interesse por curso</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={dashboardData.leadsByCourse}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, value }) => `${name}: ${value}`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="leads"
-                >
-                  {dashboardData.leadsByCourse.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
+            {leadsByCourse.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={leadsByCourse}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, value }) => `${name}: ${value}`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="leads"
+                  >
+                    {leadsByCourse.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                Nenhum dado de cursos disponível
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -155,19 +177,25 @@ const Dashboard = () => {
             <CardTitle>Ranking - Cursos Mais Procurados</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {dashboardData.topCourses.map((item) => (
-                <div key={item.rank} className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
-                  <div className="flex items-center space-x-3">
-                    <div className="flex items-center justify-center w-8 h-8 bg-primary text-primary-foreground rounded-full text-sm font-bold">
-                      {item.rank}
+            {topCourses.length > 0 ? (
+              <div className="space-y-3">
+                {topCourses.map((item) => (
+                  <div key={item.rank} className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
+                    <div className="flex items-center space-x-3">
+                      <div className="flex items-center justify-center w-8 h-8 bg-primary text-primary-foreground rounded-full text-sm font-bold">
+                        {item.rank}
+                      </div>
+                      <span className="font-medium">{item.course}</span>
                     </div>
-                    <span className="font-medium">{item.course}</span>
+                    <span className="text-sm text-muted-foreground">{item.leads} leads</span>
                   </div>
-                  <span className="text-sm text-muted-foreground">{item.leads} leads</span>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                Nenhum curso com leads ainda
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -176,19 +204,25 @@ const Dashboard = () => {
             <CardTitle>Ranking - Eventos com Mais Capturas</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {dashboardData.topEvents.map((item) => (
-                <div key={item.rank} className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
-                  <div className="flex items-center space-x-3">
-                    <div className="flex items-center justify-center w-8 h-8 bg-secondary text-secondary-foreground rounded-full text-sm font-bold">
-                      {item.rank}
+            {topEvents.length > 0 ? (
+              <div className="space-y-3">
+                {topEvents.map((item) => (
+                  <div key={item.rank} className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
+                    <div className="flex items-center space-x-3">
+                      <div className="flex items-center justify-center w-8 h-8 bg-secondary text-secondary-foreground rounded-full text-sm font-bold">
+                        {item.rank}
+                      </div>
+                      <span className="font-medium">{item.event}</span>
                     </div>
-                    <span className="font-medium">{item.event}</span>
+                    <span className="text-sm text-muted-foreground">{item.leads} leads</span>
                   </div>
-                  <span className="text-sm text-muted-foreground">{item.leads} leads</span>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                Nenhum evento com leads ainda
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

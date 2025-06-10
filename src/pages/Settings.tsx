@@ -11,7 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Upload, Palette, Webhook, TestTube, Check, X, Plus, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useCourses, useLeadStatuses, useSystemSettings, useCreateCourse, useCreateLeadStatus } from '@/hooks/useSupabaseData';
+import { useCourses, useLeadStatuses, useSystemSettings, useCreateCourse, useCreateLeadStatus, useUpdateSystemSetting } from '@/hooks/useSupabaseData';
 import { supabase } from '@/integrations/supabase/client';
 
 const Settings = () => {
@@ -21,29 +21,46 @@ const Settings = () => {
   const { data: systemSettings = [] } = useSystemSettings();
   const createCourse = useCreateCourse();
   const createLeadStatus = useCreateLeadStatus();
-
-  const [settings, setSettings] = useState({
-    logo: '',
-    favicon: '',
-    primaryColor: '#3b82f6',
-    secondaryColor: '#64748b',
-    webhooks: {
-      whatsapp: 'https://api.exemplo.com/whatsapp/send',
-      email: 'https://api.exemplo.com/email/send',
-      sms: 'https://api.exemplo.com/sms/send',
-      leadCapture: 'https://api.exemplo.com/leads/capture',
-      leadSync: 'https://api.exemplo.com/leads/sync'
-    },
-    notifications: {
-      webhookErrors: true,
-      dailyReports: true,
-      leadAlerts: false
-    }
-  });
+  const updateSetting = useUpdateSystemSetting();
 
   const [webhookTests, setWebhookTests] = useState<{[key: string]: 'idle' | 'testing' | 'success' | 'error'}>({});
   const [newCourse, setNewCourse] = useState('');
   const [newStatus, setNewStatus] = useState({ name: '', color: '#64748b' });
+  const [webhookSettings, setWebhookSettings] = useState({
+    whatsapp: '',
+    email: '',
+    sms: '',
+    leadCapture: '',
+    leadSync: ''
+  });
+  const [notifications, setNotifications] = useState({
+    webhookErrors: true,
+    dailyReports: true,
+    leadAlerts: false
+  });
+
+  // Carregar configurações existentes
+  React.useEffect(() => {
+    const webhookTypes = ['whatsapp', 'email', 'sms', 'leadCapture', 'leadSync'];
+    const newWebhookSettings: any = {};
+    
+    webhookTypes.forEach(type => {
+      const setting = systemSettings.find((s: any) => s.key === `webhook_${type}`);
+      if (setting) {
+        newWebhookSettings[type] = typeof setting.value === 'string' ? setting.value : JSON.parse(String(setting.value));
+      }
+    });
+    
+    setWebhookSettings(prev => ({ ...prev, ...newWebhookSettings }));
+
+    // Carregar configurações de notificação
+    const notificationSettings = systemSettings.find((s: any) => s.key === 'notifications');
+    if (notificationSettings) {
+      const notifs = typeof notificationSettings.value === 'string' ? 
+        JSON.parse(notificationSettings.value) : notificationSettings.value;
+      setNotifications(prev => ({ ...prev, ...notifs }));
+    }
+  }, [systemSettings]);
 
   const testWebhook = async (key: string, url: string) => {
     if (!url.trim()) {
@@ -102,23 +119,27 @@ const Settings = () => {
     }
   };
 
-  const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onload = async (e) => {
         const logoUrl = e.target?.result as string;
-        setSettings({...settings, logo: logoUrl});
         
-        // Salvar no banco
-        await supabase
-          .from('system_settings')
-          .upsert({ key: 'logo', value: JSON.stringify(logoUrl) });
-        
-        toast({
-          title: "Logo atualizado",
-          description: "Logo da aplicação foi atualizado com sucesso.",
-        });
+        try {
+          await updateSetting.mutateAsync({ key: 'logo', value: logoUrl });
+          
+          toast({
+            title: "Logo atualizado",
+            description: "Logo da aplicação foi atualizado com sucesso.",
+          });
+        } catch (error) {
+          toast({
+            title: "Erro",
+            description: "Erro ao salvar logo",
+            variant: "destructive",
+          });
+        }
       };
       reader.readAsDataURL(file);
     }
@@ -168,13 +189,56 @@ const Settings = () => {
     }
   };
 
+  const handleSaveWebhooks = async () => {
+    try {
+      await Promise.all(
+        Object.entries(webhookSettings).map(([key, value]) =>
+          updateSetting.mutateAsync({ key: `webhook_${key}`, value })
+        )
+      );
+      
+      toast({
+        title: "Webhooks salvos",
+        description: "Configurações de webhooks foram salvas com sucesso!",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro ao salvar webhooks",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSaveNotifications = async () => {
+    try {
+      await updateSetting.mutateAsync({ key: 'notifications', value: notifications });
+      
+      toast({
+        title: "Notificações salvas",
+        description: "Configurações de notificações foram salvas com sucesso!",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro ao salvar notificações",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Obter logo atual
+  const logoSetting = systemSettings.find((s: any) => s.key === 'logo');
+  const currentLogo = logoSetting ? 
+    (typeof logoSetting.value === 'string' ? 
+      logoSetting.value : 
+      (typeof logoSetting.value === 'object' ? JSON.parse(JSON.stringify(logoSetting.value)) : '')
+    ) : '';
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-foreground">Configurações</h1>
-        <Button>
-          Salvar Configurações
-        </Button>
       </div>
 
       <Tabs defaultValue="appearance" className="w-full">
@@ -203,9 +267,9 @@ const Settings = () => {
                   <div>
                     <Label htmlFor="logo-upload">Logo da Aplicação</Label>
                     <div className="mt-2 flex items-center space-x-4">
-                      {settings.logo && (
+                      {currentLogo && (
                         <img
-                          src={settings.logo}
+                          src={currentLogo}
                           alt="Logo"
                           className="h-16 w-16 object-cover rounded border"
                         />
@@ -219,9 +283,11 @@ const Settings = () => {
                           className="hidden"
                         />
                         <Label htmlFor="logo-upload" className="cursor-pointer">
-                          <Button variant="outline" size="sm">
-                            <Upload className="h-4 w-4 mr-2" />
-                            {settings.logo ? 'Alterar Logo' : 'Upload Logo'}
+                          <Button variant="outline" size="sm" asChild>
+                            <span>
+                              <Upload className="h-4 w-4 mr-2" />
+                              {currentLogo ? 'Alterar Logo' : 'Upload Logo'}
+                            </span>
                           </Button>
                         </Label>
                       </div>
@@ -334,7 +400,7 @@ const Settings = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {Object.entries(settings.webhooks).map(([key, url]) => (
+              {Object.entries(webhookSettings).map(([key, url]) => (
                 <div key={key} className="space-y-2">
                   <div className="flex items-center justify-between">
                     <Label htmlFor={`webhook-${key}`} className="capitalize">
@@ -350,9 +416,9 @@ const Settings = () => {
                     <Input
                       id={`webhook-${key}`}
                       value={url}
-                      onChange={(e) => setSettings({
-                        ...settings,
-                        webhooks: { ...settings.webhooks, [key]: e.target.value }
+                      onChange={(e) => setWebhookSettings({
+                        ...webhookSettings,
+                        [key]: e.target.value
                       })}
                       placeholder="https://api.exemplo.com/webhook"
                       className="flex-1"
@@ -369,6 +435,12 @@ const Settings = () => {
                   </div>
                 </div>
               ))}
+
+              <div className="pt-4 border-t">
+                <Button onClick={handleSaveWebhooks}>
+                  Salvar Webhooks
+                </Button>
+              </div>
 
               <div className="pt-4 border-t">
                 <h3 className="text-lg font-medium mb-2">Informações dos Webhooks</h3>
@@ -400,10 +472,10 @@ const Settings = () => {
                     </p>
                   </div>
                   <Switch
-                    checked={settings.notifications.webhookErrors}
-                    onCheckedChange={(checked) => setSettings({
-                      ...settings,
-                      notifications: { ...settings.notifications, webhookErrors: checked }
+                    checked={notifications.webhookErrors}
+                    onCheckedChange={(checked) => setNotifications({
+                      ...notifications,
+                      webhookErrors: checked
                     })}
                   />
                 </div>
@@ -416,10 +488,10 @@ const Settings = () => {
                     </p>
                   </div>
                   <Switch
-                    checked={settings.notifications.dailyReports}
-                    onCheckedChange={(checked) => setSettings({
-                      ...settings,
-                      notifications: { ...settings.notifications, dailyReports: checked }
+                    checked={notifications.dailyReports}
+                    onCheckedChange={(checked) => setNotifications({
+                      ...notifications,
+                      dailyReports: checked
                     })}
                   />
                 </div>
@@ -432,13 +504,19 @@ const Settings = () => {
                     </p>
                   </div>
                   <Switch
-                    checked={settings.notifications.leadAlerts}
-                    onCheckedChange={(checked) => setSettings({
-                      ...settings,
-                      notifications: { ...settings.notifications, leadAlerts: checked }
+                    checked={notifications.leadAlerts}
+                    onCheckedChange={(checked) => setNotifications({
+                      ...notifications,
+                      leadAlerts: checked
                     })}
                   />
                 </div>
+              </div>
+
+              <div className="pt-4 border-t">
+                <Button onClick={handleSaveNotifications}>
+                  Salvar Notificações
+                </Button>
               </div>
             </CardContent>
           </Card>

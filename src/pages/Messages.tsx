@@ -7,9 +7,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { MessageSquare, Mail, Smartphone, Save, Send, Image } from 'lucide-react';
+import { MessageSquare, Mail, Smartphone, Save, Send, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useCourses, useEvents, useLeads } from '@/hooks/useSupabaseData';
+import { useCourses, useEvents, useLeads, useCreateMessageTemplate, useMessageTemplates, useMessageHistory, useSystemSettings } from '@/hooks/useSupabaseData';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { Label } from '@/components/ui/label';
@@ -22,6 +22,10 @@ const Messages = () => {
   const { data: courses = [] } = useCourses();
   const { data: events = [] } = useEvents();
   const { data: leads = [] } = useLeads();
+  const { data: templates = [] } = useMessageTemplates();
+  const { data: messageHistory = [] } = useMessageHistory();
+  const { data: systemSettings = [] } = useSystemSettings();
+  const createTemplate = useCreateMessageTemplate();
 
   const [currentMessage, setCurrentMessage] = useState({
     content: '',
@@ -37,14 +41,28 @@ const Messages = () => {
     type: 'whatsapp' as 'whatsapp' | 'email' | 'sms'
   });
 
-  const [messageHistory, setMessageHistory] = useState<any[]>([]);
-  const [templates, setTemplates] = useState<any[]>([]);
+  // Obter webhook configurado
+  const getWebhookUrl = (type: string) => {
+    const webhookSetting = systemSettings.find((s: any) => s.key === `webhook_${type}`);
+    return webhookSetting ? (typeof webhookSetting.value === 'string' ? webhookSetting.value : JSON.parse(String(webhookSetting.value))) : null;
+  };
 
   const handleSendMessage = async () => {
     if (!currentMessage.content.trim()) {
       toast({
         title: "Erro",
         description: "Por favor, digite o conteúdo da mensagem.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Verificar se webhook está configurado
+    const webhookUrl = getWebhookUrl(currentMessage.messageType);
+    if (!webhookUrl) {
+      toast({
+        title: "Webhook não configurado",
+        description: `Por favor, configure o webhook para ${currentMessage.messageType} nas configurações antes de enviar mensagens.`,
         variant: "destructive",
       });
       return;
@@ -74,12 +92,12 @@ const Messages = () => {
           filter_value: currentMessage.filterValue || null,
           recipients_count: filteredLeads.length,
           content: currentMessage.content,
-          status: 'sent'
+          status: 'sending'
         }]);
 
       if (error) throw error;
 
-      // Simular envio para webhook (aqui você faria a chamada real)
+      // Preparar dados para webhook
       const webhookData = {
         type: currentMessage.messageType,
         content: currentMessage.content,
@@ -90,7 +108,18 @@ const Messages = () => {
         }))
       };
 
-      console.log('Dados para webhook:', webhookData);
+      // Enviar para webhook
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(webhookData)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Erro no webhook: ${response.status} ${response.statusText}`);
+      }
 
       toast({
         title: "Mensagem enviada",
@@ -116,7 +145,7 @@ const Messages = () => {
     }
   };
 
-  const handleSaveTemplate = async () => {
+  const handleSaveTemplate = () => {
     if (!templateDialog.name || !templateDialog.content) {
       toast({
         title: "Erro",
@@ -126,37 +155,47 @@ const Messages = () => {
       return;
     }
 
+    createTemplate.mutate({
+      name: templateDialog.name,
+      content: templateDialog.content,
+      type: templateDialog.type
+    });
+
+    setTemplateDialog({
+      open: false,
+      name: '',
+      content: '',
+      type: 'whatsapp'
+    });
+  };
+
+  const handleDeleteTemplate = async (templateId: string) => {
     try {
-      const { error } = await supabase
-        .from('message_templates')
-        .insert([{
-          name: templateDialog.name,
-          content: templateDialog.content,
-          type: templateDialog.type
-        }]);
-
-      if (error) throw error;
-
-      setTemplateDialog({
-        open: false,
-        name: '',
-        content: '',
-        type: 'whatsapp'
-      });
-
-      toast({
-        title: "Template salvo",
-        description: "Template salvo com sucesso!",
-      });
-
+      await supabase.from('message_templates').delete().eq('id', templateId);
       queryClient.invalidateQueries({ queryKey: ['message_templates'] });
+      toast({
+        title: "Template removido",
+        description: "Template removido com sucesso!",
+      });
     } catch (error: any) {
       toast({
         title: "Erro",
-        description: error.message || "Erro ao salvar template",
+        description: "Erro ao remover template",
         variant: "destructive",
       });
     }
+  };
+
+  const useTemplate = (template: any) => {
+    setCurrentMessage({
+      ...currentMessage,
+      content: template.content,
+      messageType: template.type
+    });
+    toast({
+      title: "Template aplicado",
+      description: "Conteúdo do template foi aplicado à mensagem.",
+    });
   };
 
   const getRecipientCount = () => {
@@ -369,9 +408,41 @@ const Messages = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-center text-muted-foreground py-8">
-                Templates serão carregados do banco de dados
-              </p>
+              {templates.length > 0 ? (
+                <div className="space-y-4">
+                  {templates.map((template: any) => (
+                    <div key={template.id} className="border rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center space-x-2">
+                          <h3 className="font-medium">{template.name}</h3>
+                          <Badge variant="outline">{template.type}</Badge>
+                        </div>
+                        <div className="flex space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => useTemplate(template)}
+                          >
+                            Usar Template
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteTemplate(template.id)}
+                          >
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
+                        </div>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{template.content}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-center text-muted-foreground py-8">
+                  Nenhum template salvo ainda
+                </p>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -385,9 +456,48 @@ const Messages = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-center text-muted-foreground py-8">
-                Histórico será carregado do banco de dados
-              </p>
+              {messageHistory.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Data</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>Filtro</TableHead>
+                      <TableHead>Destinatários</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Conteúdo</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {messageHistory.map((message: any) => (
+                      <TableRow key={message.id}>
+                        <TableCell>
+                          {new Date(message.sent_at).toLocaleString('pt-BR')}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{message.type}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          {message.filter_type === 'all' ? 'Todos' : message.filter_type}
+                        </TableCell>
+                        <TableCell>{message.recipients_count}</TableCell>
+                        <TableCell>
+                          <Badge variant={message.status === 'sent' ? 'default' : 'secondary'}>
+                            {message.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="max-w-xs truncate">
+                          {message.content}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <p className="text-center text-muted-foreground py-8">
+                  Nenhum histórico de mensagens ainda
+                </p>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

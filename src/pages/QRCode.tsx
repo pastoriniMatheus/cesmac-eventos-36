@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useQRCodes } from '@/hooks/useSupabaseData';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
-import { generateShortUrl } from '@/utils/urlShortener';
+import { generateShortUrl, buildWhatsAppUrl } from '@/utils/urlShortener';
 
 const QRCodePage = () => {
   const { toast } = useToast();
@@ -27,7 +27,7 @@ const QRCodePage = () => {
   const [previewQR, setPreviewQR] = useState<any>(null);
 
   const generateQRCode = (whatsappNumber: string, eventName: string) => {
-    const waLink = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(eventName)}`;
+    const waLink = buildWhatsAppUrl(whatsappNumber, eventName);
     const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(waLink)}`;
     
     return { waLink, qrCodeUrl };
@@ -67,9 +67,8 @@ const QRCodePage = () => {
       if (eventError) throw eventError;
 
       // Depois criar o QR code
-      const { waLink, qrCodeUrl } = generateQRCode(newQRCode.whatsappNumber, newQRCode.eventName);
+      const { waLink } = generateQRCode(newQRCode.whatsappNumber, newQRCode.eventName);
       const shortUrl = generateShortUrl();
-      const redirectUrl = `${window.location.origin}/r/${shortUrl}`;
 
       const { error: qrError } = await supabase
         .from('qr_codes')
@@ -134,7 +133,8 @@ const QRCodePage = () => {
   };
 
   const downloadQRCode = (qrCode: any) => {
-    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(qrCode.original_url)}`;
+    const shortUrl = `${window.location.origin}/r/${qrCode.short_url}`;
+    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(shortUrl)}`;
     const link = document.createElement('a');
     link.href = qrCodeUrl;
     link.download = `qrcode-${qrCode.event?.name?.replace(/\s+/g, '-').toLowerCase() || 'qrcode'}.png`;
@@ -234,64 +234,67 @@ const QRCodePage = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {qrCodes.map((qrCode: any) => (
-                <TableRow key={qrCode.id}>
-                  <TableCell className="font-medium">{qrCode.event?.name}</TableCell>
-                  <TableCell className="font-mono">{qrCode.event?.whatsapp_number}</TableCell>
-                  <TableCell>
-                    <img
-                      src={`https://api.qrserver.com/v1/create-qr-code/?size=64x64&data=${encodeURIComponent(qrCode.original_url)}`}
-                      alt={`QR Code ${qrCode.event?.name}`}
-                      className="w-16 h-16 border rounded"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center space-x-2">
-                      <code className="text-xs bg-muted px-2 py-1 rounded">
-                        /r/{qrCode.short_url}
-                      </code>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => copyToClipboard(`${window.location.origin}/r/${qrCode.short_url}`, 'Link encurtado')}
-                      >
-                        <Copy className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">{qrCode.scans}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    {new Date(qrCode.created_at).toLocaleDateString('pt-BR')}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex space-x-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setPreviewQR(qrCode)}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => downloadQRCode(qrCode)}
-                      >
-                        <Download className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDeleteQRCode(qrCode.id)}
-                      >
-                        <Trash2 className="h-4 w-4 text-red-500" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {qrCodes.map((qrCode: any) => {
+                const shortUrl = `${window.location.origin}/r/${qrCode.short_url}`;
+                return (
+                  <TableRow key={qrCode.id}>
+                    <TableCell className="font-medium">{qrCode.event?.name}</TableCell>
+                    <TableCell className="font-mono">{qrCode.event?.whatsapp_number}</TableCell>
+                    <TableCell>
+                      <img
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=64x64&data=${encodeURIComponent(shortUrl)}`}
+                        alt={`QR Code ${qrCode.event?.name}`}
+                        className="w-16 h-16 border rounded"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center space-x-2">
+                        <code className="text-xs bg-muted px-2 py-1 rounded">
+                          /r/{qrCode.short_url}
+                        </code>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => copyToClipboard(shortUrl, 'Link encurtado')}
+                        >
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">{qrCode.scans}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      {new Date(qrCode.created_at).toLocaleDateString('pt-BR')}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex space-x-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setPreviewQR(qrCode)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => downloadQRCode(qrCode)}
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteQRCode(qrCode.id)}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
           {qrCodes.length === 0 && (
@@ -318,7 +321,7 @@ const QRCodePage = () => {
             <div className="space-y-6">
               <div className="flex justify-center">
                 <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=${encodeURIComponent(previewQR.original_url)}`}
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=${encodeURIComponent(`${window.location.origin}/r/${previewQR.short_url}`)}`}
                   alt={`QR Code ${previewQR.event?.name}`}
                   className="w-64 h-64 border rounded-lg"
                 />

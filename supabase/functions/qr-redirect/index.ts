@@ -21,20 +21,29 @@ serve(async (req) => {
     const url = new URL(req.url);
     const shortUrl = url.pathname.split('/').pop();
 
+    console.log('Redirecionamento solicitado para:', shortUrl);
+
     if (!shortUrl) {
+      console.log('Short URL não encontrada');
       return new Response('Short URL not found', { status: 404 });
     }
 
     // Buscar o QR code pelo short_url
     const { data: qrCode, error } = await supabase
       .from('qr_codes')
-      .select('*')
+      .select(`
+        *,
+        event:events(name, whatsapp_number)
+      `)
       .eq('short_url', shortUrl)
       .single();
 
     if (error || !qrCode) {
+      console.log('QR Code não encontrado:', error);
       return new Response('QR Code not found', { status: 404 });
     }
+
+    console.log('QR Code encontrado:', qrCode);
 
     // Incrementar contador de scans
     await supabase
@@ -42,10 +51,15 @@ serve(async (req) => {
       .update({ scans: qrCode.scans + 1 })
       .eq('id', qrCode.id);
 
-    // Redirecionar para a URL original
-    return Response.redirect(qrCode.original_url, 302);
+    // Construir URL do WhatsApp
+    const whatsappUrl = `https://wa.me/${qrCode.event.whatsapp_number}?text=${encodeURIComponent(qrCode.event.name)}`;
+    
+    console.log('Redirecionando para:', whatsappUrl);
+
+    // Redirecionar para a URL do WhatsApp
+    return Response.redirect(whatsappUrl, 302);
   } catch (error) {
-    console.error('Error:', error);
+    console.error('Erro no redirecionamento:', error);
     return new Response('Internal Server Error', { status: 500 });
   }
 });
