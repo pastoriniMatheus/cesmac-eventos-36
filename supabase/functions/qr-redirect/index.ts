@@ -91,13 +91,16 @@ serve(async (req) => {
 
     console.log('Redirecionando para:', qrCode.original_url);
 
-    // Criar a resposta de redirecionamento com cookie de sessão
-    const response = Response.redirect(qrCode.original_url, 302);
+    // Criar headers de resposta incluindo o cookie de sessão
+    const responseHeaders = new Headers();
+    responseHeaders.set('Location', qrCode.original_url);
+    responseHeaders.set('Set-Cookie', `scan_session=${sessionId}; Path=/; Max-Age=3600; SameSite=Lax`);
     
-    // Definir cookie com ID da sessão (expira em 1 hora)
-    response.headers.set('Set-Cookie', `scan_session=${sessionId}; Path=/; Max-Age=3600; SameSite=Lax`);
-    
-    return response;
+    // Criar a resposta de redirecionamento
+    return new Response(null, { 
+      status: 302,
+      headers: responseHeaders
+    });
 
   } catch (error) {
     console.error('Erro no redirecionamento:', error);
