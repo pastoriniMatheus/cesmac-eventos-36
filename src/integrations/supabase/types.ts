@@ -9,7 +9,243 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      courses: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      events: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          whatsapp_number: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          whatsapp_number: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          whatsapp_number?: string
+        }
+        Relationships: []
+      }
+      lead_statuses: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      leads: {
+        Row: {
+          course_id: string | null
+          created_at: string
+          email: string
+          event_id: string | null
+          id: string
+          name: string
+          shift: string | null
+          status_id: string | null
+          updated_at: string
+          whatsapp: string
+        }
+        Insert: {
+          course_id?: string | null
+          created_at?: string
+          email: string
+          event_id?: string | null
+          id?: string
+          name: string
+          shift?: string | null
+          status_id?: string | null
+          updated_at?: string
+          whatsapp: string
+        }
+        Update: {
+          course_id?: string | null
+          created_at?: string
+          email?: string
+          event_id?: string | null
+          id?: string
+          name?: string
+          shift?: string | null
+          status_id?: string | null
+          updated_at?: string
+          whatsapp?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leads_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_status_id_fkey"
+            columns: ["status_id"]
+            isOneToOne: false
+            referencedRelation: "lead_statuses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      message_history: {
+        Row: {
+          content: string
+          filter_type: string | null
+          filter_value: string | null
+          id: string
+          recipients_count: number
+          sent_at: string
+          status: string
+          type: string
+          webhook_response: string | null
+        }
+        Insert: {
+          content: string
+          filter_type?: string | null
+          filter_value?: string | null
+          id?: string
+          recipients_count?: number
+          sent_at?: string
+          status?: string
+          type: string
+          webhook_response?: string | null
+        }
+        Update: {
+          content?: string
+          filter_type?: string | null
+          filter_value?: string | null
+          id?: string
+          recipients_count?: number
+          sent_at?: string
+          status?: string
+          type?: string
+          webhook_response?: string | null
+        }
+        Relationships: []
+      }
+      message_templates: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          name: string
+          type: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          name: string
+          type: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          name?: string
+          type?: string
+        }
+        Relationships: []
+      }
+      qr_codes: {
+        Row: {
+          created_at: string
+          event_id: string | null
+          id: string
+          original_url: string
+          scans: number
+          short_url: string
+        }
+        Insert: {
+          created_at?: string
+          event_id?: string | null
+          id?: string
+          original_url: string
+          scans?: number
+          short_url: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string | null
+          id?: string
+          original_url?: string
+          scans?: number
+          short_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qr_codes_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      system_settings: {
+        Row: {
+          id: string
+          key: string
+          updated_at: string
+          value: Json
+        }
+        Insert: {
+          id?: string
+          key: string
+          updated_at?: string
+          value: Json
+        }
+        Update: {
+          id?: string
+          key?: string
+          updated_at?: string
+          value?: Json
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

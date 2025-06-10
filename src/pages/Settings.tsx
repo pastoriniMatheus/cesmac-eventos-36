@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,11 +7,20 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Upload, Palette, Webhook, TestTube, Check, X } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Upload, Palette, Webhook, TestTube, Check, X, Plus, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useCourses, useLeadStatuses, useSystemSettings, useCreateCourse, useCreateLeadStatus } from '@/hooks/useSupabaseData';
+import { supabase } from '@/integrations/supabase/client';
 
 const Settings = () => {
   const { toast } = useToast();
+  const { data: courses = [] } = useCourses();
+  const { data: leadStatuses = [] } = useLeadStatuses();
+  const { data: systemSettings = [] } = useSystemSettings();
+  const createCourse = useCreateCourse();
+  const createLeadStatus = useCreateLeadStatus();
+
   const [settings, setSettings] = useState({
     logo: '',
     favicon: '',
@@ -33,13 +41,22 @@ const Settings = () => {
   });
 
   const [webhookTests, setWebhookTests] = useState<{[key: string]: 'idle' | 'testing' | 'success' | 'error'}>({});
+  const [newCourse, setNewCourse] = useState('');
+  const [newStatus, setNewStatus] = useState({ name: '', color: '#64748b' });
 
   const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = (e) => {
-        setSettings({...settings, logo: e.target?.result as string});
+      reader.onload = async (e) => {
+        const logoUrl = e.target?.result as string;
+        setSettings({...settings, logo: logoUrl});
+        
+        // Salvar no banco
+        await supabase
+          .from('system_settings')
+          .upsert({ key: 'logo', value: JSON.stringify(logoUrl) });
+        
         toast({
           title: "Logo atualizado",
           description: "Logo da aplicação foi atualizado com sucesso.",
@@ -49,81 +66,47 @@ const Settings = () => {
     }
   };
 
-  const handleFaviconUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setSettings({...settings, favicon: e.target?.result as string});
-        toast({
-          title: "Favicon atualizado",
-          description: "Favicon da aplicação foi atualizado com sucesso.",
-        });
-      };
-      reader.readAsDataURL(file);
-    }
+  const handleAddCourse = () => {
+    if (!newCourse.trim()) return;
+    createCourse.mutate(newCourse.trim());
+    setNewCourse('');
   };
 
-  const testWebhook = async (type: string, url: string) => {
-    setWebhookTests({...webhookTests, [type]: 'testing'});
-    
+  const handleAddStatus = () => {
+    if (!newStatus.name.trim()) return;
+    createLeadStatus.mutate(newStatus);
+    setNewStatus({ name: '', color: '#64748b' });
+  };
+
+  const handleDeleteCourse = async (courseId: string) => {
     try {
-      const testData = {
-        test: true,
-        timestamp: new Date().toISOString(),
-        type: type
-      };
-
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(testData),
-      });
-
-      if (response.ok) {
-        setWebhookTests({...webhookTests, [type]: 'success'});
-        toast({
-          title: "Webhook funcionando",
-          description: `Webhook ${type} está funcionando corretamente.`,
-        });
-      } else {
-        throw new Error('Webhook failed');
-      }
-    } catch (error) {
-      setWebhookTests({...webhookTests, [type]: 'error'});
+      await supabase.from('courses').delete().eq('id', courseId);
       toast({
-        title: "Webhook com erro",
-        description: `Erro ao testar webhook ${type}. Verifique a URL e configurações.`,
+        title: "Curso removido",
+        description: "Curso removido com sucesso!",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro ao remover curso",
         variant: "destructive",
       });
     }
-
-    // Reset status after 3 seconds
-    setTimeout(() => {
-      setWebhookTests({...webhookTests, [type]: 'idle'});
-    }, 3000);
   };
 
-  const saveSettings = () => {
-    // Aqui você salvaria as configurações no backend
-    toast({
-      title: "Configurações salvas",
-      description: "Todas as configurações foram salvas com sucesso.",
-    });
-  };
-
-  const getTestIcon = (status: string) => {
-    switch (status) {
-      case 'testing':
-        return <TestTube className="h-4 w-4 animate-spin" />;
-      case 'success':
-        return <Check className="h-4 w-4 text-green-500" />;
-      case 'error':
-        return <X className="h-4 w-4 text-red-500" />;
-      default:
-        return <TestTube className="h-4 w-4" />;
+  const handleDeleteStatus = async (statusId: string) => {
+    try {
+      await supabase.from('lead_statuses').delete().eq('id', statusId);
+      toast({
+        title: "Status removido",
+        description: "Status removido com sucesso!",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro ao remover status",
+        variant: "destructive",
+      });
     }
   };
 
@@ -131,17 +114,18 @@ const Settings = () => {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-foreground">Configurações</h1>
-        <Button onClick={saveSettings}>
+        <Button>
           Salvar Configurações
         </Button>
       </div>
 
       <Tabs defaultValue="appearance" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="appearance">Aparência</TabsTrigger>
+          <TabsTrigger value="courses">Cursos</TabsTrigger>
+          <TabsTrigger value="statuses">Status</TabsTrigger>
           <TabsTrigger value="webhooks">Webhooks</TabsTrigger>
           <TabsTrigger value="notifications">Notificações</TabsTrigger>
-          <TabsTrigger value="system">Sistema</TabsTrigger>
         </TabsList>
 
         <TabsContent value="appearance" className="space-y-6">
@@ -185,89 +169,96 @@ const Settings = () => {
                       </div>
                     </div>
                   </div>
-
-                  <div>
-                    <Label htmlFor="favicon-upload">Favicon</Label>
-                    <div className="mt-2 flex items-center space-x-4">
-                      {settings.favicon && (
-                        <img
-                          src={settings.favicon}
-                          alt="Favicon"
-                          className="h-8 w-8 object-cover rounded border"
-                        />
-                      )}
-                      <div>
-                        <input
-                          id="favicon-upload"
-                          type="file"
-                          accept="image/*"
-                          onChange={handleFaviconUpload}
-                          className="hidden"
-                        />
-                        <Label htmlFor="favicon-upload" className="cursor-pointer">
-                          <Button variant="outline" size="sm">
-                            <Upload className="h-4 w-4 mr-2" />
-                            {settings.favicon ? 'Alterar Favicon' : 'Upload Favicon'}
-                          </Button>
-                        </Label>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="primary-color">Cor Primária</Label>
-                    <div className="flex items-center space-x-2 mt-2">
-                      <input
-                        id="primary-color"
-                        type="color"
-                        value={settings.primaryColor}
-                        onChange={(e) => setSettings({...settings, primaryColor: e.target.value})}
-                        className="h-10 w-20 border rounded cursor-pointer"
-                      />
-                      <Input
-                        value={settings.primaryColor}
-                        onChange={(e) => setSettings({...settings, primaryColor: e.target.value})}
-                        placeholder="#3b82f6"
-                        className="flex-1"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="secondary-color">Cor Secundária</Label>
-                    <div className="flex items-center space-x-2 mt-2">
-                      <input
-                        id="secondary-color"
-                        type="color"
-                        value={settings.secondaryColor}
-                        onChange={(e) => setSettings({...settings, secondaryColor: e.target.value})}
-                        className="h-10 w-20 border rounded cursor-pointer"
-                      />
-                      <Input
-                        value={settings.secondaryColor}
-                        onChange={(e) => setSettings({...settings, secondaryColor: e.target.value})}
-                        placeholder="#64748b"
-                        className="flex-1"
-                      />
-                    </div>
-                  </div>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-              <div className="pt-4 border-t">
-                <h3 className="text-lg font-medium mb-4">Preview das Cores</h3>
-                <div className="flex space-x-4">
-                  <div 
-                    className="w-16 h-16 rounded border"
-                    style={{ backgroundColor: settings.primaryColor }}
-                  ></div>
-                  <div 
-                    className="w-16 h-16 rounded border"
-                    style={{ backgroundColor: settings.secondaryColor }}
-                  ></div>
-                </div>
+        <TabsContent value="courses" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Gestão de Cursos</CardTitle>
+              <CardDescription>
+                Adicione ou remova cursos oferecidos pela faculdade
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex space-x-2">
+                <Input
+                  placeholder="Nome do curso"
+                  value={newCourse}
+                  onChange={(e) => setNewCourse(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleAddCourse()}
+                />
+                <Button onClick={handleAddCourse} disabled={!newCourse.trim()}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Adicionar
+                </Button>
+              </div>
+              <div className="grid gap-2">
+                {courses.map((course: any) => (
+                  <div key={course.id} className="flex items-center justify-between p-3 border rounded">
+                    <span>{course.name}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteCourse(course.id)}
+                    >
+                      <Trash2 className="h-4 w-4 text-red-500" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="statuses" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Gestão de Status</CardTitle>
+              <CardDescription>
+                Configure os status disponíveis para os leads
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex space-x-2">
+                <Input
+                  placeholder="Nome do status"
+                  value={newStatus.name}
+                  onChange={(e) => setNewStatus({...newStatus, name: e.target.value})}
+                />
+                <input
+                  type="color"
+                  value={newStatus.color}
+                  onChange={(e) => setNewStatus({...newStatus, color: e.target.value})}
+                  className="w-16 h-10 border rounded cursor-pointer"
+                />
+                <Button onClick={handleAddStatus} disabled={!newStatus.name.trim()}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Adicionar
+                </Button>
+              </div>
+              <div className="grid gap-2">
+                {leadStatuses.map((status: any) => (
+                  <div key={status.id} className="flex items-center justify-between p-3 border rounded">
+                    <div className="flex items-center space-x-3">
+                      <div
+                        className="w-4 h-4 rounded"
+                        style={{ backgroundColor: status.color }}
+                      />
+                      <span>{status.name}</span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteStatus(status.id)}
+                    >
+                      <Trash2 className="h-4 w-4 text-red-500" />
+                    </Button>
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>
@@ -389,51 +380,6 @@ const Settings = () => {
                       notifications: { ...settings.notifications, leadAlerts: checked }
                     })}
                   />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="system" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Informações do Sistema</CardTitle>
-              <CardDescription>
-                Informações técnicas e configurações avançadas
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Versão do Sistema</Label>
-                  <p className="text-sm font-mono bg-muted p-2 rounded">v1.0.0</p>
-                </div>
-                <div className="space-y-2">
-                  <Label>Última Atualização</Label>
-                  <p className="text-sm font-mono bg-muted p-2 rounded">
-                    {new Date().toLocaleDateString('pt-BR')}
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <Label>Total de Leads</Label>
-                  <p className="text-sm font-mono bg-muted p-2 rounded">1,247</p>
-                </div>
-                <div className="space-y-2">
-                  <Label>Mensagens Enviadas</Label>
-                  <p className="text-sm font-mono bg-muted p-2 rounded">3,456</p>
-                </div>
-              </div>
-
-              <div className="pt-4 border-t">
-                <h3 className="text-lg font-medium mb-4">Backup e Manutenção</h3>
-                <div className="space-y-2">
-                  <Button variant="outline" className="w-full md:w-auto">
-                    Exportar Dados
-                  </Button>
-                  <Button variant="outline" className="w-full md:w-auto ml-0 md:ml-2">
-                    Backup do Sistema
-                  </Button>
                 </div>
               </div>
             </CardContent>

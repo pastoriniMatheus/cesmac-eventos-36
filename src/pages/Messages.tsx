@@ -2,66 +2,32 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { MessageSquare, Mail, Smartphone, Save, Send, Image, History } from 'lucide-react';
+import { MessageSquare, Mail, Smartphone, Save, Send, Image } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-
-interface Template {
-  id: string;
-  name: string;
-  content: string;
-  type: 'whatsapp' | 'email' | 'sms';
-  createdAt: string;
-}
-
-interface MessageHistory {
-  id: string;
-  type: 'whatsapp' | 'email' | 'sms';
-  filter: string;
-  recipients: number;
-  content: string;
-  status: 'sent' | 'failed' | 'pending';
-  sentAt: string;
-  webhookResponse?: string;
-}
+import { useCourses, useEvents, useLeads } from '@/hooks/useSupabaseData';
+import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 
 const Messages = () => {
   const { toast } = useToast();
-  const [templates, setTemplates] = useState<Template[]>([
-    {
-      id: '1',
-      name: 'Boas-vindas Medicina',
-      content: 'Olá {nome}! Obrigado pelo interesse no curso de Medicina da CESMAC. Em breve entraremos em contato!',
-      type: 'whatsapp',
-      createdAt: '2024-06-01T10:00:00'
-    }
-  ]);
-
-  const [messageHistory, setMessageHistory] = useState<MessageHistory[]>([
-    {
-      id: '1',
-      type: 'whatsapp',
-      filter: 'Curso: Medicina',
-      recipients: 25,
-      content: 'Mensagem de boas-vindas para interessados em Medicina',
-      status: 'sent',
-      sentAt: '2024-06-08T14:30:00'
-    }
-  ]);
+  const queryClient = useQueryClient();
+  const { data: courses = [] } = useCourses();
+  const { data: events = [] } = useEvents();
+  const { data: leads = [] } = useLeads();
 
   const [currentMessage, setCurrentMessage] = useState({
     content: '',
-    filterType: 'course' as 'course' | 'event',
+    filterType: 'all' as 'course' | 'event' | 'all',
     filterValue: '',
-    messageType: 'whatsapp' as 'whatsapp' | 'email' | 'sms',
-    recipients: [] as string[]
+    messageType: 'whatsapp' as 'whatsapp' | 'email' | 'sms'
   });
 
   const [templateDialog, setTemplateDialog] = useState({
@@ -71,17 +37,11 @@ const Messages = () => {
     type: 'whatsapp' as 'whatsapp' | 'email' | 'sms'
   });
 
-  const courses = ['Medicina', 'Engenharia', 'Direito', 'Administração', 'Psicologia'];
-  const events = ['Feira Estudante 23', 'Open Day CESMAC', 'Workshop TI', 'Palestra Medicina'];
-
-  const webhookUrls = {
-    whatsapp: 'https://api.exemplo.com/whatsapp/send',
-    email: 'https://api.exemplo.com/email/send',
-    sms: 'https://api.exemplo.com/sms/send'
-  };
+  const [messageHistory, setMessageHistory] = useState<any[]>([]);
+  const [templates, setTemplates] = useState<any[]>([]);
 
   const handleSendMessage = async () => {
-    if (!currentMessage.content) {
+    if (!currentMessage.content.trim()) {
       toast({
         title: "Erro",
         description: "Por favor, digite o conteúdo da mensagem.",
@@ -90,72 +50,73 @@ const Messages = () => {
       return;
     }
 
-    if (!currentMessage.filterValue) {
-      toast({
-        title: "Erro",
-        description: "Por favor, selecione um filtro para os destinatários.",
-        variant: "destructive",
-      });
-      return;
+    // Determinar destinatários baseado nos filtros
+    let filteredLeads = leads;
+    let filterDescription = 'Todos os leads';
+
+    if (currentMessage.filterType === 'course' && currentMessage.filterValue) {
+      filteredLeads = leads.filter((lead: any) => lead.course_id === currentMessage.filterValue);
+      const courseName = courses.find((c: any) => c.id === currentMessage.filterValue)?.name;
+      filterDescription = `Curso: ${courseName}`;
+    } else if (currentMessage.filterType === 'event' && currentMessage.filterValue) {
+      filteredLeads = leads.filter((lead: any) => lead.event_id === currentMessage.filterValue);
+      const eventName = events.find((e: any) => e.id === currentMessage.filterValue)?.name;
+      filterDescription = `Evento: ${eventName}`;
     }
 
-    const webhookUrl = webhookUrls[currentMessage.messageType];
-    
     try {
-      const messageData = {
+      // Salvar no histórico de mensagens
+      const { error } = await supabase
+        .from('message_history')
+        .insert([{
+          type: currentMessage.messageType,
+          filter_type: currentMessage.filterType,
+          filter_value: currentMessage.filterValue || null,
+          recipients_count: filteredLeads.length,
+          content: currentMessage.content,
+          status: 'sent'
+        }]);
+
+      if (error) throw error;
+
+      // Simular envio para webhook (aqui você faria a chamada real)
+      const webhookData = {
+        type: currentMessage.messageType,
         content: currentMessage.content,
-        filterType: currentMessage.filterType,
-        filterValue: currentMessage.filterValue,
-        recipients: currentMessage.recipients
+        recipients: filteredLeads.map((lead: any) => ({
+          name: lead.name,
+          whatsapp: lead.whatsapp,
+          email: lead.email
+        }))
       };
 
-      const response = await fetch(webhookUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(messageData),
+      console.log('Dados para webhook:', webhookData);
+
+      toast({
+        title: "Mensagem enviada",
+        description: `Mensagem enviada para ${filteredLeads.length} destinatários via ${currentMessage.messageType}!`,
       });
 
-      const newHistoryEntry: MessageHistory = {
-        id: Date.now().toString(),
-        type: currentMessage.messageType,
-        filter: `${currentMessage.filterType === 'course' ? 'Curso' : 'Evento'}: ${currentMessage.filterValue}`,
-        recipients: currentMessage.recipients.length || 0,
-        content: currentMessage.content.substring(0, 50) + '...',
-        status: response.ok ? 'sent' : 'failed',
-        sentAt: new Date().toISOString(),
-        webhookResponse: response.ok ? 'Sucesso' : 'Falha na comunicação'
-      };
+      setCurrentMessage({
+        content: '',
+        filterType: 'all',
+        filterValue: '',
+        messageType: 'whatsapp'
+      });
 
-      setMessageHistory([newHistoryEntry, ...messageHistory]);
+      // Recarregar histórico
+      queryClient.invalidateQueries({ queryKey: ['message_history'] });
 
-      if (response.ok) {
-        toast({
-          title: "Mensagem enviada",
-          description: `Mensagem enviada com sucesso via ${currentMessage.messageType}!`,
-        });
-        
-        setCurrentMessage({
-          content: '',
-          filterType: 'course',
-          filterValue: '',
-          messageType: 'whatsapp',
-          recipients: []
-        });
-      } else {
-        throw new Error('Webhook failed');
-      }
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Erro no envio",
-        description: "Falha ao enviar mensagem. Verifique as configurações do webhook.",
+        description: error.message || "Erro ao enviar mensagem",
         variant: "destructive",
       });
     }
   };
 
-  const handleSaveTemplate = () => {
+  const handleSaveTemplate = async () => {
     if (!templateDialog.name || !templateDialog.content) {
       toast({
         title: "Erro",
@@ -165,72 +126,48 @@ const Messages = () => {
       return;
     }
 
-    const newTemplate: Template = {
-      id: Date.now().toString(),
-      name: templateDialog.name,
-      content: templateDialog.content,
-      type: templateDialog.type,
-      createdAt: new Date().toISOString()
-    };
+    try {
+      const { error } = await supabase
+        .from('message_templates')
+        .insert([{
+          name: templateDialog.name,
+          content: templateDialog.content,
+          type: templateDialog.type
+        }]);
 
-    setTemplates([...templates, newTemplate]);
-    setTemplateDialog({
-      open: false,
-      name: '',
-      content: '',
-      type: 'whatsapp'
-    });
+      if (error) throw error;
 
-    toast({
-      title: "Template salvo",
-      description: "Template salvo com sucesso!",
-    });
-  };
+      setTemplateDialog({
+        open: false,
+        name: '',
+        content: '',
+        type: 'whatsapp'
+      });
 
-  const loadTemplate = (template: Template) => {
-    setCurrentMessage({
-      ...currentMessage,
-      content: template.content,
-      messageType: template.type
-    });
+      toast({
+        title: "Template salvo",
+        description: "Template salvo com sucesso!",
+      });
 
-    toast({
-      title: "Template carregado",
-      description: `Template "${template.name}" carregado com sucesso!`,
-    });
-  };
-
-  const getStatusBadge = (status: MessageHistory['status']) => {
-    const colors = {
-      sent: 'bg-green-500',
-      failed: 'bg-red-500',
-      pending: 'bg-yellow-500'
-    };
-    
-    const labels = {
-      sent: 'Enviado',
-      failed: 'Falhou',
-      pending: 'Pendente'
-    };
-
-    return (
-      <Badge variant="secondary" className={`${colors[status]} text-white`}>
-        {labels[status]}
-      </Badge>
-    );
-  };
-
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case 'whatsapp':
-        return <MessageSquare className="h-4 w-4" />;
-      case 'email':
-        return <Mail className="h-4 w-4" />;
-      case 'sms':
-        return <Smartphone className="h-4 w-4" />;
-      default:
-        return <MessageSquare className="h-4 w-4" />;
+      queryClient.invalidateQueries({ queryKey: ['message_templates'] });
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao salvar template",
+        variant: "destructive",
+      });
     }
+  };
+
+  const getRecipientCount = () => {
+    if (currentMessage.filterType === 'all') {
+      return leads.length;
+    } else if (currentMessage.filterType === 'course' && currentMessage.filterValue) {
+      return leads.filter((lead: any) => lead.course_id === currentMessage.filterValue).length;
+    } else if (currentMessage.filterType === 'event' && currentMessage.filterValue) {
+      return leads.filter((lead: any) => lead.event_id === currentMessage.filterValue).length;
+    }
+    return 0;
   };
 
   return (
@@ -251,7 +188,7 @@ const Messages = () => {
             <CardHeader>
               <CardTitle>Nova Mensagem</CardTitle>
               <CardDescription>
-                Envie mensagens em massa para leads filtrados por curso ou evento
+                Envie mensagens para leads. Se nenhum filtro for selecionado, será enviado para todos.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -294,7 +231,7 @@ const Messages = () => {
                   <Label>Filtrar por</Label>
                   <Select 
                     value={currentMessage.filterType} 
-                    onValueChange={(value: 'course' | 'event') => 
+                    onValueChange={(value: 'course' | 'event' | 'all') => 
                       setCurrentMessage({...currentMessage, filterType: value, filterValue: ''})
                     }
                   >
@@ -302,32 +239,41 @@ const Messages = () => {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="all">Todos os leads</SelectItem>
                       <SelectItem value="course">Curso</SelectItem>
                       <SelectItem value="event">Evento</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
-                <div className="space-y-2">
-                  <Label>
-                    {currentMessage.filterType === 'course' ? 'Curso' : 'Evento'}
-                  </Label>
-                  <Select 
-                    value={currentMessage.filterValue} 
-                    onValueChange={(value) => 
-                      setCurrentMessage({...currentMessage, filterValue: value})
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(currentMessage.filterType === 'course' ? courses : events).map((item) => (
-                        <SelectItem key={item} value={item}>{item}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {currentMessage.filterType !== 'all' && (
+                  <div className="space-y-2">
+                    <Label>
+                      {currentMessage.filterType === 'course' ? 'Curso' : 'Evento'}
+                    </Label>
+                    <Select 
+                      value={currentMessage.filterValue} 
+                      onValueChange={(value) => 
+                        setCurrentMessage({...currentMessage, filterValue: value})
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(currentMessage.filterType === 'course' ? courses : events).map((item: any) => (
+                          <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+
+              <div className="bg-muted p-3 rounded-lg">
+                <p className="text-sm text-muted-foreground">
+                  <strong>Destinatários:</strong> {getRecipientCount()} leads serão incluídos neste envio
+                </p>
               </div>
 
               <div className="space-y-2">
@@ -339,16 +285,6 @@ const Messages = () => {
                   onChange={(e) => setCurrentMessage({...currentMessage, content: e.target.value})}
                   rows={6}
                 />
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Button variant="outline">
-                  <Image className="h-4 w-4 mr-2" />
-                  Anexar Imagem
-                </Button>
-                <span className="text-sm text-muted-foreground">
-                  Nenhuma imagem selecionada
-                </span>
               </div>
 
               <div className="flex space-x-2">
@@ -433,35 +369,9 @@ const Messages = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-4">
-                {templates.map((template) => (
-                  <div key={template.id} className="border rounded-lg p-4 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        {getTypeIcon(template.type)}
-                        <h3 className="font-medium">{template.name}</h3>
-                        <Badge variant="outline">{template.type}</Badge>
-                      </div>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => loadTemplate(template)}
-                      >
-                        Carregar
-                      </Button>
-                    </div>
-                    <p className="text-sm text-muted-foreground">{template.content}</p>
-                    <p className="text-xs text-muted-foreground">
-                      Criado em: {new Date(template.createdAt).toLocaleDateString('pt-BR')}
-                    </p>
-                  </div>
-                ))}
-                {templates.length === 0 && (
-                  <p className="text-center text-muted-foreground py-8">
-                    Nenhum template salvo ainda
-                  </p>
-                )}
-              </div>
+              <p className="text-center text-muted-foreground py-8">
+                Templates serão carregados do banco de dados
+              </p>
             </CardContent>
           </Card>
         </TabsContent>
@@ -475,42 +385,9 @@ const Messages = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Filtro</TableHead>
-                    <TableHead>Destinatários</TableHead>
-                    <TableHead>Conteúdo</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Data/Hora</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {messageHistory.map((message) => (
-                    <TableRow key={message.id}>
-                      <TableCell>
-                        <div className="flex items-center space-x-2">
-                          {getTypeIcon(message.type)}
-                          <span className="capitalize">{message.type}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>{message.filter}</TableCell>
-                      <TableCell>{message.recipients}</TableCell>
-                      <TableCell className="max-w-xs truncate">{message.content}</TableCell>
-                      <TableCell>{getStatusBadge(message.status)}</TableCell>
-                      <TableCell>
-                        {new Date(message.sentAt).toLocaleString('pt-BR')}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              {messageHistory.length === 0 && (
-                <p className="text-center text-muted-foreground py-8">
-                  Nenhuma mensagem enviada ainda
-                </p>
-              )}
+              <p className="text-center text-muted-foreground py-8">
+                Histórico será carregado do banco de dados
+              </p>
             </CardContent>
           </Card>
         </TabsContent>

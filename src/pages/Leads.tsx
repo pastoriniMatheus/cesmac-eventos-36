@@ -5,47 +5,21 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Plus, Upload, Search, Filter } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-
-interface Lead {
-  id: string;
-  name: string;
-  whatsapp: string;
-  email: string;
-  course: string;
-  event: string;
-  status: 'pendente' | 'em_atendimento' | 'inscrito' | 'matriculado' | 'ingressou_outra_faculdade';
-  createdAt: string;
-}
+import { useCourses, useLeadStatuses, useEvents, useLeads } from '@/hooks/useSupabaseData';
+import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 
 const Leads = () => {
   const { toast } = useToast();
-  const [leads, setLeads] = useState<Lead[]>([
-    {
-      id: '1',
-      name: 'João Silva',
-      whatsapp: '82999887766',
-      email: 'joao@email.com',
-      course: 'Medicina',
-      event: 'Feira Estudante 23',
-      status: 'pendente',
-      createdAt: '2024-06-08T10:30:00'
-    },
-    {
-      id: '2',
-      name: 'Maria Santos',
-      whatsapp: '82988776655',
-      email: 'maria@email.com',
-      course: 'Engenharia',
-      event: 'Open Day CESMAC',
-      status: 'em_atendimento',
-      createdAt: '2024-06-08T11:15:00'
-    }
-  ]);
+  const queryClient = useQueryClient();
+  const { data: courses = [] } = useCourses();
+  const { data: leadStatuses = [] } = useLeadStatuses();
+  const { data: events = [] } = useEvents();
+  const { data: leads = [] } = useLeads();
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -56,24 +30,14 @@ const Leads = () => {
     name: '',
     whatsapp: '',
     email: '',
-    course: '',
-    event: '',
-    status: 'pendente' as const
+    course_id: '',
+    event_id: '',
+    status_id: '',
+    shift: ''
   });
 
-  const statusOptions = [
-    { value: 'pendente', label: 'Pendente', color: 'bg-yellow-500' },
-    { value: 'em_atendimento', label: 'Em Atendimento', color: 'bg-blue-500' },
-    { value: 'inscrito', label: 'Inscrito', color: 'bg-green-500' },
-    { value: 'matriculado', label: 'Matriculado', color: 'bg-purple-500' },
-    { value: 'ingressou_outra_faculdade', label: 'Ingressou Outra Faculdade', color: 'bg-red-500' }
-  ];
-
-  const events = ['Feira Estudante 23', 'Open Day CESMAC', 'Workshop TI', 'Palestra Medicina'];
-  const courses = ['Medicina', 'Engenharia', 'Direito', 'Administração', 'Psicologia'];
-
-  const handleAddLead = () => {
-    if (!newLead.name || !newLead.whatsapp || !newLead.email || !newLead.course || !newLead.event) {
+  const handleAddLead = async () => {
+    if (!newLead.name || !newLead.whatsapp || !newLead.email || !newLead.course_id || !newLead.event_id) {
       toast({
         title: "Erro",
         description: "Por favor, preencha todos os campos obrigatórios.",
@@ -82,89 +46,80 @@ const Leads = () => {
       return;
     }
 
-    const lead: Lead = {
-      id: Date.now().toString(),
-      ...newLead,
-      createdAt: new Date().toISOString()
-    };
+    try {
+      const { error } = await supabase
+        .from('leads')
+        .insert([{
+          ...newLead,
+          status_id: newLead.status_id || leadStatuses[0]?.id
+        }]);
 
-    setLeads([...leads, lead]);
-    setNewLead({
-      name: '',
-      whatsapp: '',
-      email: '',
-      course: '',
-      event: '',
-      status: 'pendente'
-    });
-    setIsAddDialogOpen(false);
+      if (error) throw error;
 
-    toast({
-      title: "Lead adicionado",
-      description: "Lead adicionado com sucesso ao sistema.",
-    });
-  };
-
-  const handleStatusChange = (leadId: string, newStatus: Lead['status']) => {
-    setLeads(leads.map(lead => 
-      lead.id === leadId ? { ...lead, status: newStatus } : lead
-    ));
-
-    toast({
-      title: "Status atualizado",
-      description: "Status do lead atualizado com sucesso.",
-    });
-  };
-
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      toast({
-        title: "Upload iniciado",
-        description: "Processando arquivo de leads...",
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      setNewLead({
+        name: '',
+        whatsapp: '',
+        email: '',
+        course_id: '',
+        event_id: '',
+        status_id: '',
+        shift: ''
       });
-      // Implementar lógica de upload e parsing do CSV/TXT
+      setIsAddDialogOpen(false);
+
+      toast({
+        title: "Lead adicionado",
+        description: "Lead adicionado com sucesso ao sistema.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao adicionar lead",
+        variant: "destructive",
+      });
     }
   };
 
-  const filteredLeads = leads.filter(lead => {
+  const handleStatusChange = async (leadId: string, newStatusId: string) => {
+    try {
+      const { error } = await supabase
+        .from('leads')
+        .update({ status_id: newStatusId })
+        .eq('id', leadId);
+
+      if (error) throw error;
+
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+
+      toast({
+        title: "Status atualizado",
+        description: "Status do lead atualizado com sucesso.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao atualizar status",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const filteredLeads = leads.filter((lead: any) => {
     const matchesSearch = lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          lead.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          lead.whatsapp.includes(searchTerm);
-    const matchesStatus = statusFilter === 'all' || lead.status === statusFilter;
-    const matchesEvent = eventFilter === 'all' || lead.event === eventFilter;
+    const matchesStatus = statusFilter === 'all' || lead.status_id === statusFilter;
+    const matchesEvent = eventFilter === 'all' || lead.event_id === eventFilter;
     
     return matchesSearch && matchesStatus && matchesEvent;
   });
-
-  const getStatusBadge = (status: Lead['status']) => {
-    const statusConfig = statusOptions.find(s => s.value === status);
-    return (
-      <Badge variant="secondary" className={`${statusConfig?.color} text-white`}>
-        {statusConfig?.label}
-      </Badge>
-    );
-  };
 
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-foreground">Gestão de Leads</h1>
         <div className="flex space-x-2">
-          <input
-            type="file"
-            accept=".csv,.txt"
-            onChange={handleFileUpload}
-            className="hidden"
-            id="file-upload"
-          />
-          <Label htmlFor="file-upload" className="cursor-pointer">
-            <Button variant="outline" className="flex items-center space-x-2">
-              <Upload className="h-4 w-4" />
-              <span>Importar CSV/TXT</span>
-            </Button>
-          </Label>
-          
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
               <Button className="flex items-center space-x-2">
@@ -210,26 +165,39 @@ const Leads = () => {
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="course">Curso*</Label>
-                  <Select value={newLead.course} onValueChange={(value) => setNewLead({...newLead, course: value})}>
+                  <Select value={newLead.course_id} onValueChange={(value) => setNewLead({...newLead, course_id: value})}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione o curso" />
                     </SelectTrigger>
                     <SelectContent>
-                      {courses.map((course) => (
-                        <SelectItem key={course} value={course}>{course}</SelectItem>
+                      {courses.map((course: any) => (
+                        <SelectItem key={course.id} value={course.id}>{course.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="grid gap-2">
+                  <Label htmlFor="shift">Turno</Label>
+                  <Select value={newLead.shift} onValueChange={(value) => setNewLead({...newLead, shift: value})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o turno" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="manhã">Manhã</SelectItem>
+                      <SelectItem value="tarde">Tarde</SelectItem>
+                      <SelectItem value="noite">Noite</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
                   <Label htmlFor="event">Evento*</Label>
-                  <Select value={newLead.event} onValueChange={(value) => setNewLead({...newLead, event: value})}>
+                  <Select value={newLead.event_id} onValueChange={(value) => setNewLead({...newLead, event_id: value})}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione o evento" />
                     </SelectTrigger>
                     <SelectContent>
-                      {events.map((event) => (
-                        <SelectItem key={event} value={event}>{event}</SelectItem>
+                      {events.map((event: any) => (
+                        <SelectItem key={event.id} value={event.id}>{event.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -276,9 +244,9 @@ const Leads = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos os status</SelectItem>
-                  {statusOptions.map((status) => (
-                    <SelectItem key={status.value} value={status.value}>
-                      {status.label}
+                  {leadStatuses.map((status: any) => (
+                    <SelectItem key={status.id} value={status.id}>
+                      {status.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -292,9 +260,9 @@ const Leads = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos os eventos</SelectItem>
-                  {events.map((event) => (
-                    <SelectItem key={event} value={event}>
-                      {event}
+                  {events.map((event: any) => (
+                    <SelectItem key={event.id} value={event.id}>
+                      {event.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -334,42 +302,46 @@ const Leads = () => {
                 <TableHead>WhatsApp</TableHead>
                 <TableHead>E-mail</TableHead>
                 <TableHead>Curso</TableHead>
+                <TableHead>Turno</TableHead>
                 <TableHead>Evento</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Data</TableHead>
-                <TableHead>Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredLeads.map((lead) => (
+              {filteredLeads.map((lead: any) => (
                 <TableRow key={lead.id}>
                   <TableCell className="font-medium">{lead.name}</TableCell>
                   <TableCell>{lead.whatsapp}</TableCell>
                   <TableCell>{lead.email}</TableCell>
-                  <TableCell>{lead.course}</TableCell>
-                  <TableCell>{lead.event}</TableCell>
+                  <TableCell>{lead.course?.name}</TableCell>
+                  <TableCell>{lead.shift || '-'}</TableCell>
+                  <TableCell>{lead.event?.name}</TableCell>
                   <TableCell>
                     <Select
-                      value={lead.status}
-                      onValueChange={(value: Lead['status']) => handleStatusChange(lead.id, value)}
+                      value={lead.status_id || ''}
+                      onValueChange={(value) => handleStatusChange(lead.id, value)}
                     >
                       <SelectTrigger className="w-40">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {statusOptions.map((status) => (
-                          <SelectItem key={status.value} value={status.value}>
-                            {status.label}
+                        {leadStatuses.map((status: any) => (
+                          <SelectItem key={status.id} value={status.id}>
+                            <div className="flex items-center space-x-2">
+                              <div
+                                className="w-3 h-3 rounded"
+                                style={{ backgroundColor: status.color }}
+                              />
+                              <span>{status.name}</span>
+                            </div>
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </TableCell>
                   <TableCell>
-                    {new Date(lead.createdAt).toLocaleDateString('pt-BR')}
-                  </TableCell>
-                  <TableCell>
-                    {getStatusBadge(lead.status)}
+                    {new Date(lead.created_at).toLocaleDateString('pt-BR')}
                   </TableCell>
                 </TableRow>
               ))}
