@@ -21,6 +21,7 @@ const App = () => {
     const path = window.location.pathname;
     if (path.startsWith('/r/')) {
       const shortUrl = path.replace('/r/', '');
+      console.log('Redirecionando QR code:', shortUrl);
       // Redirect immediately to the edge function
       window.location.replace(`https://dobtquebpcnzjisftcfh.supabase.co/functions/v1/qr-redirect/${shortUrl}`);
       return;
@@ -29,7 +30,14 @@ const App = () => {
 
   // Don't render the React app if it's a QR redirect
   if (window.location.pathname.startsWith('/r/')) {
-    return <div>Redirecionando...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p>Redirecionando...</p>
+        </div>
+      </div>
+    );
   }
 
   return (

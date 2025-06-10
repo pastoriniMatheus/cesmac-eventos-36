@@ -8,11 +8,13 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
+    // Use service role key for server-side operations
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -22,10 +24,14 @@ serve(async (req) => {
     const shortUrl = url.pathname.split('/').pop();
 
     console.log('Redirecionamento solicitado para:', shortUrl);
+    console.log('URL completa:', req.url);
 
     if (!shortUrl) {
-      console.log('Short URL não encontrada');
-      return new Response('Short URL not found', { status: 404 });
+      console.log('Short URL não encontrada na URL:', req.url);
+      return new Response('Short URL not found', { 
+        status: 404,
+        headers: corsHeaders 
+      });
     }
 
     // Buscar o QR code pelo short_url
@@ -35,25 +41,44 @@ serve(async (req) => {
       .eq('short_url', shortUrl)
       .single();
 
-    if (error || !qrCode) {
-      console.log('QR Code não encontrado:', error);
-      return new Response('QR Code not found', { status: 404 });
+    if (error) {
+      console.log('Erro ao buscar QR Code:', error);
+      return new Response('QR Code not found', { 
+        status: 404,
+        headers: corsHeaders 
+      });
+    }
+
+    if (!qrCode) {
+      console.log('QR Code não encontrado para short_url:', shortUrl);
+      return new Response('QR Code not found', { 
+        status: 404,
+        headers: corsHeaders 
+      });
     }
 
     console.log('QR Code encontrado:', qrCode);
 
     // Incrementar contador de scans
-    await supabase
+    const { error: updateError } = await supabase
       .from('qr_codes')
       .update({ scans: qrCode.scans + 1 })
       .eq('id', qrCode.id);
 
+    if (updateError) {
+      console.log('Erro ao incrementar scans:', updateError);
+    }
+
     console.log('Redirecionando para:', qrCode.original_url);
 
-    // Redirecionar para a URL original (que já contém a URL completa do WhatsApp)
+    // Redirecionar para a URL original (WhatsApp)
     return Response.redirect(qrCode.original_url, 302);
+
   } catch (error) {
     console.error('Erro no redirecionamento:', error);
-    return new Response('Internal Server Error', { status: 500 });
+    return new Response('Internal Server Error', { 
+      status: 500,
+      headers: corsHeaders 
+    });
   }
 });
