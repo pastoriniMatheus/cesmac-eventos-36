@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -121,29 +120,24 @@ const Settings = () => {
       reader.onload = async (e) => {
         const base64 = e.target?.result as string;
         
-        // Verificar se já existe um logo e fazer update em vez de insert
-        const existingLogo = getSetting('logo');
-        
-        if (existingLogo) {
-          // Update do logo existente
-          const { error } = await updateSetting.mutateAsync({
-            key: 'logo',
-            value: base64
-          });
-          
-          if (error) throw error;
-        } else {
-          // Insert novo logo
+        try {
           await updateSetting.mutateAsync({
             key: 'logo',
             value: base64
           });
-        }
 
-        toast({
-          title: "Sucesso",
-          description: "Logo atualizado com sucesso!",
-        });
+          toast({
+            title: "Sucesso",
+            description: "Logo atualizado com sucesso!",
+          });
+        } catch (mutationError) {
+          console.error('Erro na mutation:', mutationError);
+          toast({
+            title: "Erro",
+            description: "Erro ao salvar o logo.",
+            variant: "destructive",
+          });
+        }
         
         setUploading(false);
       };

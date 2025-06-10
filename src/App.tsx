@@ -4,8 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useEffect, useState } from "react";
 import Header from "./components/Header";
 import Sidebar from "./components/Sidebar";
 import Index from "./pages/Index";
@@ -19,15 +18,21 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 
 const App = () => {
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
   // Handle QR code redirects
   useEffect(() => {
     const path = window.location.pathname;
     if (path.startsWith('/r/')) {
       const shortUrl = path.replace('/r/', '');
-      window.location.href = `${supabase.supabaseUrl}/functions/v1/qr-redirect/${shortUrl}`;
+      window.location.href = `https://dobtquebpcnzjisftcfh.supabase.co/functions/v1/qr-redirect/${shortUrl}`;
       return;
     }
   }, []);
+
+  const handleToggleSidebar = () => {
+    setSidebarCollapsed(!sidebarCollapsed);
+  };
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -36,9 +41,9 @@ const App = () => {
         <Sonner />
         <BrowserRouter>
           <div className="min-h-screen bg-background flex">
-            <Sidebar />
+            <Sidebar collapsed={sidebarCollapsed} />
             <div className="flex-1 flex flex-col">
-              <Header />
+              <Header onToggleSidebar={handleToggleSidebar} />
               <main className="flex-1 overflow-auto">
                 <Routes>
                   <Route path="/" element={<Index />} />
