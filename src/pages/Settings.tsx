@@ -1,21 +1,30 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Upload, Palette, Webhook, TestTube, Check, X, Plus, Trash2 } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Trash2, Plus, Upload, Palette } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useCourses, useLeadStatuses, useSystemSettings, useCreateCourse, useCreateLeadStatus, useUpdateSystemSetting } from '@/hooks/useSupabaseData';
-import { supabase } from '@/integrations/supabase/client';
+import { 
+  useCourses, 
+  useLeadStatuses, 
+  useCreateCourse, 
+  useCreateLeadStatus,
+  useSystemSettings,
+  useUpdateSystemSetting
+} from '@/hooks/useSupabaseData';
 
 const Settings = () => {
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { data: courses = [] } = useCourses();
   const { data: leadStatuses = [] } = useLeadStatuses();
   const { data: systemSettings = [] } = useSystemSettings();
@@ -23,217 +32,180 @@ const Settings = () => {
   const createLeadStatus = useCreateLeadStatus();
   const updateSetting = useUpdateSystemSetting();
 
-  const [webhookTests, setWebhookTests] = useState<{[key: string]: 'idle' | 'testing' | 'success' | 'error'}>({});
   const [newCourse, setNewCourse] = useState('');
-  const [newStatus, setNewStatus] = useState({ name: '', color: '#64748b' });
-  const [webhookSettings, setWebhookSettings] = useState({
+  const [newStatus, setNewStatus] = useState({ name: '', color: '#3b82f6' });
+  const [webhooks, setWebhooks] = useState({
     whatsapp: '',
     email: '',
-    sms: '',
-    leadCapture: '',
-    leadSync: ''
+    sms: ''
   });
   const [notifications, setNotifications] = useState({
-    webhookErrors: true,
-    dailyReports: true,
-    leadAlerts: false
+    emailNotifications: false,
+    whatsappNotifications: false,
+    smsNotifications: false
   });
+  const [uploading, setUploading] = useState(false);
 
-  // Carregar configurações existentes
-  React.useEffect(() => {
-    const webhookTypes = ['whatsapp', 'email', 'sms', 'leadCapture', 'leadSync'];
-    const newWebhookSettings: any = {};
+  // Obter configurações do sistema
+  const getSetting = (key: string) => {
+    const setting = systemSettings.find((s: any) => s.key === key);
+    if (!setting) return null;
     
-    webhookTypes.forEach(type => {
-      const setting = systemSettings.find((s: any) => s.key === `webhook_${type}`);
-      if (setting) {
-        newWebhookSettings[type] = typeof setting.value === 'string' ? setting.value : JSON.parse(String(setting.value));
-      }
-    });
-    
-    setWebhookSettings(prev => ({ ...prev, ...newWebhookSettings }));
-
-    // Carregar configurações de notificação
-    const notificationSettings = systemSettings.find((s: any) => s.key === 'notifications');
-    if (notificationSettings) {
-      const notifs = typeof notificationSettings.value === 'string' ? 
-        JSON.parse(notificationSettings.value) : notificationSettings.value;
-      setNotifications(prev => ({ ...prev, ...notifs }));
+    try {
+      return typeof setting.value === 'string' ? JSON.parse(setting.value) : setting.value;
+    } catch {
+      return setting.value;
     }
+  };
+
+  React.useEffect(() => {
+    const webhookSettings = getSetting('webhooks');
+    if (webhookSettings) {
+      setWebhooks({
+        whatsapp: webhookSettings.whatsapp || '',
+        email: webhookSettings.email || '',
+        sms: webhookSettings.sms || ''
+      });
+    }
+
+    setNotifications({
+      emailNotifications: getSetting('email_notifications') || false,
+      whatsappNotifications: getSetting('whatsapp_notifications') || false,
+      smsNotifications: getSetting('sms_notifications') || false
+    });
   }, [systemSettings]);
 
-  const testWebhook = async (key: string, url: string) => {
-    if (!url.trim()) {
+  const handleAddCourse = () => {
+    if (newCourse.trim()) {
+      createCourse.mutate(newCourse.trim());
+      setNewCourse('');
+    }
+  };
+
+  const handleAddStatus = () => {
+    if (newStatus.name.trim()) {
+      createLeadStatus.mutate(newStatus);
+      setNewStatus({ name: '', color: '#3b82f6' });
+    }
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validar tipo de arquivo
+    if (!file.type.startsWith('image/')) {
       toast({
         title: "Erro",
-        description: "URL do webhook não pode estar vazia",
+        description: "Por favor, selecione apenas arquivos de imagem.",
         variant: "destructive",
       });
       return;
     }
 
-    setWebhookTests(prev => ({ ...prev, [key]: 'testing' }));
-
-    try {
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          test: true,
-          timestamp: new Date().toISOString(),
-          type: key
-        })
-      });
-
-      if (response.ok) {
-        setWebhookTests(prev => ({ ...prev, [key]: 'success' }));
-        toast({
-          title: "Teste bem-sucedido",
-          description: `Webhook ${key} está funcionando corretamente`,
-        });
-      } else {
-        throw new Error(`HTTP ${response.status}`);
-      }
-    } catch (error) {
-      setWebhookTests(prev => ({ ...prev, [key]: 'error' }));
+    // Validar tamanho (2MB max)
+    if (file.size > 2 * 1024 * 1024) {
       toast({
-        title: "Teste falhou",
-        description: `Erro ao testar webhook ${key}: ${error}`,
+        title: "Erro",
+        description: "A imagem deve ter no máximo 2MB.",
         variant: "destructive",
       });
+      return;
     }
-  };
 
-  const getTestIcon = (status: 'idle' | 'testing' | 'success' | 'error') => {
-    switch (status) {
-      case 'testing':
-        return <TestTube className="h-4 w-4 animate-spin" />;
-      case 'success':
-        return <Check className="h-4 w-4 text-green-600" />;
-      case 'error':
-        return <X className="h-4 w-4 text-red-600" />;
-      default:
-        return <TestTube className="h-4 w-4" />;
-    }
-  };
+    setUploading(true);
 
-  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
+    try {
+      // Converter para base64
       const reader = new FileReader();
       reader.onload = async (e) => {
-        const logoUrl = e.target?.result as string;
+        const base64 = e.target?.result as string;
         
-        try {
-          await updateSetting.mutateAsync({ key: 'logo', value: logoUrl });
-          
-          toast({
-            title: "Logo atualizado",
-            description: "Logo da aplicação foi atualizado com sucesso.",
-          });
-        } catch (error) {
-          toast({
-            title: "Erro",
-            description: "Erro ao salvar logo",
-            variant: "destructive",
-          });
-        }
+        // Salvar no sistema
+        await updateSetting.mutateAsync({
+          key: 'logo',
+          value: base64
+        });
+
+        toast({
+          title: "Sucesso",
+          description: "Logo atualizado com sucesso!",
+        });
+        
+        setUploading(false);
       };
+      
+      reader.onerror = () => {
+        toast({
+          title: "Erro",
+          description: "Erro ao processar a imagem.",
+          variant: "destructive",
+        });
+        setUploading(false);
+      };
+      
       reader.readAsDataURL(file);
-    }
-  };
-
-  const handleAddCourse = () => {
-    if (!newCourse.trim()) return;
-    createCourse.mutate(newCourse.trim());
-    setNewCourse('');
-  };
-
-  const handleAddStatus = () => {
-    if (!newStatus.name.trim()) return;
-    createLeadStatus.mutate(newStatus);
-    setNewStatus({ name: '', color: '#64748b' });
-  };
-
-  const handleDeleteCourse = async (courseId: string) => {
-    try {
-      await supabase.from('courses').delete().eq('id', courseId);
-      toast({
-        title: "Curso removido",
-        description: "Curso removido com sucesso!",
-      });
     } catch (error) {
       toast({
         title: "Erro",
-        description: "Erro ao remover curso",
+        description: "Erro ao fazer upload da imagem.",
         variant: "destructive",
       });
+      setUploading(false);
     }
   };
 
-  const handleDeleteStatus = async (statusId: string) => {
+  const handleWebhookSave = async () => {
     try {
-      await supabase.from('lead_statuses').delete().eq('id', statusId);
-      toast({
-        title: "Status removido",
-        description: "Status removido com sucesso!",
+      await updateSetting.mutateAsync({
+        key: 'webhooks',
+        value: webhooks
       });
-    } catch (error) {
-      toast({
-        title: "Erro",
-        description: "Erro ao remover status",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleSaveWebhooks = async () => {
-    try {
-      await Promise.all(
-        Object.entries(webhookSettings).map(([key, value]) =>
-          updateSetting.mutateAsync({ key: `webhook_${key}`, value })
-        )
-      );
       
       toast({
-        title: "Webhooks salvos",
-        description: "Configurações de webhooks foram salvas com sucesso!",
+        title: "Sucesso",
+        description: "Webhooks salvos com sucesso!",
       });
     } catch (error) {
       toast({
         title: "Erro",
-        description: "Erro ao salvar webhooks",
+        description: "Erro ao salvar webhooks.",
         variant: "destructive",
       });
     }
   };
 
-  const handleSaveNotifications = async () => {
+  const handleNotificationsSave = async () => {
     try {
-      await updateSetting.mutateAsync({ key: 'notifications', value: notifications });
+      await Promise.all([
+        updateSetting.mutateAsync({
+          key: 'email_notifications',
+          value: notifications.emailNotifications
+        }),
+        updateSetting.mutateAsync({
+          key: 'whatsapp_notifications',
+          value: notifications.whatsappNotifications
+        }),
+        updateSetting.mutateAsync({
+          key: 'sms_notifications',
+          value: notifications.smsNotifications
+        })
+      ]);
       
       toast({
-        title: "Notificações salvas",
-        description: "Configurações de notificações foram salvas com sucesso!",
+        title: "Sucesso",
+        description: "Configurações de notificações salvas!",
       });
     } catch (error) {
       toast({
         title: "Erro",
-        description: "Erro ao salvar notificações",
+        description: "Erro ao salvar configurações.",
         variant: "destructive",
       });
     }
   };
 
-  // Obter logo atual
-  const logoSetting = systemSettings.find((s: any) => s.key === 'logo');
-  const currentLogo = logoSetting ? 
-    (typeof logoSetting.value === 'string' ? 
-      logoSetting.value : 
-      (typeof logoSetting.value === 'object' ? JSON.parse(JSON.stringify(logoSetting.value)) : '')
-    ) : '';
+  const currentLogo = getSetting('logo');
 
   return (
     <div className="p-6 space-y-6">
@@ -253,97 +225,93 @@ const Settings = () => {
         <TabsContent value="appearance" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Palette className="h-5 w-5" />
-                <span>Personalização Visual</span>
-              </CardTitle>
+              <CardTitle>Logotipo</CardTitle>
               <CardDescription>
-                Configure a aparência da aplicação
+                Faça upload do logotipo da sua empresa (recomendado: 200x60px, máximo 2MB)
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="logo-upload">Logo da Aplicação</Label>
-                    <div className="mt-2 flex items-center space-x-4">
-                      {currentLogo && (
-                        <img
-                          src={currentLogo}
-                          alt="Logo"
-                          className="h-16 w-16 object-cover rounded border"
-                        />
-                      )}
-                      <div>
-                        <input
-                          id="logo-upload"
-                          type="file"
-                          accept="image/*"
-                          onChange={handleLogoUpload}
-                          className="hidden"
-                        />
-                        <Label htmlFor="logo-upload" className="cursor-pointer">
-                          <Button variant="outline" size="sm" asChild>
-                            <span>
-                              <Upload className="h-4 w-4 mr-2" />
-                              {currentLogo ? 'Alterar Logo' : 'Upload Logo'}
-                            </span>
-                          </Button>
-                        </Label>
-                      </div>
-                    </div>
-                  </div>
+            <CardContent className="space-y-4">
+              {currentLogo && (
+                <div className="flex items-center space-x-4">
+                  <img 
+                    src={currentLogo} 
+                    alt="Logo atual" 
+                    className="h-16 w-auto object-contain border rounded"
+                  />
+                  <span className="text-sm text-muted-foreground">Logo atual</span>
                 </div>
+              )}
+              
+              <div className="flex items-center space-x-4">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+                <Button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  className="flex items-center space-x-2"
+                >
+                  <Upload className="h-4 w-4" />
+                  <span>{uploading ? 'Enviando...' : 'Escolher Arquivo'}</span>
+                </Button>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="courses" className="space-y-6">
+        <TabsContent value="courses">
           <Card>
             <CardHeader>
-              <CardTitle>Gestão de Cursos</CardTitle>
+              <CardTitle>Gerenciar Cursos</CardTitle>
               <CardDescription>
-                Adicione ou remova cursos oferecidos pela faculdade
+                Adicione e gerencie os cursos disponíveis no sistema
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex space-x-2">
                 <Input
-                  placeholder="Nome do curso"
+                  placeholder="Nome do novo curso"
                   value={newCourse}
                   onChange={(e) => setNewCourse(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleAddCourse()}
                 />
-                <Button onClick={handleAddCourse} disabled={!newCourse.trim()}>
+                <Button onClick={handleAddCourse} disabled={createCourse.isPending}>
                   <Plus className="h-4 w-4 mr-2" />
                   Adicionar
                 </Button>
               </div>
-              <div className="grid gap-2">
-                {courses.map((course: any) => (
-                  <div key={course.id} className="flex items-center justify-between p-3 border rounded">
-                    <span>{course.name}</span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDeleteCourse(course.id)}
-                    >
-                      <Trash2 className="h-4 w-4 text-red-500" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
+
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Data de Criação</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {courses.map((course: any) => (
+                    <TableRow key={course.id}>
+                      <TableCell>{course.name}</TableCell>
+                      <TableCell>
+                        {new Date(course.created_at).toLocaleDateString('pt-BR')}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="statuses" className="space-y-6">
+        <TabsContent value="statuses">
           <Card>
             <CardHeader>
-              <CardTitle>Gestão de Status</CardTitle>
+              <CardTitle>Status de Leads</CardTitle>
               <CardDescription>
-                Configure os status disponíveis para os leads
+                Gerencie os status que podem ser atribuídos aos leads
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -353,171 +321,154 @@ const Settings = () => {
                   value={newStatus.name}
                   onChange={(e) => setNewStatus({...newStatus, name: e.target.value})}
                 />
-                <input
-                  type="color"
-                  value={newStatus.color}
-                  onChange={(e) => setNewStatus({...newStatus, color: e.target.value})}
-                  className="w-16 h-10 border rounded cursor-pointer"
-                />
-                <Button onClick={handleAddStatus} disabled={!newStatus.name.trim()}>
+                <div className="flex items-center space-x-2">
+                  <Palette className="h-4 w-4" />
+                  <Input
+                    type="color"
+                    value={newStatus.color}
+                    onChange={(e) => setNewStatus({...newStatus, color: e.target.value})}
+                    className="w-16 h-10 p-1"
+                  />
+                </div>
+                <Button onClick={handleAddStatus} disabled={createLeadStatus.isPending}>
                   <Plus className="h-4 w-4 mr-2" />
                   Adicionar
                 </Button>
               </div>
-              <div className="grid gap-2">
-                {leadStatuses.map((status: any) => (
-                  <div key={status.id} className="flex items-center justify-between p-3 border rounded">
-                    <div className="flex items-center space-x-3">
-                      <div
-                        className="w-4 h-4 rounded"
-                        style={{ backgroundColor: status.color }}
-                      />
-                      <span>{status.name}</span>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDeleteStatus(status.id)}
-                    >
-                      <Trash2 className="h-4 w-4 text-red-500" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
+
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Cor</TableHead>
+                    <TableHead>Preview</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {leadStatuses.map((status: any) => (
+                    <TableRow key={status.id}>
+                      <TableCell>{status.name}</TableCell>
+                      <TableCell>{status.color}</TableCell>
+                      <TableCell>
+                        <Badge style={{ backgroundColor: status.color, color: 'white' }}>
+                          {status.name}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="webhooks" className="space-y-6">
+        <TabsContent value="webhooks">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Webhook className="h-5 w-5" />
-                <span>Configuração de Webhooks</span>
-              </CardTitle>
+              <CardTitle>Configuração de Webhooks</CardTitle>
               <CardDescription>
-                Configure os endpoints para integração com serviços externos
+                Configure os endpoints para envio de mensagens
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              {Object.entries(webhookSettings).map(([key, url]) => (
-                <div key={key} className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor={`webhook-${key}`} className="capitalize">
-                      {key === 'leadCapture' ? 'Captura de Leads' :
-                       key === 'leadSync' ? 'Sincronização de Leads' :
-                       key}
-                    </Label>
-                    <Badge variant={webhookTests[key] === 'success' ? 'default' : 'secondary'}>
-                      {webhookTests[key] === 'success' ? 'Funcionando' : 'Não testado'}
-                    </Badge>
-                  </div>
-                  <div className="flex space-x-2">
-                    <Input
-                      id={`webhook-${key}`}
-                      value={url}
-                      onChange={(e) => setWebhookSettings({
-                        ...webhookSettings,
-                        [key]: e.target.value
-                      })}
-                      placeholder="https://api.exemplo.com/webhook"
-                      className="flex-1"
-                    />
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => testWebhook(key, url)}
-                      disabled={webhookTests[key] === 'testing'}
-                    >
-                      {getTestIcon(webhookTests[key] || 'idle')}
-                      <span className="ml-2">Testar</span>
-                    </Button>
-                  </div>
+            <CardContent className="space-y-4">
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="whatsapp-webhook">Webhook WhatsApp</Label>
+                  <Input
+                    id="whatsapp-webhook"
+                    placeholder="https://api.exemplo.com/whatsapp/send"
+                    value={webhooks.whatsapp}
+                    onChange={(e) => setWebhooks({...webhooks, whatsapp: e.target.value})}
+                  />
                 </div>
-              ))}
-
-              <div className="pt-4 border-t">
-                <Button onClick={handleSaveWebhooks}>
-                  Salvar Webhooks
-                </Button>
-              </div>
-
-              <div className="pt-4 border-t">
-                <h3 className="text-lg font-medium mb-2">Informações dos Webhooks</h3>
-                <div className="text-sm text-muted-foreground space-y-1">
-                  <p><strong>WhatsApp/SMS/Email:</strong> Recebem dados de envio de mensagens</p>
-                  <p><strong>Captura de Leads:</strong> Recebe novos leads dos QR codes</p>
-                  <p><strong>Sincronização:</strong> Envia leads com status "concluído" periodicamente</p>
+                
+                <div>
+                  <Label htmlFor="email-webhook">Webhook E-mail</Label>
+                  <Input
+                    id="email-webhook"
+                    placeholder="https://api.exemplo.com/email/send"
+                    value={webhooks.email}
+                    onChange={(e) => setWebhooks({...webhooks, email: e.target.value})}
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="sms-webhook">Webhook SMS</Label>
+                  <Input
+                    id="sms-webhook"
+                    placeholder="https://api.exemplo.com/sms/send"
+                    value={webhooks.sms}
+                    onChange={(e) => setWebhooks({...webhooks, sms: e.target.value})}
+                  />
                 </div>
               </div>
+
+              <Button onClick={handleWebhookSave} disabled={updateSetting.isPending}>
+                Salvar Webhooks
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="notifications" className="space-y-6">
+        <TabsContent value="notifications">
           <Card>
             <CardHeader>
-              <CardTitle>Notificações</CardTitle>
+              <CardTitle>Configurações de Notificações</CardTitle>
               <CardDescription>
-                Configure as notificações do sistema
+                Configure quando receber notificações do sistema
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-4">
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Erros de Webhook</Label>
+                  <div>
+                    <Label>Notificações por E-mail</Label>
                     <p className="text-sm text-muted-foreground">
-                      Notificar quando webhooks falharem
+                      Receba notificações importantes por e-mail
                     </p>
                   </div>
                   <Switch
-                    checked={notifications.webhookErrors}
-                    onCheckedChange={(checked) => setNotifications({
-                      ...notifications,
-                      webhookErrors: checked
-                    })}
+                    checked={notifications.emailNotifications}
+                    onCheckedChange={(checked) => 
+                      setNotifications({...notifications, emailNotifications: checked})
+                    }
                   />
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Relatórios Diários</Label>
+                  <div>
+                    <Label>Notificações por WhatsApp</Label>
                     <p className="text-sm text-muted-foreground">
-                      Receber resumo diário de leads capturados
+                      Receba alertas via WhatsApp
                     </p>
                   </div>
                   <Switch
-                    checked={notifications.dailyReports}
-                    onCheckedChange={(checked) => setNotifications({
-                      ...notifications,
-                      dailyReports: checked
-                    })}
+                    checked={notifications.whatsappNotifications}
+                    onCheckedChange={(checked) => 
+                      setNotifications({...notifications, whatsappNotifications: checked})
+                    }
                   />
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Alertas de Lead</Label>
+                  <div>
+                    <Label>Notificações por SMS</Label>
                     <p className="text-sm text-muted-foreground">
-                      Notificar imediatamente quando novo lead for capturado
+                      Receba alertas via SMS
                     </p>
                   </div>
                   <Switch
-                    checked={notifications.leadAlerts}
-                    onCheckedChange={(checked) => setNotifications({
-                      ...notifications,
-                      leadAlerts: checked
-                    })}
+                    checked={notifications.smsNotifications}
+                    onCheckedChange={(checked) => 
+                      setNotifications({...notifications, smsNotifications: checked})
+                    }
                   />
                 </div>
               </div>
 
-              <div className="pt-4 border-t">
-                <Button onClick={handleSaveNotifications}>
-                  Salvar Notificações
-                </Button>
-              </div>
+              <Button onClick={handleNotificationsSave} disabled={updateSetting.isPending}>
+                Salvar Configurações
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
