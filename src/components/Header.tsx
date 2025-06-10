@@ -12,7 +12,11 @@ const Header = ({ onToggleSidebar }: HeaderProps) => {
   const { data: systemSettings = [] } = useSystemSettings();
   
   const logoSetting = systemSettings.find((s: any) => s.key === 'logo');
-  const logoUrl = logoSetting ? (typeof logoSetting.value === 'string' ? logoSetting.value : JSON.parse(logoSetting.value)) : '';
+  const logoUrl = logoSetting ? 
+    (typeof logoSetting.value === 'string' ? 
+      logoSetting.value : 
+      JSON.parse(String(logoSetting.value))
+    ) : '';
 
   return (
     <header className="h-16 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-6 flex items-center justify-between">
