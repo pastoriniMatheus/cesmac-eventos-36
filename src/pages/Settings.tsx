@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -43,6 +44,63 @@ const Settings = () => {
   const [webhookTests, setWebhookTests] = useState<{[key: string]: 'idle' | 'testing' | 'success' | 'error'}>({});
   const [newCourse, setNewCourse] = useState('');
   const [newStatus, setNewStatus] = useState({ name: '', color: '#64748b' });
+
+  const testWebhook = async (key: string, url: string) => {
+    if (!url.trim()) {
+      toast({
+        title: "Erro",
+        description: "URL do webhook não pode estar vazia",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setWebhookTests(prev => ({ ...prev, [key]: 'testing' }));
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          test: true,
+          timestamp: new Date().toISOString(),
+          type: key
+        })
+      });
+
+      if (response.ok) {
+        setWebhookTests(prev => ({ ...prev, [key]: 'success' }));
+        toast({
+          title: "Teste bem-sucedido",
+          description: `Webhook ${key} está funcionando corretamente`,
+        });
+      } else {
+        throw new Error(`HTTP ${response.status}`);
+      }
+    } catch (error) {
+      setWebhookTests(prev => ({ ...prev, [key]: 'error' }));
+      toast({
+        title: "Teste falhou",
+        description: `Erro ao testar webhook ${key}: ${error}`,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const getTestIcon = (status: 'idle' | 'testing' | 'success' | 'error') => {
+    switch (status) {
+      case 'testing':
+        return <TestTube className="h-4 w-4 animate-spin" />;
+      case 'success':
+        return <Check className="h-4 w-4 text-green-600" />;
+      case 'error':
+        return <X className="h-4 w-4 text-red-600" />;
+      default:
+        return <TestTube className="h-4 w-4" />;
+    }
+  };
 
   const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
