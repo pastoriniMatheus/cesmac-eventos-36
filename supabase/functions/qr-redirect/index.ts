@@ -31,10 +31,7 @@ serve(async (req) => {
     // Buscar o QR code pelo short_url
     const { data: qrCode, error } = await supabase
       .from('qr_codes')
-      .select(`
-        *,
-        event:events(name, whatsapp_number)
-      `)
+      .select('*')
       .eq('short_url', shortUrl)
       .single();
 
@@ -51,13 +48,10 @@ serve(async (req) => {
       .update({ scans: qrCode.scans + 1 })
       .eq('id', qrCode.id);
 
-    // Construir URL do WhatsApp
-    const whatsappUrl = `https://wa.me/${qrCode.event.whatsapp_number}?text=${encodeURIComponent(qrCode.event.name)}`;
-    
-    console.log('Redirecionando para:', whatsappUrl);
+    console.log('Redirecionando para:', qrCode.original_url);
 
-    // Redirecionar para a URL do WhatsApp
-    return Response.redirect(whatsappUrl, 302);
+    // Redirecionar para a URL original (que já contém a URL completa do WhatsApp)
+    return Response.redirect(qrCode.original_url, 302);
   } catch (error) {
     console.error('Erro no redirecionamento:', error);
     return new Response('Internal Server Error', { status: 500 });
