@@ -115,8 +115,8 @@ const SessionMetrics = () => {
                     </code>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={session.converted ? "default" : "secondary"}>
-                      {session.converted ? "Convertido" : "Pendente"}
+                    <Badge variant={session.lead_id ? "default" : "secondary"}>
+                      {session.lead_id ? "Convertido" : "Pendente"}
                     </Badge>
                   </TableCell>
                   <TableCell>

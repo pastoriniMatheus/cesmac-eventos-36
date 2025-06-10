@@ -77,6 +77,7 @@ export type Database = {
           event_id: string | null
           id: string
           name: string
+          scan_session_id: string | null
           shift: string | null
           status_id: string | null
           updated_at: string
@@ -89,6 +90,7 @@ export type Database = {
           event_id?: string | null
           id?: string
           name: string
+          scan_session_id?: string | null
           shift?: string | null
           status_id?: string | null
           updated_at?: string
@@ -101,6 +103,7 @@ export type Database = {
           event_id?: string | null
           id?: string
           name?: string
+          scan_session_id?: string | null
           shift?: string | null
           status_id?: string | null
           updated_at?: string
@@ -119,6 +122,13 @@ export type Database = {
             columns: ["event_id"]
             isOneToOne: false
             referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_scan_session_id_fkey"
+            columns: ["scan_session_id"]
+            isOneToOne: false
+            referencedRelation: "scan_sessions"
             referencedColumns: ["id"]
           },
           {
@@ -221,6 +231,67 @@ export type Database = {
             columns: ["event_id"]
             isOneToOne: false
             referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scan_sessions: {
+        Row: {
+          converted: boolean
+          converted_at: string | null
+          created_at: string
+          event_id: string | null
+          id: string
+          ip_address: string | null
+          lead_id: string | null
+          qr_code_id: string | null
+          scanned_at: string
+          user_agent: string | null
+        }
+        Insert: {
+          converted?: boolean
+          converted_at?: string | null
+          created_at?: string
+          event_id?: string | null
+          id?: string
+          ip_address?: string | null
+          lead_id?: string | null
+          qr_code_id?: string | null
+          scanned_at?: string
+          user_agent?: string | null
+        }
+        Update: {
+          converted?: boolean
+          converted_at?: string | null
+          created_at?: string
+          event_id?: string | null
+          id?: string
+          ip_address?: string | null
+          lead_id?: string | null
+          qr_code_id?: string | null
+          scanned_at?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scan_sessions_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scan_sessions_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scan_sessions_qr_code_id_fkey"
+            columns: ["qr_code_id"]
+            isOneToOne: false
+            referencedRelation: "qr_codes"
             referencedColumns: ["id"]
           },
         ]

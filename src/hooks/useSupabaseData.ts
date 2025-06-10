@@ -1,5 +1,3 @@
-
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -259,30 +257,12 @@ export const useScanSessions = () => {
   return useQuery({
     queryKey: ['scan_sessions'],
     queryFn: async () => {
-      // Usando uma query raw para acessar a tabela scan_sessions temporariamente
       try {
-        const { data, error } = await (supabase as any).rpc('get_scan_sessions');
+        const { data, error } = await supabase.rpc('get_scan_sessions');
         
         if (error) {
-          // Fallback: tentar query direta mesmo sem tipos
-          console.log('RPC failed, trying direct query:', error);
-          try {
-            const { data: directData, error: directError } = await (supabase as any)
-              .from('scan_sessions')
-              .select(`
-                *,
-                qr_code:qr_codes(short_url),
-                event:events(name),
-                lead:leads(name, email)
-              `)
-              .order('scanned_at', { ascending: false });
-            
-            if (directError) throw directError;
-            return directData || [];
-          } catch (fallbackError) {
-            console.error('Both queries failed:', fallbackError);
-            return [];
-          }
+          console.error('Error fetching scan sessions:', error);
+          return [];
         }
         
         return data || [];
@@ -313,23 +293,17 @@ export const useConversionMetrics = () => {
         
         if (qrError) throw qrError;
 
-        // Tentar buscar sessões de scan
-        let sessions = [];
-        try {
-          const { data: sessionsData, error: sessionsError } = await (supabase as any)
-            .from('scan_sessions')
-            .select('*');
-          
-          if (!sessionsError) {
-            sessions = sessionsData || [];
-          }
-        } catch (e) {
-          console.log('Scan sessions table not accessible yet:', e);
+        // Buscar sessões de scan usando a função RPC
+        const { data: sessions, error: sessionsError } = await supabase.rpc('get_scan_sessions');
+        
+        if (sessionsError) {
+          console.error('Error fetching scan sessions:', sessionsError);
         }
 
-        const totalScans = sessions.length || 0;
+        const sessionsData = sessions || [];
+        const totalScans = sessionsData.length;
         const totalLeads = leads?.length || 0;
-        const convertedSessions = sessions.filter((s: any) => s?.lead_id).length || 0;
+        const convertedSessions = sessionsData.filter((s: any) => s?.lead_id).length;
         const totalQRScans = qrCodes?.reduce((sum, qr) => sum + (qr.scans || 0), 0) || 0;
 
         return {
@@ -356,4 +330,3 @@ export const useConversionMetrics = () => {
     }
   });
 };
-
