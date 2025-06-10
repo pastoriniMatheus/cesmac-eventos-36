@@ -225,6 +225,7 @@ const QRCodePage = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>Evento</TableHead>
+                <TableHead>ID do Evento</TableHead>
                 <TableHead>WhatsApp</TableHead>
                 <TableHead>QR Code</TableHead>
                 <TableHead>Link Curto</TableHead>
@@ -239,6 +240,20 @@ const QRCodePage = () => {
                 return (
                   <TableRow key={qrCode.id}>
                     <TableCell className="font-medium">{qrCode.event?.name}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center space-x-2">
+                        <code className="text-xs bg-muted px-2 py-1 rounded">
+                          {qrCode.event_id}
+                        </code>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => copyToClipboard(qrCode.event_id, 'ID do Evento')}
+                        >
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </TableCell>
                     <TableCell className="font-mono">{qrCode.event?.whatsapp_number}</TableCell>
                     <TableCell>
                       <img
@@ -330,6 +345,21 @@ const QRCodePage = () => {
                 <div>
                   <Label>Evento:</Label>
                   <p className="text-sm font-medium">{previewQR.event?.name}</p>
+                </div>
+                <div>
+                  <Label>ID do Evento:</Label>
+                  <div className="flex items-center space-x-2">
+                    <code className="text-xs bg-muted px-2 py-1 rounded flex-1">
+                      {previewQR.event_id}
+                    </code>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => copyToClipboard(previewQR.event_id, 'ID do Evento')}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
                 <div>
                   <Label>WhatsApp:</Label>

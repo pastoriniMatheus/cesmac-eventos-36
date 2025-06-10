@@ -12,7 +12,7 @@ interface LeadData {
   name: string;
   whatsapp: string;
   email: string;
-  course_id?: string;
+  course_name?: string; // Mudança: aceitar nome do curso em vez de ID
   event_id?: string;
   shift?: 'manhã' | 'tarde' | 'noite';
 }
@@ -41,6 +41,8 @@ serve(async (req) => {
 
     // Parse request body
     const leadData: LeadData = await req.json();
+
+    console.log('Dados recebidos:', leadData);
 
     // Validate required fields
     if (!leadData.name || !leadData.whatsapp || !leadData.email) {
@@ -80,23 +82,29 @@ serve(async (req) => {
       );
     }
 
-    // Validate course_id if provided
-    if (leadData.course_id) {
+    let courseId = null;
+
+    // Se foi enviado nome do curso, buscar o ID correspondente
+    if (leadData.course_name) {
       const { data: course, error: courseError } = await supabase
         .from('courses')
         .select('id')
-        .eq('id', leadData.course_id)
+        .eq('name', leadData.course_name)
         .single();
 
       if (courseError || !course) {
+        console.log('Curso não encontrado:', leadData.course_name);
         return new Response(
-          JSON.stringify({ error: 'Curso não encontrado' }),
+          JSON.stringify({ error: `Curso "${leadData.course_name}" não encontrado` }),
           { 
             status: 400, 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
           }
         );
       }
+      
+      courseId = course.id;
+      console.log('Curso encontrado:', course);
     }
 
     // Validate event_id if provided
@@ -152,7 +160,7 @@ serve(async (req) => {
         name: leadData.name.trim(),
         whatsapp: cleanWhatsapp,
         email: leadData.email.toLowerCase().trim(),
-        course_id: leadData.course_id || null,
+        course_id: courseId,
         event_id: leadData.event_id || null,
         status_id: defaultStatus?.id || null,
         shift: leadData.shift || null
@@ -170,6 +178,8 @@ serve(async (req) => {
         }
       );
     }
+
+    console.log('Lead criado com sucesso:', newLead);
 
     return new Response(
       JSON.stringify({ 

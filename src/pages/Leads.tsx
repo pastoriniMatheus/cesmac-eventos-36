@@ -4,28 +4,31 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Upload, Search, Filter } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Plus, Edit, Trash2, Copy, Filter, Search, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useCourses, useLeadStatuses, useEvents, useLeads } from '@/hooks/useSupabaseData';
+import { useCourses, useEvents, useLeads, useLeadStatuses } from '@/hooks/useSupabaseData';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 
 const Leads = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { data: courses = [] } = useCourses();
-  const { data: leadStatuses = [] } = useLeadStatuses();
-  const { data: events = [] } = useEvents();
   const { data: leads = [] } = useLeads();
+  const { data: courses = [] } = useCourses();
+  const { data: events = [] } = useEvents();
+  const { data: leadStatuses = [] } = useLeadStatuses();
 
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingLead, setEditingLead] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [eventFilter, setEventFilter] = useState('all');
-
+  const [filterCourse, setFilterCourse] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all');
+  
   const [newLead, setNewLead] = useState({
     name: '',
     whatsapp: '',
@@ -36,8 +39,8 @@ const Leads = () => {
     shift: ''
   });
 
-  const handleAddLead = async () => {
-    if (!newLead.name || !newLead.whatsapp || !newLead.email || !newLead.course_id || !newLead.event_id) {
+  const handleCreateLead = async () => {
+    if (!newLead.name || !newLead.whatsapp || !newLead.email) {
       toast({
         title: "Erro",
         description: "Por favor, preencha todos os campos obrigatórios.",
@@ -50,8 +53,13 @@ const Leads = () => {
       const { error } = await supabase
         .from('leads')
         .insert([{
-          ...newLead,
-          status_id: newLead.status_id || leadStatuses[0]?.id
+          name: newLead.name,
+          whatsapp: newLead.whatsapp.replace(/\D/g, ''),
+          email: newLead.email.toLowerCase(),
+          course_id: newLead.course_id || null,
+          event_id: newLead.event_id || null,
+          status_id: newLead.status_id || leadStatuses[0]?.id,
+          shift: newLead.shift || null
         }]);
 
       if (error) throw error;
@@ -66,26 +74,62 @@ const Leads = () => {
         status_id: '',
         shift: ''
       });
-      setIsAddDialogOpen(false);
+      setIsCreateDialogOpen(false);
 
       toast({
-        title: "Lead adicionado",
-        description: "Lead adicionado com sucesso ao sistema.",
+        title: "Lead criado",
+        description: "Lead criado com sucesso!",
       });
     } catch (error: any) {
       toast({
         title: "Erro",
-        description: error.message || "Erro ao adicionar lead",
+        description: error.message || "Erro ao criar lead",
         variant: "destructive",
       });
     }
   };
 
-  const handleStatusChange = async (leadId: string, newStatusId: string) => {
+  const handleEditLead = async () => {
+    if (!editingLead) return;
+
     try {
       const { error } = await supabase
         .from('leads')
-        .update({ status_id: newStatusId })
+        .update({
+          name: editingLead.name,
+          whatsapp: editingLead.whatsapp.replace(/\D/g, ''),
+          email: editingLead.email.toLowerCase(),
+          course_id: editingLead.course_id || null,
+          event_id: editingLead.event_id || null,
+          status_id: editingLead.status_id,
+          shift: editingLead.shift || null
+        })
+        .eq('id', editingLead.id);
+
+      if (error) throw error;
+
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      setIsEditDialogOpen(false);
+      setEditingLead(null);
+
+      toast({
+        title: "Lead atualizado",
+        description: "Lead atualizado com sucesso!",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao atualizar lead",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteLead = async (leadId: string) => {
+    try {
+      const { error } = await supabase
+        .from('leads')
+        .delete()
         .eq('id', leadId);
 
       if (error) throw error;
@@ -93,130 +137,160 @@ const Leads = () => {
       queryClient.invalidateQueries({ queryKey: ['leads'] });
 
       toast({
-        title: "Status atualizado",
-        description: "Status do lead atualizado com sucesso.",
+        title: "Lead removido",
+        description: "Lead removido com sucesso!",
       });
     } catch (error: any) {
       toast({
         title: "Erro",
-        description: error.message || "Erro ao atualizar status",
+        description: error.message || "Erro ao remover lead",
         variant: "destructive",
       });
     }
   };
 
+  const copyToClipboard = (text: string, type: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      toast({
+        title: "Copiado!",
+        description: `${type} copiado para a área de transferência.`,
+      });
+    });
+  };
+
+  const openEditDialog = (lead: any) => {
+    setEditingLead({
+      ...lead,
+      course_id: lead.course_id || '',
+      event_id: lead.event_id || '',
+      status_id: lead.status_id || '',
+      shift: lead.shift || ''
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  // Filter leads based on search and filters
   const filteredLeads = leads.filter((lead: any) => {
-    const matchesSearch = lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         lead.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         lead.whatsapp.includes(searchTerm);
-    const matchesStatus = statusFilter === 'all' || lead.status_id === statusFilter;
-    const matchesEvent = eventFilter === 'all' || lead.event_id === eventFilter;
+    const matchesSearch = 
+      lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      lead.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      lead.whatsapp.includes(searchTerm);
     
-    return matchesSearch && matchesStatus && matchesEvent;
+    const matchesCourse = filterCourse === 'all' || lead.course_id === filterCourse;
+    const matchesStatus = filterStatus === 'all' || lead.status_id === filterStatus;
+    
+    return matchesSearch && matchesCourse && matchesStatus;
   });
 
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-foreground">Gestão de Leads</h1>
-        <div className="flex space-x-2">
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="flex items-center space-x-2">
-                <Plus className="h-4 w-4" />
-                <span>Adicionar Lead</span>
+        <h1 className="text-3xl font-bold text-foreground">Gerenciamento de Leads</h1>
+        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+          <DialogTrigger asChild>
+            <Button className="flex items-center space-x-2">
+              <Plus className="h-4 w-4" />
+              <span>Novo Lead</span>
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Criar Novo Lead</DialogTitle>
+              <DialogDescription>
+                Adicione um novo lead ao sistema
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="name">Nome*</Label>
+                <Input
+                  id="name"
+                  value={newLead.name}
+                  onChange={(e) => setNewLead({...newLead, name: e.target.value})}
+                  placeholder="João Silva"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="whatsapp">WhatsApp*</Label>
+                <Input
+                  id="whatsapp"
+                  value={newLead.whatsapp}
+                  onChange={(e) => setNewLead({...newLead, whatsapp: e.target.value})}
+                  placeholder="(82) 99999-9999"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="email">E-mail*</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={newLead.email}
+                  onChange={(e) => setNewLead({...newLead, email: e.target.value})}
+                  placeholder="joao@email.com"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="course">Curso</Label>
+                <Select 
+                  value={newLead.course_id} 
+                  onValueChange={(value) => setNewLead({...newLead, course_id: value})}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um curso" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {courses.map((course: any) => (
+                      <SelectItem key={course.id} value={course.id}>{course.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="event">Evento</Label>
+                <Select 
+                  value={newLead.event_id} 
+                  onValueChange={(value) => setNewLead({...newLead, event_id: value})}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um evento" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {events.map((event: any) => (
+                      <SelectItem key={event.id} value={event.id}>{event.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="shift">Turno</Label>
+                <Select 
+                  value={newLead.shift} 
+                  onValueChange={(value) => setNewLead({...newLead, shift: value})}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um turno" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="manhã">Manhã</SelectItem>
+                    <SelectItem value="tarde">Tarde</SelectItem>
+                    <SelectItem value="noite">Noite</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                Cancelar
               </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
-              <DialogHeader>
-                <DialogTitle>Adicionar Novo Lead</DialogTitle>
-                <DialogDescription>
-                  Preencha as informações do lead para adicionar ao sistema.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="name">Nome*</Label>
-                  <Input
-                    id="name"
-                    value={newLead.name}
-                    onChange={(e) => setNewLead({...newLead, name: e.target.value})}
-                    placeholder="Nome completo"
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="whatsapp">WhatsApp*</Label>
-                  <Input
-                    id="whatsapp"
-                    value={newLead.whatsapp}
-                    onChange={(e) => setNewLead({...newLead, whatsapp: e.target.value})}
-                    placeholder="82999887766"
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="email">E-mail*</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={newLead.email}
-                    onChange={(e) => setNewLead({...newLead, email: e.target.value})}
-                    placeholder="email@exemplo.com"
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="course">Curso*</Label>
-                  <Select value={newLead.course_id} onValueChange={(value) => setNewLead({...newLead, course_id: value})}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o curso" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {courses.map((course: any) => (
-                        <SelectItem key={course.id} value={course.id}>{course.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="shift">Turno</Label>
-                  <Select value={newLead.shift} onValueChange={(value) => setNewLead({...newLead, shift: value})}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o turno" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="manhã">Manhã</SelectItem>
-                      <SelectItem value="tarde">Tarde</SelectItem>
-                      <SelectItem value="noite">Noite</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="event">Evento*</Label>
-                  <Select value={newLead.event_id} onValueChange={(value) => setNewLead({...newLead, event_id: value})}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o evento" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {events.map((event: any) => (
-                        <SelectItem key={event.id} value={event.id}>{event.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="flex justify-end space-x-2">
-                <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-                  Cancelar
-                </Button>
-                <Button onClick={handleAddLead}>
-                  Adicionar Lead
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </div>
+              <Button onClick={handleCreateLead}>
+                Criar Lead
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
-      {/* Filters */}
+      {/* Filters and Search */}
       <Card>
         <CardHeader>
           <CardTitle>Filtros</CardTitle>
@@ -224,12 +298,11 @@ const Leads = () => {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="search">Buscar</Label>
+              <Label>Buscar</Label>
               <div className="relative">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
-                  id="search"
-                  placeholder="Nome, email ou WhatsApp"
+                  placeholder="Nome, email ou WhatsApp..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-8"
@@ -237,49 +310,38 @@ const Leads = () => {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="status-filter">Status</Label>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <Label>Curso</Label>
+              <Select value={filterCourse} onValueChange={setFilterCourse}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os cursos</SelectItem>
+                  {courses.map((course: any) => (
+                    <SelectItem key={course.id} value={course.id}>{course.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Status</Label>
+              <Select value={filterStatus} onValueChange={setFilterStatus}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos os status</SelectItem>
                   {leadStatuses.map((status: any) => (
-                    <SelectItem key={status.id} value={status.id}>
-                      {status.name}
-                    </SelectItem>
+                    <SelectItem key={status.id} value={status.id}>{status.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="event-filter">Evento</Label>
-              <Select value={eventFilter} onValueChange={setEventFilter}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os eventos</SelectItem>
-                  {events.map((event: any) => (
-                    <SelectItem key={event.id} value={event.id}>
-                      {event.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex items-end">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setSearchTerm('');
-                  setStatusFilter('all');
-                  setEventFilter('all');
-                }}
-                className="w-full"
-              >
-                <Filter className="h-4 w-4 mr-2" />
-                Limpar Filtros
+              <Label>Ações</Label>
+              <Button variant="outline" className="w-full">
+                <Download className="h-4 w-4 mr-2" />
+                Exportar
               </Button>
             </div>
           </div>
@@ -291,7 +353,7 @@ const Leads = () => {
         <CardHeader>
           <CardTitle>Leads ({filteredLeads.length})</CardTitle>
           <CardDescription>
-            Lista de todos os leads capturados nos eventos
+            Gerencie todos os leads do sistema
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -299,56 +361,183 @@ const Leads = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>Nome</TableHead>
+                <TableHead>ID do Lead</TableHead>
                 <TableHead>WhatsApp</TableHead>
                 <TableHead>E-mail</TableHead>
                 <TableHead>Curso</TableHead>
-                <TableHead>Turno</TableHead>
                 <TableHead>Evento</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Data</TableHead>
+                <TableHead>Turno</TableHead>
+                <TableHead>Criado em</TableHead>
+                <TableHead>Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredLeads.map((lead: any) => (
                 <TableRow key={lead.id}>
                   <TableCell className="font-medium">{lead.name}</TableCell>
-                  <TableCell>{lead.whatsapp}</TableCell>
-                  <TableCell>{lead.email}</TableCell>
-                  <TableCell>{lead.course?.name}</TableCell>
-                  <TableCell>{lead.shift || '-'}</TableCell>
-                  <TableCell>{lead.event?.name}</TableCell>
                   <TableCell>
-                    <Select
-                      value={lead.status_id || ''}
-                      onValueChange={(value) => handleStatusChange(lead.id, value)}
-                    >
-                      <SelectTrigger className="w-40">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {leadStatuses.map((status: any) => (
-                          <SelectItem key={status.id} value={status.id}>
-                            <div className="flex items-center space-x-2">
-                              <div
-                                className="w-3 h-3 rounded"
-                                style={{ backgroundColor: status.color }}
-                              />
-                              <span>{status.name}</span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="flex items-center space-x-2">
+                      <code className="text-xs bg-muted px-2 py-1 rounded">
+                        {lead.id}
+                      </code>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => copyToClipboard(lead.id, 'ID do Lead')}
+                      >
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </TableCell>
+                  <TableCell className="font-mono">{lead.whatsapp}</TableCell>
+                  <TableCell>{lead.email}</TableCell>
+                  <TableCell>{lead.course?.name || '-'}</TableCell>
+                  <TableCell>{lead.event?.name || '-'}</TableCell>
+                  <TableCell>
+                    {lead.status && (
+                      <Badge style={{ backgroundColor: lead.status.color, color: 'white' }}>
+                        {lead.status.name}
+                      </Badge>
+                    )}
+                  </TableCell>
+                  <TableCell>{lead.shift || '-'}</TableCell>
                   <TableCell>
                     {new Date(lead.created_at).toLocaleDateString('pt-BR')}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex space-x-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => openEditDialog(lead)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteLead(lead.id)}
+                      >
+                        <Trash2 className="h-4 w-4 text-red-500" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
+          {filteredLeads.length === 0 && (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">
+                {searchTerm || filterCourse !== 'all' || filterStatus !== 'all' 
+                  ? 'Nenhum lead encontrado com os filtros aplicados.'
+                  : 'Nenhum lead criado ainda. Clique em "Novo Lead" para começar.'
+                }
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Editar Lead</DialogTitle>
+            <DialogDescription>
+              Atualize as informações do lead
+            </DialogDescription>
+          </DialogHeader>
+          {editingLead && (
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="edit-name">Nome*</Label>
+                <Input
+                  id="edit-name"
+                  value={editingLead.name}
+                  onChange={(e) => setEditingLead({...editingLead, name: e.target.value})}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-whatsapp">WhatsApp*</Label>
+                <Input
+                  id="edit-whatsapp"
+                  value={editingLead.whatsapp}
+                  onChange={(e) => setEditingLead({...editingLead, whatsapp: e.target.value})}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-email">E-mail*</Label>
+                <Input
+                  id="edit-email"
+                  type="email"
+                  value={editingLead.email}
+                  onChange={(e) => setEditingLead({...editingLead, email: e.target.value})}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-course">Curso</Label>
+                <Select 
+                  value={editingLead.course_id} 
+                  onValueChange={(value) => setEditingLead({...editingLead, course_id: value})}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um curso" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Nenhum curso</SelectItem>
+                    {courses.map((course: any) => (
+                      <SelectItem key={course.id} value={course.id}>{course.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-status">Status</Label>
+                <Select 
+                  value={editingLead.status_id} 
+                  onValueChange={(value) => setEditingLead({...editingLead, status_id: value})}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {leadStatuses.map((status: any) => (
+                      <SelectItem key={status.id} value={status.id}>{status.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-shift">Turno</Label>
+                <Select 
+                  value={editingLead.shift} 
+                  onValueChange={(value) => setEditingLead({...editingLead, shift: value})}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um turno" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Nenhum turno</SelectItem>
+                    <SelectItem value="manhã">Manhã</SelectItem>
+                    <SelectItem value="tarde">Tarde</SelectItem>
+                    <SelectItem value="noite">Noite</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+          <div className="flex justify-end space-x-2">
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleEditLead}>
+              Salvar Alterações
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

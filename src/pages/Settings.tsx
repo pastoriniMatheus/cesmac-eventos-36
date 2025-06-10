@@ -121,11 +121,24 @@ const Settings = () => {
       reader.onload = async (e) => {
         const base64 = e.target?.result as string;
         
-        // Salvar no sistema
-        await updateSetting.mutateAsync({
-          key: 'logo',
-          value: base64
-        });
+        // Verificar se já existe um logo e fazer update em vez de insert
+        const existingLogo = getSetting('logo');
+        
+        if (existingLogo) {
+          // Update do logo existente
+          const { error } = await updateSetting.mutateAsync({
+            key: 'logo',
+            value: base64
+          });
+          
+          if (error) throw error;
+        } else {
+          // Insert novo logo
+          await updateSetting.mutateAsync({
+            key: 'logo',
+            value: base64
+          });
+        }
 
         toast({
           title: "Sucesso",
