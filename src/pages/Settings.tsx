@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,7 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Trash2, Plus, Upload, Palette } from 'lucide-react';
+import { Trash2, Plus, Upload, Palette, Edit } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { 
   useCourses, 
@@ -20,9 +21,12 @@ import {
   useSystemSettings,
   useUpdateSystemSetting
 } from '@/hooks/useSupabaseData';
+import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 
 const Settings = () => {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { data: courses = [] } = useCourses();
   const { data: leadStatuses = [] } = useLeadStatuses();
@@ -33,6 +37,8 @@ const Settings = () => {
 
   const [newCourse, setNewCourse] = useState('');
   const [newStatus, setNewStatus] = useState({ name: '', color: '#3b82f6' });
+  const [editingCourse, setEditingCourse] = useState<any>(null);
+  const [editingStatus, setEditingStatus] = useState<any>(null);
   const [webhooks, setWebhooks] = useState({
     whatsapp: '',
     email: '',
@@ -74,17 +80,98 @@ const Settings = () => {
     });
   }, [systemSettings]);
 
-  const handleAddCourse = () => {
+  const handleAddCourse = async () => {
     if (newCourse.trim()) {
-      createCourse.mutate(newCourse.trim());
-      setNewCourse('');
+      try {
+        await createCourse.mutateAsync(newCourse.trim());
+        setNewCourse('');
+        toast({
+          title: "Sucesso",
+          description: "Curso adicionado com sucesso!",
+        });
+      } catch (error) {
+        toast({
+          title: "Erro",
+          description: "Erro ao adicionar curso.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
-  const handleAddStatus = () => {
+  const handleEditCourse = async () => {
+    if (editingCourse && editingCourse.name.trim()) {
+      try {
+        const { error } = await supabase
+          .from('courses')
+          .update({ name: editingCourse.name.trim() })
+          .eq('id', editingCourse.id);
+
+        if (error) throw error;
+
+        queryClient.invalidateQueries({ queryKey: ['courses'] });
+        setEditingCourse(null);
+        
+        toast({
+          title: "Sucesso",
+          description: "Curso atualizado com sucesso!",
+        });
+      } catch (error) {
+        toast({
+          title: "Erro",
+          description: "Erro ao atualizar curso.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  const handleAddStatus = async () => {
     if (newStatus.name.trim()) {
-      createLeadStatus.mutate(newStatus);
-      setNewStatus({ name: '', color: '#3b82f6' });
+      try {
+        await createLeadStatus.mutateAsync(newStatus);
+        setNewStatus({ name: '', color: '#3b82f6' });
+        toast({
+          title: "Sucesso",
+          description: "Status adicionado com sucesso!",
+        });
+      } catch (error) {
+        toast({
+          title: "Erro",
+          description: "Erro ao adicionar status.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  const handleEditStatus = async () => {
+    if (editingStatus && editingStatus.name.trim()) {
+      try {
+        const { error } = await supabase
+          .from('lead_statuses')
+          .update({ 
+            name: editingStatus.name.trim(),
+            color: editingStatus.color 
+          })
+          .eq('id', editingStatus.id);
+
+        if (error) throw error;
+
+        queryClient.invalidateQueries({ queryKey: ['lead_statuses'] });
+        setEditingStatus(null);
+        
+        toast({
+          title: "Sucesso",
+          description: "Status atualizado com sucesso!",
+        });
+      } catch (error) {
+        toast({
+          title: "Erro",
+          description: "Erro ao atualizar status.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -115,16 +202,35 @@ const Settings = () => {
     setUploading(true);
 
     try {
-      // Converter para base64
       const reader = new FileReader();
       reader.onload = async (e) => {
         const base64 = e.target?.result as string;
         
         try {
-          await updateSetting.mutateAsync({
-            key: 'logo',
-            value: base64
-          });
+          // Primeiro verificar se existe uma configuração de logo
+          const { data: existingSettings } = await supabase
+            .from('system_settings')
+            .select('*')
+            .eq('key', 'logo');
+
+          if (existingSettings && existingSettings.length > 0) {
+            // Atualizar o logo existente
+            const { error } = await supabase
+              .from('system_settings')
+              .update({ value: base64 })
+              .eq('key', 'logo');
+            
+            if (error) throw error;
+          } else {
+            // Inserir novo logo
+            const { error } = await supabase
+              .from('system_settings')
+              .insert({ key: 'logo', value: base64 });
+            
+            if (error) throw error;
+          }
+
+          queryClient.invalidateQueries({ queryKey: ['system_settings'] });
 
           toast({
             title: "Sucesso",
@@ -296,6 +402,7 @@ const Settings = () => {
                   <TableRow>
                     <TableHead>Nome</TableHead>
                     <TableHead>Data de Criação</TableHead>
+                    <TableHead>Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -304,6 +411,15 @@ const Settings = () => {
                       <TableCell>{course.name}</TableCell>
                       <TableCell>
                         {new Date(course.created_at).toLocaleDateString('pt-BR')}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setEditingCourse(course)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -349,6 +465,7 @@ const Settings = () => {
                     <TableHead>Nome</TableHead>
                     <TableHead>Cor</TableHead>
                     <TableHead>Preview</TableHead>
+                    <TableHead>Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -360,6 +477,15 @@ const Settings = () => {
                         <Badge style={{ backgroundColor: status.color, color: 'white' }}>
                           {status.name}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setEditingStatus(status)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -480,6 +606,83 @@ const Settings = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Dialog para editar curso */}
+      <Dialog open={!!editingCourse} onOpenChange={() => setEditingCourse(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Curso</DialogTitle>
+            <DialogDescription>
+              Atualize o nome do curso
+            </DialogDescription>
+          </DialogHeader>
+          {editingCourse && (
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="edit-course-name">Nome do Curso</Label>
+                <Input
+                  id="edit-course-name"
+                  value={editingCourse.name}
+                  onChange={(e) => setEditingCourse({...editingCourse, name: e.target.value})}
+                />
+              </div>
+              <div className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => setEditingCourse(null)}>
+                  Cancelar
+                </Button>
+                <Button onClick={handleEditCourse}>
+                  Salvar
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog para editar status */}
+      <Dialog open={!!editingStatus} onOpenChange={() => setEditingStatus(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Status</DialogTitle>
+            <DialogDescription>
+              Atualize o nome e cor do status
+            </DialogDescription>
+          </DialogHeader>
+          {editingStatus && (
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="edit-status-name">Nome do Status</Label>
+                <Input
+                  id="edit-status-name"
+                  value={editingStatus.name}
+                  onChange={(e) => setEditingStatus({...editingStatus, name: e.target.value})}
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-status-color">Cor do Status</Label>
+                <div className="flex items-center space-x-2">
+                  <Palette className="h-4 w-4" />
+                  <Input
+                    id="edit-status-color"
+                    type="color"
+                    value={editingStatus.color}
+                    onChange={(e) => setEditingStatus({...editingStatus, color: e.target.value})}
+                    className="w-16 h-10 p-1"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => setEditingStatus(null)}>
+                  Cancelar
+                </Button>
+                <Button onClick={handleEditStatus}>
+                  Salvar
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

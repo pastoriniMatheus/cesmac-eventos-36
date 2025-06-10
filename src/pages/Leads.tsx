@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -439,6 +438,109 @@ const Leads = () => {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+          <DialogTrigger asChild>
+            <Button className="flex items-center space-x-2">
+              <Plus className="h-4 w-4" />
+              <span>Novo Lead</span>
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Criar Novo Lead</DialogTitle>
+              <DialogDescription>
+                Adicione um novo lead ao sistema
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="name">Nome*</Label>
+                <Input
+                  id="name"
+                  value={newLead.name}
+                  onChange={(e) => setNewLead({...newLead, name: e.target.value})}
+                  placeholder="João Silva"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="whatsapp">WhatsApp*</Label>
+                <Input
+                  id="whatsapp"
+                  value={newLead.whatsapp}
+                  onChange={(e) => setNewLead({...newLead, whatsapp: e.target.value})}
+                  placeholder="(82) 99999-9999"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="email">E-mail*</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={newLead.email}
+                  onChange={(e) => setNewLead({...newLead, email: e.target.value})}
+                  placeholder="joao@email.com"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="course">Curso</Label>
+                <Select 
+                  value={newLead.course_id} 
+                  onValueChange={(value) => setNewLead({...newLead, course_id: value})}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um curso" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {courses.map((course: any) => (
+                      <SelectItem key={course.id} value={course.id}>{course.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="event">Evento</Label>
+                <Select 
+                  value={newLead.event_id} 
+                  onValueChange={(value) => setNewLead({...newLead, event_id: value})}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um evento" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {events.map((event: any) => (
+                      <SelectItem key={event.id} value={event.id}>{event.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="shift">Turno</Label>
+                <Select 
+                  value={newLead.shift} 
+                  onValueChange={(value) => setNewLead({...newLead, shift: value})}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um turno" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="manhã">Manhã</SelectItem>
+                    <SelectItem value="tarde">Tarde</SelectItem>
+                    <SelectItem value="noite">Noite</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleCreateLead}>
+                Criar Lead
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>

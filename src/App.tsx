@@ -4,9 +4,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import Header from "./components/Header";
-import Sidebar from "./components/Sidebar";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import Leads from "./pages/Leads";
@@ -18,8 +17,6 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 
 const App = () => {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-
   // Handle QR code redirects
   useEffect(() => {
     const path = window.location.pathname;
@@ -30,33 +27,26 @@ const App = () => {
     }
   }, []);
 
-  const handleToggleSidebar = () => {
-    setSidebarCollapsed(!sidebarCollapsed);
-  };
-
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <div className="min-h-screen bg-background flex">
-            <Sidebar collapsed={sidebarCollapsed} />
-            <div className="flex-1 flex flex-col">
-              <Header onToggleSidebar={handleToggleSidebar} />
-              <main className="flex-1 overflow-auto">
-                <Routes>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/dashboard" element={<Dashboard />} />
-                  <Route path="/leads" element={<Leads />} />
-                  <Route path="/messages" element={<Messages />} />
-                  <Route path="/qr-code" element={<QRCodePage />} />
-                  <Route path="/settings" element={<Settings />} />
-                  <Route path="/404" element={<NotFound />} />
-                  <Route path="*" element={<Navigate to="/404" replace />} />
-                </Routes>
-              </main>
-            </div>
+          <div className="min-h-screen bg-background">
+            <Header />
+            <main className="flex-1">
+              <Routes>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/leads" element={<Leads />} />
+                <Route path="/messages" element={<Messages />} />
+                <Route path="/qr-code" element={<QRCodePage />} />
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/404" element={<NotFound />} />
+                <Route path="*" element={<Navigate to="/404" replace />} />
+              </Routes>
+            </main>
           </div>
         </BrowserRouter>
       </TooltipProvider>
