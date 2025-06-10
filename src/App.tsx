@@ -6,7 +6,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useEffect } from "react";
 import Header from "./components/Header";
-import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import Leads from "./pages/Leads";
 import Messages from "./pages/Messages";
@@ -17,15 +16,21 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 
 const App = () => {
-  // Handle QR code redirects
+  // Handle QR code redirects - redirect immediately without loading React app
   useEffect(() => {
     const path = window.location.pathname;
     if (path.startsWith('/r/')) {
       const shortUrl = path.replace('/r/', '');
-      window.location.href = `https://dobtquebpcnzjisftcfh.supabase.co/functions/v1/qr-redirect/${shortUrl}`;
+      // Redirect immediately to the edge function
+      window.location.replace(`https://dobtquebpcnzjisftcfh.supabase.co/functions/v1/qr-redirect/${shortUrl}`);
       return;
     }
   }, []);
+
+  // Don't render the React app if it's a QR redirect
+  if (window.location.pathname.startsWith('/r/')) {
+    return <div>Redirecionando...</div>;
+  }
 
   return (
     <QueryClientProvider client={queryClient}>

@@ -16,7 +16,7 @@ const Header = () => {
     (typeof logoSetting.value === 'string' ? 
       logoSetting.value : 
       JSON.parse(String(logoSetting.value))
-    ) : '';
+    ) : '/lovable-uploads/c7eb5d40-5d53-4b46-b5a9-d35d5a784ac7.png';
 
   const menuItems = [
     {
@@ -47,17 +47,14 @@ const Header = () => {
   ];
 
   return (
-    <header className="h-16 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-6 flex items-center justify-between">
+    <header className="h-16 border-b bg-white shadow-sm px-6 flex items-center justify-between">
       <div className="flex items-center space-x-6">
-        <div className="flex items-center space-x-3">
-          {logoUrl && (
-            <img
-              src={logoUrl}
-              alt="Logo"
-              className="h-8 w-8 object-contain"
-            />
-          )}
-          <h1 className="text-xl font-semibold">CESMAC - Gestão de Leads</h1>
+        <div className="flex items-center">
+          <img
+            src={logoUrl}
+            alt="CESMAC"
+            className="h-10 w-auto object-contain"
+          />
         </div>
         
         <nav className="flex items-center space-x-1">
@@ -70,8 +67,8 @@ const Header = () => {
                 key={item.path}
                 variant={isActive ? 'default' : 'ghost'}
                 className={cn(
-                  'flex items-center space-x-2 h-10',
-                  isActive && 'bg-primary text-primary-foreground'
+                  'flex items-center space-x-2 h-10 text-gray-700 hover:text-blue-600',
+                  isActive && 'bg-blue-600 text-white hover:bg-blue-700'
                 )}
                 onClick={() => navigate(item.path)}
               >
