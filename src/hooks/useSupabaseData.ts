@@ -252,3 +252,66 @@ export const useUpdateSystemSetting = () => {
     }
   });
 };
+
+export const useScanSessions = () => {
+  return useQuery({
+    queryKey: ['scan_sessions'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('scan_sessions')
+        .select(`
+          *,
+          qr_code:qr_codes(short_url),
+          event:events(name),
+          lead:leads(name, email)
+        `)
+        .order('scanned_at', { ascending: false });
+      
+      if (error) throw error;
+      return data;
+    }
+  });
+};
+
+export const useConversionMetrics = () => {
+  return useQuery({
+    queryKey: ['conversion_metrics'],
+    queryFn: async () => {
+      // Buscar dados de leads
+      const { data: leads, error: leadsError } = await supabase
+        .from('leads')
+        .select('*');
+      
+      if (leadsError) throw leadsError;
+
+      // Buscar dados de scans (sessões)
+      const { data: sessions, error: sessionsError } = await supabase
+        .from('scan_sessions')
+        .select('*');
+      
+      if (sessionsError) throw sessionsError;
+
+      // Buscar dados de QR codes
+      const { data: qrCodes, error: qrError } = await supabase
+        .from('qr_codes')
+        .select('*');
+      
+      if (qrError) throw qrError;
+
+      const totalScans = sessions?.length || 0;
+      const totalLeads = leads?.length || 0;
+      const convertedSessions = sessions?.filter(s => s.converted).length || 0;
+      const totalQRScans = qrCodes?.reduce((sum, qr) => sum + (qr.scans || 0), 0) || 0;
+
+      return {
+        totalScans,
+        totalLeads,
+        totalQRScans,
+        convertedSessions,
+        conversionRate: totalScans > 0 ? (convertedSessions / totalScans) * 100 : 0,
+        leadsPerScan: totalScans > 0 ? (totalLeads / totalScans) * 100 : 0,
+        sessionTrackingRate: totalLeads > 0 ? (convertedSessions / totalLeads) * 100 : 0
+      };
+    }
+  });
+};

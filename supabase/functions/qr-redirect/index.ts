@@ -59,6 +59,26 @@ serve(async (req) => {
 
     console.log('QR Code encontrado:', qrCode);
 
+    // Gerar ID único para esta sessão de scan
+    const sessionId = crypto.randomUUID();
+    const scanTimestamp = new Date().toISOString();
+
+    // Registrar a sessão de scan
+    const { error: sessionError } = await supabase
+      .from('scan_sessions')
+      .insert([{
+        id: sessionId,
+        qr_code_id: qrCode.id,
+        event_id: qrCode.event_id,
+        scanned_at: scanTimestamp,
+        user_agent: req.headers.get('user-agent'),
+        ip_address: req.headers.get('x-forwarded-for') || 'unknown'
+      }]);
+
+    if (sessionError) {
+      console.log('Erro ao registrar sessão:', sessionError);
+    }
+
     // Incrementar contador de scans
     const { error: updateError } = await supabase
       .from('qr_codes')
@@ -71,8 +91,13 @@ serve(async (req) => {
 
     console.log('Redirecionando para:', qrCode.original_url);
 
-    // Redirecionar para a URL original (WhatsApp)
-    return Response.redirect(qrCode.original_url, 302);
+    // Criar a resposta de redirecionamento com cookie de sessão
+    const response = Response.redirect(qrCode.original_url, 302);
+    
+    // Definir cookie com ID da sessão (expira em 1 hora)
+    response.headers.set('Set-Cookie', `scan_session=${sessionId}; Path=/; Max-Age=3600; SameSite=Lax`);
+    
+    return response;
 
   } catch (error) {
     console.error('Erro no redirecionamento:', error);

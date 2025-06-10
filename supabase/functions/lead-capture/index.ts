@@ -4,7 +4,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, cookie',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
@@ -12,9 +12,22 @@ interface LeadData {
   name: string;
   whatsapp: string;
   email: string;
-  course_name?: string; // Mudança: aceitar nome do curso em vez de ID
+  course_name?: string;
   event_id?: string;
   shift?: 'manhã' | 'tarde' | 'noite';
+}
+
+// Função para extrair cookie
+function getCookie(cookieString: string, name: string): string | null {
+  if (!cookieString) return null;
+  const cookies = cookieString.split(';');
+  for (const cookie of cookies) {
+    const [cookieName, cookieValue] = cookie.trim().split('=');
+    if (cookieName === name) {
+      return cookieValue;
+    }
+  }
+  return null;
 }
 
 serve(async (req) => {
@@ -43,6 +56,12 @@ serve(async (req) => {
     const leadData: LeadData = await req.json();
 
     console.log('Dados recebidos:', leadData);
+
+    // Extrair cookie de sessão
+    const cookieHeader = req.headers.get('cookie');
+    const sessionId = getCookie(cookieHeader || '', 'scan_session');
+    
+    console.log('Session ID do cookie:', sessionId);
 
     // Validate required fields
     if (!leadData.name || !leadData.whatsapp || !leadData.email) {
@@ -83,6 +102,8 @@ serve(async (req) => {
     }
 
     let courseId = null;
+    let eventId = null;
+    let scanSessionData = null;
 
     // Se foi enviado nome do curso, buscar o ID correspondente
     if (leadData.course_name) {
@@ -124,6 +145,26 @@ serve(async (req) => {
           }
         );
       }
+      
+      eventId = leadData.event_id;
+    }
+
+    // Se temos um sessionId, buscar dados da sessão de scan
+    if (sessionId) {
+      const { data: session, error: sessionError } = await supabase
+        .from('scan_sessions')
+        .select('*, qr_codes(*)')
+        .eq('id', sessionId)
+        .eq('converted', false)
+        .single();
+
+      if (!sessionError && session) {
+        scanSessionData = session;
+        eventId = session.event_id; // Usar o evento da sessão se não foi especificado
+        console.log('Sessão de scan encontrada:', session);
+      } else {
+        console.log('Sessão não encontrada ou já convertida:', sessionError);
+      }
     }
 
     // Get default status (first available)
@@ -161,9 +202,10 @@ serve(async (req) => {
         whatsapp: cleanWhatsapp,
         email: leadData.email.toLowerCase().trim(),
         course_id: courseId,
-        event_id: leadData.event_id || null,
+        event_id: eventId,
         status_id: defaultStatus?.id || null,
-        shift: leadData.shift || null
+        shift: leadData.shift || null,
+        scan_session_id: sessionId // Vincular à sessão de scan
       }])
       .select()
       .single();
@@ -179,13 +221,33 @@ serve(async (req) => {
       );
     }
 
+    // Se temos uma sessão de scan, marcar como convertida
+    if (sessionId && scanSessionData) {
+      const { error: updateSessionError } = await supabase
+        .from('scan_sessions')
+        .update({ 
+          converted: true, 
+          converted_at: new Date().toISOString(),
+          lead_id: newLead.id
+        })
+        .eq('id', sessionId);
+
+      if (updateSessionError) {
+        console.log('Erro ao atualizar sessão:', updateSessionError);
+      } else {
+        console.log('Sessão marcada como convertida');
+      }
+    }
+
     console.log('Lead criado com sucesso:', newLead);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         message: 'Lead adicionado com sucesso',
-        lead: newLead 
+        lead: newLead,
+        session_tracked: !!sessionId,
+        event_from_scan: !!scanSessionData
       }),
       { 
         status: 201, 

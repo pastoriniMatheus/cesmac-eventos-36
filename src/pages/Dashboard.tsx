@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
@@ -6,6 +5,7 @@ import { Users, GraduationCap, Calendar, TrendingUp } from 'lucide-react';
 import { useLeads, useEvents, useCourses, useQRCodes } from '@/hooks/useSupabaseData';
 import DashboardVisibilityMenu, { DashboardVisibility } from '@/components/DashboardVisibilityMenu';
 import ConversionMetrics from '@/components/ConversionMetrics';
+import SessionMetrics from '@/components/SessionMetrics';
 
 const Dashboard = () => {
   const { data: leads = [] } = useLeads();
@@ -64,7 +64,7 @@ const Dashboard = () => {
   const conversionRate = totalScans > 0 ? ((totalLeads / totalScans) * 100).toFixed(1) : '0.0';
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="flex-1 space-y-4 p-8 pt-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-foreground">Dashboard CESMAC</h1>
         <div className="flex items-center gap-4">
@@ -78,9 +78,9 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats Overview */}
       {visibility.stats && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total de Leads</CardTitle>
@@ -127,13 +127,23 @@ const Dashboard = () => {
         </div>
       )}
 
-      {/* Métricas de Conversão */}
+      {/* Session Tracking Metrics */}
       {visibility.conversion && (
-        <ConversionMetrics 
-          leads={leads}
-          events={events}
-          totalScans={totalScans}
-        />
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight mb-4">Rastreamento de Sessões</h2>
+          <SessionMetrics />
+        </div>
+      )}
+
+      {/* Conversion Metrics */}
+      {visibility.conversion && (
+        <div className="mt-8">
+          <ConversionMetrics 
+            leads={leads}
+            events={events}
+            totalScans={totalScans}
+          />
+        </div>
       )}
 
       {/* Charts */}
