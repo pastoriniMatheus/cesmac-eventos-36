@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Trash2, Plus, Upload, Palette, Edit } from 'lucide-react';
+import { Trash2, Plus, Upload, Palette, Edit, Image, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { 
   useCourses, 
@@ -27,6 +27,7 @@ const Settings = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const faviconInputRef = useRef<HTMLInputElement>(null);
   const { data: courses = [] } = useCourses();
   const { data: leadStatuses = [] } = useLeadStatuses();
   const { data: systemSettings = [] } = useSystemSettings();
@@ -50,6 +51,7 @@ const Settings = () => {
     smsNotifications: false
   });
   const [uploading, setUploading] = useState(false);
+  const [uploadingFavicon, setUploadingFavicon] = useState(false);
 
   // Obter configurações do sistema
   const getSetting = (key: string) => {
@@ -273,6 +275,111 @@ const Settings = () => {
     }
   };
 
+  const handleFaviconUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validar tipo de arquivo
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Erro",
+        description: "Por favor, selecione apenas arquivos de imagem.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validar tamanho (1MB max para favicon)
+    if (file.size > 1024 * 1024) {
+      toast({
+        title: "Erro",
+        description: "A imagem deve ter no máximo 1MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUploadingFavicon(true);
+
+    try {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const base64 = e.target?.result as string;
+        
+        try {
+          // Verificar se existe uma configuração de favicon
+          const { data: existingSettings } = await supabase
+            .from('system_settings')
+            .select('*')
+            .eq('key', 'favicon');
+
+          if (existingSettings && existingSettings.length > 0) {
+            // Atualizar o favicon existente
+            const { error } = await supabase
+              .from('system_settings')
+              .update({ value: base64 })
+              .eq('key', 'favicon');
+            
+            if (error) throw error;
+          } else {
+            // Inserir novo favicon
+            const { error } = await supabase
+              .from('system_settings')
+              .insert({ key: 'favicon', value: base64 });
+            
+            if (error) throw error;
+          }
+
+          queryClient.invalidateQueries({ queryKey: ['system_settings'] });
+
+          // Atualizar o favicon no HTML
+          const link = document.querySelector("link[rel*='icon']") as HTMLLinkElement;
+          if (link) {
+            link.href = base64;
+          } else {
+            const newLink = document.createElement('link');
+            newLink.rel = 'icon';
+            newLink.href = base64;
+            newLink.type = 'image/png';
+            document.head.appendChild(newLink);
+          }
+
+          toast({
+            title: "Sucesso",
+            description: "Favicon atualizado com sucesso!",
+          });
+        } catch (mutationError) {
+          console.error('Erro na mutation:', mutationError);
+          toast({
+            title: "Erro",
+            description: "Erro ao salvar o favicon.",
+            variant: "destructive",
+          });
+        }
+        
+        setUploadingFavicon(false);
+      };
+      
+      reader.onerror = () => {
+        toast({
+          title: "Erro",
+          description: "Erro ao processar a imagem.",
+          variant: "destructive",
+        });
+        setUploadingFavicon(false);
+      };
+      
+      reader.readAsDataURL(file);
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro ao fazer upload da imagem.",
+        variant: "destructive",
+      });
+      setUploadingFavicon(false);
+    }
+  };
+
   const handleWebhookSave = async () => {
     try {
       await updateSetting.mutateAsync({
@@ -343,7 +450,8 @@ const Settings = () => {
     }
   };
 
-  const currentLogo = getSetting('company_logo');
+  const currentLogo = getSetting('logo');
+  const currentFavicon = getSetting('favicon');
 
   return (
     <div className="p-6 space-y-6">
@@ -352,13 +460,14 @@ const Settings = () => {
       </div>
 
       <Tabs defaultValue="appearance" className="w-full">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="appearance">Aparência</TabsTrigger>
           <TabsTrigger value="courses">Cursos</TabsTrigger>
           <TabsTrigger value="statuses">Status</TabsTrigger>
           <TabsTrigger value="webhooks">Webhooks</TabsTrigger>
           <TabsTrigger value="validation">Validação</TabsTrigger>
           <TabsTrigger value="notifications">Notificações</TabsTrigger>
+          <TabsTrigger value="api-docs">API Docs</TabsTrigger>
         </TabsList>
 
         <TabsContent value="appearance" className="space-y-6">
@@ -396,6 +505,45 @@ const Settings = () => {
                 >
                   <Upload className="h-4 w-4" />
                   <span>{uploading ? 'Enviando...' : 'Escolher Arquivo'}</span>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Favicon</CardTitle>
+              <CardDescription>
+                Faça upload do favicon do seu site (recomendado: 32x32px ou 16x16px, máximo 1MB)
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {currentFavicon && (
+                <div className="flex items-center space-x-4">
+                  <img 
+                    src={currentFavicon} 
+                    alt="Favicon atual" 
+                    className="h-8 w-8 object-contain border rounded"
+                  />
+                  <span className="text-sm text-muted-foreground">Favicon atual</span>
+                </div>
+              )}
+              
+              <div className="flex items-center space-x-4">
+                <input
+                  ref={faviconInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFaviconUpload}
+                  className="hidden"
+                />
+                <Button
+                  onClick={() => faviconInputRef.current?.click()}
+                  disabled={uploadingFavicon}
+                  className="flex items-center space-x-2"
+                >
+                  <Image className="h-4 w-4" />
+                  <span>{uploadingFavicon ? 'Enviando...' : 'Escolher Favicon'}</span>
                 </Button>
               </div>
             </CardContent>
@@ -660,6 +808,117 @@ const Settings = () => {
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="api-docs" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Documentação da API - Validação WhatsApp</CardTitle>
+              <CardDescription>
+                Como integrar com os endpoints de validação de WhatsApp
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-4">
+                <div>
+                  <h4 className="text-lg font-semibold mb-2">1. Endpoint de Validação</h4>
+                  <div className="bg-gray-100 p-4 rounded-lg">
+                    <p className="text-sm font-mono mb-2">POST /functions/v1/validate-whatsapp</p>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Este endpoint inicia o processo de validação de um número WhatsApp
+                    </p>
+                    
+                    <h5 className="font-semibold mb-2">Request Body:</h5>
+                    <pre className="bg-black text-green-400 p-3 rounded text-xs overflow-x-auto">
+{`{
+  "whatsapp": "+5582999999999",
+  "validation_id": "uuid-gerado-pelo-sistema"
+}`}
+                    </pre>
+
+                    <h5 className="font-semibold mb-2 mt-4">Response (Success):</h5>
+                    <pre className="bg-black text-green-400 p-3 rounded text-xs overflow-x-auto">
+{`{
+  "success": true,
+  "validation_id": "uuid-gerado-pelo-sistema",
+  "message": "Validation request sent"
+}`}
+                    </pre>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="text-lg font-semibold mb-2">2. Webhook Externo (Seu Sistema)</h4>
+                  <div className="bg-gray-100 p-4 rounded-lg">
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Seu webhook receberá os seguintes dados para validar o número:
+                    </p>
+                    
+                    <h5 className="font-semibold mb-2">Request que seu webhook receberá:</h5>
+                    <pre className="bg-black text-green-400 p-3 rounded text-xs overflow-x-auto">
+{`{
+  "whatsapp": "+5582999999999",
+  "validation_id": "uuid-gerado-pelo-sistema",
+  "callback_url": "https://dobtquebpcnzjisftcfh.supabase.co/functions/v1/whatsapp-validation-callback"
+}`}
+                    </pre>
+
+                    <h5 className="font-semibold mb-2 mt-4">Resposta esperada do seu webhook:</h5>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Seu sistema deve processar a validação e enviar o resultado para o callback_url:
+                    </p>
+                    <pre className="bg-black text-green-400 p-3 rounded text-xs overflow-x-auto">
+{`POST para callback_url:
+{
+  "validation_id": "uuid-gerado-pelo-sistema",
+  "is_valid": true,  // ou false
+  "message": "Número válido" // opcional
+}`}
+                    </pre>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="text-lg font-semibold mb-2">3. Callback de Resultado</h4>
+                  <div className="bg-gray-100 p-4 rounded-lg">
+                    <p className="text-sm font-mono mb-2">POST /functions/v1/whatsapp-validation-callback</p>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Este endpoint recebe o resultado da validação do seu sistema
+                    </p>
+                    
+                    <h5 className="font-semibold mb-2">Request Body:</h5>
+                    <pre className="bg-black text-green-400 p-3 rounded text-xs overflow-x-auto">
+{`{
+  "validation_id": "uuid-gerado-pelo-sistema",
+  "is_valid": true,
+  "message": "Número válido e ativo"
+}`}
+                    </pre>
+
+                    <h5 className="font-semibold mb-2 mt-4">Response:</h5>
+                    <pre className="bg-black text-green-400 p-3 rounded text-xs overflow-x-auto">
+{`{
+  "success": true,
+  "message": "Validation updated successfully"
+}`}
+                    </pre>
+                  </div>
+                </div>
+
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <h5 className="font-semibold mb-2">Fluxo Completo:</h5>
+                  <ol className="list-decimal list-inside space-y-1 text-sm">
+                    <li>Sistema chama /validate-whatsapp com número e validation_id</li>
+                    <li>Sistema busca webhook configurado nas configurações</li>
+                    <li>Sistema envia dados para seu webhook externo</li>
+                    <li>Seu sistema valida o número WhatsApp</li>
+                    <li>Seu sistema envia resultado para callback_url</li>
+                    <li>Sistema atualiza status da validação no banco</li>
+                  </ol>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
 
       {/* Dialog para editar curso */}
@@ -743,3 +1002,5 @@ const Settings = () => {
 };
 
 export default Settings;
+
+</edits_to_apply>
