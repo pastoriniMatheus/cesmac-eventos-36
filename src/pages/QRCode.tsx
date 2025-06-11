@@ -74,76 +74,40 @@ const QRCodePage = () => {
     }
 
     try {
-      let event;
+      // Para WhatsApp: manter funcionalidade original - sempre criar evento com WhatsApp
+      // Para formulário: criar evento sem WhatsApp obrigatório
+      const eventData: any = {
+        name: newQRCode.eventName
+      };
 
-      // Verificar se já existe um evento com este nome
-      const { data: existingEvents, error: searchError } = await supabase
-        .from('events')
-        .select('*')
-        .eq('name', newQRCode.eventName)
-        .limit(1);
-
-      if (searchError) throw searchError;
-
-      if (existingEvents && existingEvents.length > 0) {
-        // Evento já existe, vamos usá-lo
-        event = existingEvents[0];
-        
-        // Se for QR Code WhatsApp e o evento não tem WhatsApp, atualizar
-        if (newQRCode.type === 'whatsapp' && !event.whatsapp_number) {
-          const { data: updatedEvent, error: updateError } = await supabase
-            .from('events')
-            .update({ whatsapp_number: newQRCode.whatsappNumber })
-            .eq('id', event.id)
-            .select()
-            .single();
-
-          if (updateError) throw updateError;
-          event = updatedEvent;
-        }
-      } else {
-        // Criar novo evento
-        const eventData: any = {
-          name: newQRCode.eventName
-        };
-
-        // Só adicionar WhatsApp se for QR Code WhatsApp
-        if (newQRCode.type === 'whatsapp') {
-          eventData.whatsapp_number = newQRCode.whatsappNumber;
-        }
-
-        const { data: newEvent, error: eventError } = await supabase
-          .from('events')
-          .insert([eventData])
-          .select()
-          .single();
-
-        if (eventError) throw eventError;
-        event = newEvent;
+      // Só adicionar WhatsApp se for QR Code WhatsApp (funcionalidade original)
+      if (newQRCode.type === 'whatsapp') {
+        eventData.whatsapp_number = newQRCode.whatsappNumber;
       }
+
+      const { data: event, error: eventError } = await supabase
+        .from('events')
+        .insert([eventData])
+        .select()
+        .single();
+
+      if (eventError) throw eventError;
 
       // Gerar tracking ID e URLs
       const trackingId = generateTrackingId();
       const { waLink } = generateQRCode(newQRCode.whatsappNumber, newQRCode.eventName, trackingId, newQRCode.type);
       
-      // Para WhatsApp usa short_url, para formulário deixa null
-      const shortUrl = newQRCode.type === 'whatsapp' ? generateShortUrl() : null;
+      // Para WhatsApp usa short_url (funcionalidade original), para formulário usa URL direta
+      const shortUrl = newQRCode.type === 'whatsapp' ? generateShortUrl() : trackingId;
 
       // Criar o QR code com tracking ID
       const qrCodeData: any = {
         event_id: event.id,
+        short_url: shortUrl,
         original_url: waLink,
         tracking_id: trackingId,
         type: newQRCode.type
       };
-
-      // Só adicionar short_url se for WhatsApp
-      if (newQRCode.type === 'whatsapp') {
-        qrCodeData.short_url = shortUrl;
-      } else {
-        // Para formulário, precisamos de um short_url mesmo que seja só um placeholder
-        qrCodeData.short_url = trackingId; // Usar tracking_id como short_url para formulários
-      }
 
       const { error: qrError } = await supabase
         .from('qr_codes')
@@ -372,11 +336,12 @@ const QRCodePage = () => {
             <TableBody>
               {qrCodes.map((qrCode: any) => {
                 const displayUrl = getQRCodeDisplayUrl(qrCode);
+                const qrType = qrCode.type || 'whatsapp'; // Fallback para QR codes antigos
                 return (
                   <TableRow key={qrCode.id}>
                     <TableCell>
                       <div className="flex items-center space-x-2">
-                        {qrCode.type === 'whatsapp' ? (
+                        {qrType === 'whatsapp' ? (
                           <>
                             <MessageCircle className="h-4 w-4 text-green-600" />
                             <Badge variant="secondary" className="bg-green-100 text-green-800">WhatsApp</Badge>
@@ -407,7 +372,7 @@ const QRCodePage = () => {
                       </div>
                     </TableCell>
                     <TableCell className="font-mono text-xs">
-                      {qrCode.type === 'whatsapp' ? qrCode.event?.whatsapp_number : 'Formulário'}
+                      {qrType === 'whatsapp' ? qrCode.event?.whatsapp_number : 'Formulário'}
                     </TableCell>
                     <TableCell>
                       <img
@@ -419,12 +384,12 @@ const QRCodePage = () => {
                     <TableCell>
                       <div className="flex items-center space-x-2">
                         <code className="text-xs bg-muted px-2 py-1 rounded max-w-32 truncate">
-                          {qrCode.type === 'whatsapp' ? `/r/${qrCode.short_url}` : displayUrl}
+                          {qrType === 'whatsapp' ? `/r/${qrCode.short_url}` : displayUrl}
                         </code>
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => copyToClipboard(displayUrl, qrCode.type === 'whatsapp' ? 'Link encurtado' : 'URL do formulário')}
+                          onClick={() => copyToClipboard(displayUrl, qrType === 'whatsapp' ? 'Link encurtado' : 'URL do formulário')}
                         >
                           <Copy className="h-3 w-3" />
                         </Button>
@@ -482,7 +447,7 @@ const QRCodePage = () => {
         <DialogContent className="sm:max-w-[480px]">
           <DialogHeader className="pb-4">
             <DialogTitle className="flex items-center space-x-2">
-              {previewQR?.type === 'whatsapp' ? (
+              {(previewQR?.type || 'whatsapp') === 'whatsapp' ? (
                 <MessageCircle className="h-5 w-5 text-green-600" />
               ) : (
                 <FileText className="h-5 w-5 text-blue-600" />
@@ -490,7 +455,7 @@ const QRCodePage = () => {
               <span>{previewQR?.event?.name}</span>
             </DialogTitle>
             <DialogDescription>
-              Preview do QR Code {previewQR?.type === 'whatsapp' ? 'WhatsApp' : 'Formulário'}
+              Preview do QR Code {(previewQR?.type || 'whatsapp') === 'whatsapp' ? 'WhatsApp' : 'Formulário'}
             </DialogDescription>
           </DialogHeader>
           {previewQR && (
@@ -509,7 +474,7 @@ const QRCodePage = () => {
                 <div className="col-span-2">
                   <Label className="text-xs font-medium text-muted-foreground">Tipo</Label>
                   <div className="flex items-center space-x-2 mt-1">
-                    {previewQR.type === 'whatsapp' ? (
+                    {(previewQR.type || 'whatsapp') === 'whatsapp' ? (
                       <Badge variant="secondary" className="bg-green-100 text-green-800">
                         <MessageCircle className="h-3 w-3 mr-1" />
                         WhatsApp
@@ -542,7 +507,7 @@ const QRCodePage = () => {
                   </div>
                 </div>
 
-                {previewQR.type === 'whatsapp' && (
+                {(previewQR.type || 'whatsapp') === 'whatsapp' && (
                   <div className="col-span-2">
                     <Label className="text-xs font-medium text-muted-foreground">Mensagem do WhatsApp</Label>
                     <div className="flex items-center space-x-2 mt-1">
@@ -561,7 +526,7 @@ const QRCodePage = () => {
                   </div>
                 )}
                 
-                {previewQR.type === 'whatsapp' && (
+                {(previewQR.type || 'whatsapp') === 'whatsapp' && (
                   <div>
                     <Label className="text-xs font-medium text-muted-foreground">WhatsApp</Label>
                     <p className="text-sm font-mono mt-1">{previewQR.event?.whatsapp_number}</p>
@@ -575,7 +540,7 @@ const QRCodePage = () => {
                 
                 <div className="col-span-2">
                   <Label className="text-xs font-medium text-muted-foreground">
-                    {previewQR.type === 'whatsapp' ? 'Link Encurtado' : 'URL do Formulário'}
+                    {(previewQR.type || 'whatsapp') === 'whatsapp' ? 'Link Encurtado' : 'URL do Formulário'}
                   </Label>
                   <div className="flex items-center space-x-2 mt-1">
                     <code className="text-xs bg-muted px-2 py-1 rounded flex-1 font-mono">
@@ -585,7 +550,7 @@ const QRCodePage = () => {
                       variant="outline"
                       size="sm"
                       className="h-7 w-7 p-0"
-                      onClick={() => copyToClipboard(getQRCodeDisplayUrl(previewQR), previewQR.type === 'whatsapp' ? 'Link encurtado' : 'URL do formulário')}
+                      onClick={() => copyToClipboard(getQRCodeDisplayUrl(previewQR), (previewQR.type || 'whatsapp') === 'whatsapp' ? 'Link encurtado' : 'URL do formulário')}
                     >
                       <Copy className="h-3 w-3" />
                     </Button>
@@ -618,7 +583,7 @@ const QRCodePage = () => {
                 </Button>
                 <Button
                   variant="outline"
-                  onClick={() => copyToClipboard(getQRCodeDisplayUrl(previewQR), previewQR.type === 'whatsapp' ? 'Link encurtado' : 'URL do formulário')}
+                  onClick={() => copyToClipboard(getQRCodeDisplayUrl(previewQR), (previewQR.type || 'whatsapp') === 'whatsapp' ? 'Link encurtado' : 'URL do formulário')}
                   className="flex-1 h-9"
                   size="sm"
                 >

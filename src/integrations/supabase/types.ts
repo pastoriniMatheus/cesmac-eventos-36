@@ -209,6 +209,7 @@ export type Database = {
           scans: number
           short_url: string
           tracking_id: string | null
+          type: string | null
         }
         Insert: {
           created_at?: string
@@ -218,6 +219,7 @@ export type Database = {
           scans?: number
           short_url: string
           tracking_id?: string | null
+          type?: string | null
         }
         Update: {
           created_at?: string
@@ -227,6 +229,7 @@ export type Database = {
           scans?: number
           short_url?: string
           tracking_id?: string | null
+          type?: string | null
         }
         Relationships: [
           {
