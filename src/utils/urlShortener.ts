@@ -24,5 +24,6 @@ export const getCurrentDomain = (): string => {
   if (typeof window !== 'undefined') {
     return window.location.origin;
   }
+  // Para SSR ou contextos sem window, usar uma URL padrão ou vazia
   return '';
 };
