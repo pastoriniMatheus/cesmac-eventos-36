@@ -97,7 +97,7 @@ serve(async (req) => {
       leadsByShift[shift] = (leadsByShift[shift] || 0) + 1;
     });
 
-    // Gerar HTML do relatório
+    // Retornar HTML que pode ser usado para gerar PDF no frontend
     const html = `
     <!DOCTYPE html>
     <html lang="pt-BR">
@@ -253,6 +253,12 @@ serve(async (req) => {
             .breakdown-item:last-child {
                 border-bottom: none;
             }
+            @media print {
+                body { margin: 0; }
+                .header { page-break-inside: avoid; }
+                .stats-grid { page-break-inside: avoid; }
+                .breakdown { page-break-inside: avoid; }
+            }
         </style>
     </head>
     <body>
@@ -372,35 +378,10 @@ serve(async (req) => {
     </html>
     `;
 
-    // Converter HTML para PDF usando puppeteer
-    const puppeteer = await import('https://deno.land/x/puppeteer@16.2.0/mod.ts');
-    
-    const browser = await puppeteer.default.launch({
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
-    });
-    
-    const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'networkidle0' });
-    
-    const pdf = await page.pdf({
-      format: 'A4',
-      printBackground: true,
-      margin: {
-        top: '20px',
-        right: '20px',
-        bottom: '20px',
-        left: '20px'
-      }
-    });
-    
-    await browser.close();
-
-    return new Response(pdf, {
+    return new Response(html, {
       headers: {
         ...corsHeaders,
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="relatorio_${event.name.replace(/\s+/g, '_').toLowerCase()}_${new Date().toISOString().split('T')[0]}.pdf"`
+        'Content-Type': 'text/html; charset=utf-8',
       },
     });
 

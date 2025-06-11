@@ -45,23 +45,23 @@ const EventReportGenerator = () => {
         throw new Error('Erro ao gerar relatório');
       }
 
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
+      const htmlContent = await response.text();
       
-      const event = events.find(e => e.id === selectedEvent);
-      const fileName = `relatorio_${event?.name?.replace(/\s+/g, '_').toLowerCase()}_${new Date().toISOString().split('T')[0]}.pdf`;
-      
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
+      // Abrir nova janela com o relatório
+      const newWindow = window.open('', '_blank');
+      if (newWindow) {
+        newWindow.document.write(htmlContent);
+        newWindow.document.close();
+        
+        // Aguardar um pouco e depois imprimir
+        setTimeout(() => {
+          newWindow.print();
+        }, 1000);
+      }
 
       toast({
         title: "Relatório gerado",
-        description: "O relatório PDF foi gerado e baixado com sucesso!",
+        description: "O relatório foi aberto em uma nova janela. Use Ctrl+P para imprimir como PDF.",
       });
 
       setIsDialogOpen(false);
@@ -121,7 +121,7 @@ const EventReportGenerator = () => {
             disabled={isGenerating || !selectedEvent}
             className="bg-blue-600 hover:bg-blue-700"
           >
-            {isGenerating ? 'Gerando...' : 'Gerar PDF'}
+            {isGenerating ? 'Gerando...' : 'Gerar Relatório'}
           </Button>
         </div>
       </DialogContent>

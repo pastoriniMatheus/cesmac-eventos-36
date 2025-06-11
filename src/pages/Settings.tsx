@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -44,6 +43,7 @@ const Settings = () => {
     email: '',
     sms: ''
   });
+  const [validationWebhook, setValidationWebhook] = useState('');
   const [notifications, setNotifications] = useState({
     emailNotifications: false,
     whatsappNotifications: false,
@@ -71,6 +71,11 @@ const Settings = () => {
         email: webhookSettings.email || '',
         sms: webhookSettings.sms || ''
       });
+    }
+
+    const validationWebhookSetting = getSetting('whatsapp_validation_webhook');
+    if (validationWebhookSetting) {
+      setValidationWebhook(validationWebhookSetting);
     }
 
     setNotifications({
@@ -288,6 +293,26 @@ const Settings = () => {
     }
   };
 
+  const handleValidationWebhookSave = async () => {
+    try {
+      await updateSetting.mutateAsync({
+        key: 'whatsapp_validation_webhook',
+        value: validationWebhook
+      });
+      
+      toast({
+        title: "Sucesso",
+        description: "Webhook de validação salvo com sucesso!",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro ao salvar webhook de validação.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleNotificationsSave = async () => {
     try {
       await Promise.all([
@@ -318,7 +343,7 @@ const Settings = () => {
     }
   };
 
-  const currentLogo = getSetting('logo');
+  const currentLogo = getSetting('company_logo');
 
   return (
     <div className="p-6 space-y-6">
@@ -327,11 +352,12 @@ const Settings = () => {
       </div>
 
       <Tabs defaultValue="appearance" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="appearance">Aparência</TabsTrigger>
           <TabsTrigger value="courses">Cursos</TabsTrigger>
           <TabsTrigger value="statuses">Status</TabsTrigger>
           <TabsTrigger value="webhooks">Webhooks</TabsTrigger>
+          <TabsTrigger value="validation">Validação</TabsTrigger>
           <TabsTrigger value="notifications">Notificações</TabsTrigger>
         </TabsList>
 
@@ -538,6 +564,35 @@ const Settings = () => {
 
               <Button onClick={handleWebhookSave} disabled={updateSetting.isPending}>
                 Salvar Webhooks
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="validation">
+          <Card>
+            <CardHeader>
+              <CardTitle>Validação de WhatsApp</CardTitle>
+              <CardDescription>
+                Configure o webhook para validação de números de WhatsApp
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="validation-webhook">Webhook de Validação</Label>
+                <Input
+                  id="validation-webhook"
+                  placeholder="https://api.exemplo.com/validate-whatsapp"
+                  value={validationWebhook}
+                  onChange={(e) => setValidationWebhook(e.target.value)}
+                />
+                <p className="text-sm text-muted-foreground mt-2">
+                  Este webhook receberá: whatsapp, validation_id e callback_url
+                </p>
+              </div>
+
+              <Button onClick={handleValidationWebhookSave} disabled={updateSetting.isPending}>
+                Salvar Webhook de Validação
               </Button>
             </CardContent>
           </Card>
