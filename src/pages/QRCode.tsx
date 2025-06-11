@@ -173,11 +173,10 @@ const QRCodePage = () => {
 
   const downloadQRCode = (qrCode: any) => {
     let qrUrl;
-    const currentDomain = getCurrentDomain();
     
     if (qrCode.type === 'whatsapp') {
-      const shortUrl = `${currentDomain}/r/${qrCode.short_url}`;
-      qrUrl = shortUrl;
+      // Usar a URL da edge function do Supabase para redirecionamento
+      qrUrl = buildQRRedirectUrl(qrCode.short_url);
     } else {
       qrUrl = qrCode.original_url;
     }
@@ -202,10 +201,8 @@ const QRCodePage = () => {
   };
 
   const getQRCodeDisplayUrl = (qrCode: any) => {
-    const currentDomain = getCurrentDomain();
-    
     if (qrCode.type === 'whatsapp') {
-      return `${currentDomain}/r/${qrCode.short_url}`;
+      return buildQRRedirectUrl(qrCode.short_url);
     } else {
       return qrCode.original_url;
     }
@@ -391,7 +388,7 @@ const QRCodePage = () => {
                     <TableCell>
                       <div className="flex items-center space-x-2">
                         <code className="text-xs bg-muted px-2 py-1 rounded max-w-32 truncate">
-                          {qrType === 'whatsapp' ? `/r/${qrCode.short_url}` : displayUrl}
+                          {qrType === 'whatsapp' ? `/qr-redirect/${qrCode.short_url}` : displayUrl}
                         </code>
                         <Button
                           variant="ghost"

@@ -4,9 +4,8 @@ export const generateShortUrl = () => {
 };
 
 export const getShortUrlRedirect = (shortUrl: string) => {
-  // Usar o domínio atual sempre, não hardcodado
-  const currentDomain = typeof window !== 'undefined' ? window.location.origin : '';
-  return `${currentDomain}/r/${shortUrl}`;
+  // Usar a função edge function do Supabase para redirecionamento
+  return `https://dobtquebpcnzjisftcfh.supabase.co/functions/v1/qr-redirect/${shortUrl}`;
 };
 
 export const buildWhatsAppUrl = (whatsappNumber: string, eventName: string, trackingId?: string): string => {
@@ -30,6 +29,5 @@ export const getCurrentDomain = (): string => {
 
 // Função para construir URL de redirecionamento para QR codes WhatsApp
 export const buildQRRedirectUrl = (shortUrl: string): string => {
-  const currentDomain = getCurrentDomain();
-  return `${currentDomain}/r/${shortUrl}`;
+  return `https://dobtquebpcnzjisftcfh.supabase.co/functions/v1/qr-redirect/${shortUrl}`;
 };
