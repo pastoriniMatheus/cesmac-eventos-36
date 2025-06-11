@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,10 +8,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useCourses } from '@/hooks/useSupabaseData';
 import { supabase } from '@/integrations/supabase/client';
+import { useWhatsAppValidation } from '@/hooks/useWhatsAppValidation';
+import { Loader2, CheckCircle, XCircle } from 'lucide-react';
 
 const LeadForm = () => {
   const { toast } = useToast();
   const { data: courses = [] } = useCourses();
+  const { validateWhatsApp, isValidating, validationResult, setValidationResult } = useWhatsAppValidation();
   
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -52,7 +54,7 @@ const LeadForm = () => {
     return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`;
   };
 
-  const validateWhatsApp = (phone: string): boolean => {
+  const validateWhatsAppFormat = (phone: string): boolean => {
     const numbers = phone.replace(/\D/g, '');
     return numbers.length === 11 && numbers.startsWith('1') === false;
   };
@@ -60,17 +62,29 @@ const LeadForm = () => {
   const handleWhatsAppChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = formatWhatsApp(e.target.value);
     setFormData({ ...formData, whatsapp: formatted });
+    // Reset validation quando o usuário muda o número
+    if (validationResult) {
+      setValidationResult(null);
+    }
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentStep === 1) {
-      if (!formData.whatsapp || !validateWhatsApp(formData.whatsapp)) {
+      if (!formData.whatsapp || !validateWhatsAppFormat(formData.whatsapp)) {
         toast({
           title: "WhatsApp inválido",
           description: "Por favor, digite um número válido no formato (DD) 99999-9999",
           variant: "destructive",
         });
         return;
+      }
+
+      // Se ainda não validou ou a validação falhou, tentar validar
+      if (validationResult !== 'valid') {
+        const isValid = await validateWhatsApp(formData.whatsapp);
+        if (!isValid) {
+          return; // Não avançar se a validação falhou
+        }
       }
     }
     
@@ -202,6 +216,7 @@ const LeadForm = () => {
         message: ''
       });
       setCurrentStep(1);
+      setValidationResult(null);
 
       // Limpar tracking do sessionStorage após sucesso
       sessionStorage.removeItem('form_tracking_id');
@@ -237,7 +252,7 @@ const LeadForm = () => {
           )}
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Step 1: WhatsApp */}
+          {/* Step 1: WhatsApp com validação */}
           {currentStep === 1 && (
             <div className="space-y-4">
               <div className="text-center mb-4">
@@ -249,26 +264,57 @@ const LeadForm = () => {
               
               <div className="space-y-2">
                 <Label htmlFor="whatsapp">WhatsApp *</Label>
-                <Input
-                  id="whatsapp"
-                  type="tel"
-                  placeholder="(11) 99999-9999"
-                  value={formData.whatsapp}
-                  onChange={handleWhatsAppChange}
-                  maxLength={15}
-                  className={`${!validateWhatsApp(formData.whatsapp) && formData.whatsapp ? 'border-red-500' : ''}`}
-                />
-                {!validateWhatsApp(formData.whatsapp) && formData.whatsapp && (
+                <div className="relative">
+                  <Input
+                    id="whatsapp"
+                    type="tel"
+                    placeholder="(11) 99999-9999"
+                    value={formData.whatsapp}
+                    onChange={handleWhatsAppChange}
+                    maxLength={15}
+                    className={`${!validateWhatsAppFormat(formData.whatsapp) && formData.whatsapp ? 'border-red-500' : ''} ${validationResult === 'valid' ? 'border-green-500' : ''}`}
+                    disabled={isValidating}
+                  />
+                  {/* Ícones de status de validação */}
+                  {validationResult === 'valid' && (
+                    <CheckCircle className="absolute right-3 top-3 h-4 w-4 text-green-600" />
+                  )}
+                  {validationResult === 'invalid' && (
+                    <XCircle className="absolute right-3 top-3 h-4 w-4 text-red-600" />
+                  )}
+                  {isValidating && (
+                    <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-blue-600" />
+                  )}
+                </div>
+                
+                {/* Mensagens de status */}
+                {!validateWhatsAppFormat(formData.whatsapp) && formData.whatsapp && (
                   <p className="text-sm text-red-500">Formato inválido</p>
+                )}
+                {isValidating && (
+                  <p className="text-sm text-blue-600">Verificando número...</p>
+                )}
+                {validationResult === 'valid' && (
+                  <p className="text-sm text-green-600">Número verificado ✓</p>
+                )}
+                {validationResult === 'invalid' && (
+                  <p className="text-sm text-red-500">Número não encontrado ou inválido</p>
                 )}
               </div>
               
               <Button
                 onClick={handleNext}
                 className="w-full"
-                disabled={!validateWhatsApp(formData.whatsapp)}
+                disabled={!validateWhatsAppFormat(formData.whatsapp) || isValidating}
               >
-                Próximo
+                {isValidating ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Verificando...
+                  </>
+                ) : (
+                  'Próximo'
+                )}
               </Button>
             </div>
           )}

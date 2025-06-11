@@ -1,9 +1,12 @@
+
 export const generateShortUrl = () => {
   return Math.random().toString(36).substring(2, 8);
 };
 
 export const getShortUrlRedirect = (shortUrl: string) => {
-  return `${window.location.origin}/r/${shortUrl}`;
+  // Usar o domínio atual sempre, não hardcodado
+  const currentDomain = typeof window !== 'undefined' ? window.location.origin : '';
+  return `${currentDomain}/r/${shortUrl}`;
 };
 
 export const buildWhatsAppUrl = (whatsappNumber: string, eventName: string, trackingId?: string): string => {
@@ -14,4 +17,12 @@ export const buildWhatsAppUrl = (whatsappNumber: string, eventName: string, trac
   }
   
   return `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
+};
+
+// Nova função para obter o domínio atual dinamicamente
+export const getCurrentDomain = (): string => {
+  if (typeof window !== 'undefined') {
+    return window.location.origin;
+  }
+  return '';
 };

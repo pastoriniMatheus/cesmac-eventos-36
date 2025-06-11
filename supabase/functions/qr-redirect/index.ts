@@ -25,6 +25,7 @@ serve(async (req) => {
 
     console.log('Redirecionamento solicitado para:', shortUrl);
     console.log('URL completa:', req.url);
+    console.log('Host da requisição:', req.headers.get('host'));
 
     if (!shortUrl) {
       console.log('Short URL não encontrada na URL:', req.url);
@@ -72,7 +73,7 @@ serve(async (req) => {
         event_id: qrCode.event_id,
         scanned_at: scanTimestamp,
         user_agent: req.headers.get('user-agent'),
-        ip_address: req.headers.get('x-forwarded-for') || 'unknown'
+        ip_address: req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown'
       }]);
 
     if (sessionError) {
@@ -95,6 +96,11 @@ serve(async (req) => {
     const responseHeaders = new Headers();
     responseHeaders.set('Location', qrCode.original_url);
     responseHeaders.set('Set-Cookie', `scan_session=${sessionId}; Path=/; Max-Age=3600; SameSite=Lax`);
+    
+    // Adicionar headers CORS
+    Object.entries(corsHeaders).forEach(([key, value]) => {
+      responseHeaders.set(key, value);
+    });
     
     // Criar a resposta de redirecionamento
     return new Response(null, { 

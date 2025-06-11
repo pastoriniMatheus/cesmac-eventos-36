@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useQRCodes } from '@/hooks/useSupabaseData';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
-import { generateShortUrl, buildWhatsAppUrl } from '@/utils/urlShortener';
+import { generateShortUrl, buildWhatsAppUrl, getCurrentDomain } from '@/utils/urlShortener';
 import { generateTrackingId } from '@/utils/trackingId';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -30,13 +30,15 @@ const QRCodePage = () => {
   const [previewQR, setPreviewQR] = useState<any>(null);
 
   const generateQRCode = (whatsappNumber: string, eventName: string, trackingId: string, type: string) => {
+    const currentDomain = getCurrentDomain();
+    
     if (type === 'whatsapp') {
       const waLink = buildWhatsAppUrl(whatsappNumber, eventName, trackingId);
       const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(waLink)}`;
       return { waLink, qrCodeUrl };
     } else {
-      // Para formulário, gera URL direta sem redirecionamento
-      const formUrl = `${window.location.origin}/form?event=${encodeURIComponent(eventName)}&tracking=${trackingId}`;
+      // Para formulário, gera URL direta
+      const formUrl = `${currentDomain}/form?event=${encodeURIComponent(eventName)}&tracking=${trackingId}`;
       const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(formUrl)}`;
       return { waLink: formUrl, qrCodeUrl };
     }
@@ -170,8 +172,10 @@ const QRCodePage = () => {
 
   const downloadQRCode = (qrCode: any) => {
     let qrUrl;
+    const currentDomain = getCurrentDomain();
+    
     if (qrCode.type === 'whatsapp') {
-      const shortUrl = `${window.location.origin}/r/${qrCode.short_url}`;
+      const shortUrl = `${currentDomain}/r/${qrCode.short_url}`;
       qrUrl = shortUrl;
     } else {
       qrUrl = qrCode.original_url;
@@ -197,8 +201,10 @@ const QRCodePage = () => {
   };
 
   const getQRCodeDisplayUrl = (qrCode: any) => {
+    const currentDomain = getCurrentDomain();
+    
     if (qrCode.type === 'whatsapp') {
-      return `${window.location.origin}/r/${qrCode.short_url}`;
+      return `${currentDomain}/r/${qrCode.short_url}`;
     } else {
       return qrCode.original_url;
     }
