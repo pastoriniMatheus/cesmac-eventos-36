@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useQRCodes } from '@/hooks/useQRCodes';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
-import { generateShortUrl, buildWhatsAppUrl, getCurrentDomain } from '@/utils/urlShortener';
+import { generateShortUrl, buildWhatsAppUrl, getCurrentDomain, buildQRRedirectUrl } from '@/utils/urlShortener';
 import { generateTrackingId } from '@/utils/trackingId';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
