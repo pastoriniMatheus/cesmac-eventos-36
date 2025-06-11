@@ -34,6 +34,8 @@ serve(async (req) => {
       });
     }
 
+    console.log('🔄 Iniciando validação para número:', whatsapp, 'ID:', validation_id);
+
     // Buscar webhook de verificação nas configurações
     const { data: settings } = await supabase
       .from('system_settings')
@@ -42,11 +44,14 @@ serve(async (req) => {
       .single();
 
     if (!settings?.value) {
+      console.log('❌ Webhook não configurado');
       return new Response('WhatsApp validation webhook not configured', { 
         status: 400,
         headers: corsHeaders 
       });
     }
+
+    console.log('📡 Webhook configurado:', settings.value);
 
     // Criar registro de validação pendente
     const { data: validation, error: validationError } = await supabase
@@ -61,60 +66,86 @@ serve(async (req) => {
       .single();
 
     if (validationError) {
-      console.error('Erro ao criar validação:', validationError);
+      console.error('❌ Erro ao criar validação:', validationError);
       return new Response('Error creating validation', { 
         status: 500,
         headers: corsHeaders 
       });
     }
 
-    // Enviar para webhook externo
+    console.log('✅ Validação criada:', validation);
+
+    // Enviar para webhook externo com melhor tratamento de erro
     try {
+      console.log('📤 Enviando para webhook externo...');
+      
+      const webhookPayload = {
+        whatsapp,
+        validation_id,
+        callback_url: `${Deno.env.get('SUPABASE_URL')}/functions/v1/whatsapp-validation-callback`
+      };
+
+      console.log('📋 Payload:', JSON.stringify(webhookPayload, null, 2));
+
       const webhookResponse = await fetch(settings.value, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'User-Agent': 'Supabase-Functions/1.0',
         },
-        body: JSON.stringify({
-          whatsapp,
-          validation_id,
-          callback_url: `${Deno.env.get('SUPABASE_URL')}/functions/v1/whatsapp-validation-callback`
-        })
+        body: JSON.stringify(webhookPayload)
       });
 
+      const responseText = await webhookResponse.text();
+      console.log('📥 Resposta do webhook:', webhookResponse.status, responseText);
+
       if (!webhookResponse.ok) {
-        throw new Error('Webhook request failed');
+        throw new Error(`Webhook returned ${webhookResponse.status}: ${responseText}`);
       }
+
+      console.log('✅ Webhook chamado com sucesso');
 
       return new Response(JSON.stringify({ 
         success: true, 
         validation_id,
-        message: 'Validation request sent'
+        message: 'Validation request sent',
+        webhook_status: webhookResponse.status
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
       });
 
     } catch (webhookError) {
-      console.error('Erro no webhook:', webhookError);
+      console.error('❌ Erro no webhook:', webhookError);
       
       // Atualizar status para erro
       await supabase
         .from('whatsapp_validations')
-        .update({ status: 'error' })
+        .update({ 
+          status: 'error',
+          response_message: `Webhook error: ${webhookError.message}`
+        })
         .eq('id', validation_id);
 
-      return new Response('Webhook error', { 
+      // Retornar erro mais específico
+      return new Response(JSON.stringify({
+        error: 'Webhook error',
+        details: webhookError.message,
+        validation_id
+      }), { 
         status: 500,
-        headers: corsHeaders 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
   } catch (error) {
-    console.error('Erro no endpoint:', error);
-    return new Response('Internal Server Error', { 
+    console.error('💥 Erro geral no endpoint:', error);
+    return new Response(JSON.stringify({
+      error: 'Internal Server Error',
+      details: error.message
+    }), { 
       status: 500,
-      headers: corsHeaders 
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   }
 });

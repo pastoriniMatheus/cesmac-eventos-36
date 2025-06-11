@@ -18,7 +18,7 @@ export const buildWhatsAppUrl = (whatsappNumber: string, eventName: string, trac
   return `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
 };
 
-// Nova função para obter o domínio atual dinamicamente
+// Função para obter o domínio atual dinamicamente
 export const getCurrentDomain = (): string => {
   if (typeof window !== 'undefined') {
     return window.location.origin;
@@ -30,4 +30,14 @@ export const getCurrentDomain = (): string => {
 // Função para construir URL de redirecionamento para QR codes WhatsApp
 export const buildQRRedirectUrl = (shortUrl: string): string => {
   return `https://dobtquebpcnzjisftcfh.supabase.co/functions/v1/qr-redirect/${shortUrl}`;
+};
+
+// Função para construir URL do formulário com domínio atual
+export const buildFormUrl = (eventName: string, trackingId: string): string => {
+  const currentDomain = getCurrentDomain();
+  if (!currentDomain) {
+    // Fallback para URL estática se não conseguir obter o domínio atual
+    return `https://16392f28-253d-4401-9269-5672f0e9ac6a.lovableproject.com/form?event=${encodeURIComponent(eventName)}&tracking=${trackingId}`;
+  }
+  return `${currentDomain}/form?event=${encodeURIComponent(eventName)}&tracking=${trackingId}`;
 };
