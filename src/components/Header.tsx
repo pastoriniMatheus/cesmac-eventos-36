@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { BarChart3, Users, MessageSquare, Settings, QrCode } from 'lucide-react';
@@ -22,7 +21,7 @@ const Header = () => {
     {
       title: 'Dashboard',
       icon: BarChart3,
-      path: '/',
+      path: '/dashboard',
     },
     {
       title: 'Leads',
