@@ -135,6 +135,7 @@ const Settings = () => {
                     </Button>
                   </div>
                   <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground font-medium">Autenticação: Não requer token</p>
                     <p className="text-xs text-muted-foreground font-medium">Campos obrigatórios:</p>
                     <div className="bg-slate-50 p-3 rounded text-xs font-mono">
 {`{
@@ -152,11 +153,11 @@ const Settings = () => {
                   </div>
                 </div>
 
-                {/* Validação WhatsApp */}
+                {/* Validação WhatsApp - Iniciar */}
                 <div className="space-y-3 p-4 border rounded-lg">
                   <div className="flex items-center space-x-2">
                     <MessageCircle className="h-4 w-4 text-green-600" />
-                    <Label className="text-sm font-semibold">Validação WhatsApp</Label>
+                    <Label className="text-sm font-semibold">Validação WhatsApp - Iniciar</Label>
                   </div>
                   <div className="flex items-center space-x-2">
                     <code className="flex-1 text-xs bg-muted px-3 py-2 rounded font-mono">
@@ -171,6 +172,7 @@ const Settings = () => {
                     </Button>
                   </div>
                   <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground font-medium">Autenticação: Não requer token</p>
                     <p className="text-xs text-muted-foreground font-medium">Exemplo de requisição:</p>
                     <div className="bg-slate-50 p-3 rounded text-xs font-mono">
 {`{
@@ -178,17 +180,16 @@ const Settings = () => {
   "validation_id": "uuid-opcional"
 }`}
                     </div>
-                    <p className="text-xs text-muted-foreground font-medium">Resposta de validação:</p>
+                    <p className="text-xs text-muted-foreground font-medium">Resposta:</p>
                     <div className="bg-slate-50 p-3 rounded text-xs font-mono">
 {`{
-  "is_valid": true,
-  "message": "Número válido",
-  "validation_id": "uuid-gerado"
+  "success": true,
+  "validation_id": "uuid-gerado",
+  "message": "Validation request sent"
 }`}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      <strong>is_valid:</strong> true = número válido, false = inválido<br/>
-                      <strong>message:</strong> detalhes da validação
+                      <strong>Nota:</strong> Este endpoint inicia o processo de validação. O resultado será enviado para o callback configurado no webhook.
                     </p>
                   </div>
                 </div>
@@ -212,7 +213,8 @@ const Settings = () => {
                     </Button>
                   </div>
                   <div className="space-y-2">
-                    <p className="text-xs text-muted-foreground font-medium">Exemplo de callback:</p>
+                    <p className="text-xs text-muted-foreground font-medium">Autenticação: Não requer token</p>
+                    <p className="text-xs text-muted-foreground font-medium">Corpo da requisição (enviado pelo seu webhook externo):</p>
                     <div className="bg-slate-50 p-3 rounded text-xs font-mono">
 {`{
   "validation_id": "uuid-da-validacao",
@@ -220,6 +222,16 @@ const Settings = () => {
   "message": "Número verificado com sucesso"
 }`}
                     </div>
+                    <p className="text-xs text-muted-foreground font-medium">Resposta:</p>
+                    <div className="bg-slate-50 p-3 rounded text-xs font-mono">
+{`{
+  "success": true,
+  "message": "Validation updated successfully"
+}`}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      <strong>Fluxo:</strong> 1) Sistema chama seu webhook → 2) Seu webhook valida → 3) Seu webhook chama este callback
+                    </p>
                   </div>
                 </div>
 
@@ -242,6 +254,7 @@ const Settings = () => {
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground">
+                    <strong>Autenticação:</strong> Não requer token<br/>
                     Redireciona automaticamente para WhatsApp ou formulário. Registra scan e incrementa contador.
                   </p>
                 </div>
@@ -265,6 +278,7 @@ const Settings = () => {
                     </Button>
                   </div>
                   <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground font-medium">Autenticação: Requer token JWT</p>
                     <p className="text-xs text-muted-foreground font-medium">Exemplo de requisição:</p>
                     <div className="bg-slate-50 p-3 rounded text-xs font-mono">
 {`{
@@ -501,3 +515,5 @@ const Settings = () => {
 };
 
 export default Settings;
+
+</edits_to_apply>
