@@ -47,7 +47,7 @@ const Header = () => {
   ];
 
   return (
-    <header className="h-16 border-b bg-white shadow-sm px-6 flex items-center justify-between">
+    <header className="sticky top-0 z-50 h-16 border-b bg-white shadow-sm px-6 flex items-center justify-between">
       <div className="flex items-center space-x-6">
         <div className="flex items-center">
           <img
