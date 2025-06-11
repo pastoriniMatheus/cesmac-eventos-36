@@ -4,7 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { FileText } from 'lucide-react';
-import { useEvents, useLeads, useSystemSettings } from '@/hooks/useSupabaseData';
+import { useEvents } from '@/hooks/useEvents';
+import { useLeads } from '@/hooks/useLeads';
+import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { useToast } from '@/hooks/use-toast';
 
 const EventReportGenerator = () => {

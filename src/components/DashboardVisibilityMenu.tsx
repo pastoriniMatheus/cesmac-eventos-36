@@ -1,7 +1,7 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger, DropdownMenuCheckboxItem } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Settings } from 'lucide-react';
 
 export interface DashboardVisibility {
@@ -18,51 +18,51 @@ interface DashboardVisibilityMenuProps {
 }
 
 const DashboardVisibilityMenu = ({ visibility, onVisibilityChange }: DashboardVisibilityMenuProps) => {
-  const handleToggle = (key: keyof DashboardVisibility) => {
+  const updateVisibility = (key: keyof DashboardVisibility, value: boolean) => {
     onVisibilityChange({
       ...visibility,
-      [key]: !visibility[key]
+      [key]: value
     });
   };
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2">
-          <Settings className="h-4 w-4" />
-          Visualização dos Painéis
+        <Button variant="outline" size="sm">
+          <Settings className="h-4 w-4 mr-2" />
+          Visualização
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56 bg-white">
+      <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuCheckboxItem
           checked={visibility.stats}
-          onCheckedChange={() => handleToggle('stats')}
+          onCheckedChange={(checked) => updateVisibility('stats', checked)}
         >
-          Cards de Estatísticas
-        </DropdownMenuCheckboxItem>
-        <DropdownMenuCheckboxItem
-          checked={visibility.conversion}
-          onCheckedChange={() => handleToggle('conversion')}
-        >
-          Métricas de Conversão
+          Estatísticas Gerais
         </DropdownMenuCheckboxItem>
         <DropdownMenuCheckboxItem
           checked={visibility.leadsByEvent}
-          onCheckedChange={() => handleToggle('leadsByEvent')}
+          onCheckedChange={(checked) => updateVisibility('leadsByEvent', checked)}
         >
           Leads por Evento
         </DropdownMenuCheckboxItem>
         <DropdownMenuCheckboxItem
           checked={visibility.leadsByCourse}
-          onCheckedChange={() => handleToggle('leadsByCourse')}
+          onCheckedChange={(checked) => updateVisibility('leadsByCourse', checked)}
         >
           Leads por Curso
         </DropdownMenuCheckboxItem>
         <DropdownMenuCheckboxItem
           checked={visibility.rankings}
-          onCheckedChange={() => handleToggle('rankings')}
+          onCheckedChange={(checked) => updateVisibility('rankings', checked)}
         >
           Rankings
+        </DropdownMenuCheckboxItem>
+        <DropdownMenuCheckboxItem
+          checked={visibility.conversion}
+          onCheckedChange={(checked) => updateVisibility('conversion', checked)}
+        >
+          Métricas de Conversão
         </DropdownMenuCheckboxItem>
       </DropdownMenuContent>
     </DropdownMenu>

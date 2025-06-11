@@ -9,7 +9,11 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MessageSquare, Mail, Smartphone, Save, Send, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useCourses, useEvents, useLeads, useCreateMessageTemplate, useMessageTemplates, useMessageHistory, useSystemSettings } from '@/hooks/useSupabaseData';
+import { useCourses } from '@/hooks/useCourses';
+import { useEvents } from '@/hooks/useEvents';
+import { useLeads } from '@/hooks/useLeads';
+import { useCreateMessageTemplate, useMessageTemplates, useMessageHistory } from '@/hooks/useMessages';
+import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { Label } from '@/components/ui/label';

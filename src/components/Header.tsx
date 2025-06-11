@@ -1,8 +1,9 @@
+
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { BarChart3, Users, MessageSquare, Settings, QrCode } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useSystemSettings } from '@/hooks/useSupabaseData';
+import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { cn } from '@/lib/utils';
 
 const Header = () => {

@@ -9,7 +9,9 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Edit, Trash2, Copy, Search, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useCourses, useEvents, useLeads, useLeadStatuses } from '@/hooks/useSupabaseData';
+import { useCourses } from '@/hooks/useCourses';
+import { useEvents } from '@/hooks/useEvents';
+import { useLeads, useLeadStatuses } from '@/hooks/useLeads';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import StatusEditor from '@/components/StatusEditor';

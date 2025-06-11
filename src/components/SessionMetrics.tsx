@@ -1,10 +1,9 @@
-
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Eye, Users, Target, TrendingUp } from 'lucide-react';
-import { useScanSessions, useConversionMetrics } from '@/hooks/useSupabaseData';
+import { useScanSessions, useConversionMetrics } from '@/hooks/useMetrics';
 
 const SessionMetrics = () => {
   const { data: sessions = [] } = useScanSessions();
