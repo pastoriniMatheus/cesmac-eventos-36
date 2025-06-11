@@ -66,7 +66,7 @@ const Dashboard = () => {
   const conversionRate = totalScans > 0 ? ((totalLeads / totalScans) * 100).toFixed(1) : '0.0';
 
   return (
-    <div className="flex-1 space-y-4 p-8 pt-6">
+    <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-foreground">Dashboard CESMAC</h1>
         <div className="flex items-center gap-4">

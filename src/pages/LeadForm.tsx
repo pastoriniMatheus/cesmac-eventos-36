@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -61,6 +60,27 @@ const LeadForm = () => {
     { id: 'shift', label: 'Turno preferido', icon: GraduationCap }
   ];
 
+  // Função para aplicar máscara do WhatsApp
+  const formatWhatsApp = (value: string) => {
+    // Remove tudo que não é número
+    const numbers = value.replace(/\D/g, '');
+    
+    // Aplica a máscara (11) 99999-9999
+    if (numbers.length <= 11) {
+      return numbers
+        .replace(/^(\d{2})(\d{5})(\d{4})$/, '($1) $2-$3')
+        .replace(/^(\d{2})(\d{4,5})/, '($1) $2')
+        .replace(/^(\d{2})/, '($1');
+    }
+    
+    return value;
+  };
+
+  // Função para extrair apenas números do WhatsApp
+  const extractNumbers = (whatsapp: string) => {
+    return whatsapp.replace(/\D/g, '');
+  };
+
   // Verificar cookies para pré-preenchimento
   useEffect(() => {
     const savedData = localStorage.getItem('leadFormData');
@@ -113,7 +133,7 @@ const LeadForm = () => {
             clearInterval(interval);
             if (data.status === 'valid') {
               setWhatsappValidation({ status: 'valid', message: 'WhatsApp válido!' });
-              setCurrentStep(2); // Avançar para email
+              setTimeout(() => setCurrentStep(2), 1000); // Avançar automaticamente após 1s
             } else {
               setWhatsappValidation({ 
                 status: 'invalid', 
@@ -133,6 +153,17 @@ const LeadForm = () => {
   }, [validationId, whatsappValidation.status]);
 
   const validateWhatsApp = async (whatsapp: string) => {
+    const numbers = extractNumbers(whatsapp);
+    
+    // Validar se tem pelo menos 10 dígitos (DDD + número)
+    if (numbers.length < 10) {
+      setWhatsappValidation({ 
+        status: 'invalid', 
+        message: 'Número deve ter pelo menos 10 dígitos' 
+      });
+      return;
+    }
+
     const newValidationId = crypto.randomUUID();
     setValidationId(newValidationId);
     setWhatsappValidation({ status: 'validating' });
@@ -140,7 +171,7 @@ const LeadForm = () => {
     try {
       const response = await supabase.functions.invoke('validate-whatsapp', {
         body: {
-          whatsapp,
+          whatsapp: numbers, // Enviar apenas números
           validation_id: newValidationId
         }
       });
@@ -162,7 +193,7 @@ const LeadForm = () => {
     } else if (currentStepData.id === 'whatsapp' && formData.whatsapp.trim()) {
       if (whatsappValidation.status === 'valid') {
         setCurrentStep(2);
-      } else if (whatsappValidation.status === 'idle') {
+      } else if (whatsappValidation.status === 'idle' || whatsappValidation.status === 'invalid') {
         validateWhatsApp(formData.whatsapp);
       }
     } else if (currentStepData.id === 'email' && formData.email.trim()) {
@@ -180,7 +211,7 @@ const LeadForm = () => {
         body: {
           name: formData.name,
           email: formData.email,
-          whatsapp: formData.whatsapp,
+          whatsapp: extractNumbers(formData.whatsapp), // Enviar apenas números
           course_id: formData.course_id,
           shift: formData.shift
         }
@@ -225,11 +256,24 @@ const LeadForm = () => {
     const step = steps[stepIndex];
     switch (step.id) {
       case 'name': return formData.name.trim().length > 0;
-      case 'whatsapp': return formData.whatsapp.trim().length > 0 && whatsappValidation.status === 'valid';
+      case 'whatsapp': {
+        const numbers = extractNumbers(formData.whatsapp);
+        return numbers.length >= 10 && whatsappValidation.status === 'valid';
+      }
       case 'email': return formData.email.trim().length > 0 && formData.email.includes('@');
       case 'course': return formData.course_id.length > 0;
       case 'shift': return formData.shift.length > 0;
       default: return false;
+    }
+  };
+
+  const handleWhatsAppChange = (value: string) => {
+    const formatted = formatWhatsApp(value);
+    setFormData({...formData, whatsapp: formatted});
+    
+    // Reset validation status when user changes the number
+    if (whatsappValidation.status !== 'idle') {
+      setWhatsappValidation({ status: 'idle' });
     }
   };
 
@@ -275,12 +319,10 @@ const LeadForm = () => {
             <Input
               placeholder="(11) 99999-9999"
               value={formData.whatsapp}
-              onChange={(e) => {
-                setFormData({...formData, whatsapp: e.target.value});
-                setWhatsappValidation({ status: 'idle' });
-              }}
+              onChange={(e) => handleWhatsAppChange(e.target.value)}
               className="text-lg py-6"
               autoFocus
+              maxLength={15} // Limitar o tamanho da entrada
             />
             {whatsappValidation.status === 'validating' && (
               <div className="flex items-center space-x-2 text-blue-600">
