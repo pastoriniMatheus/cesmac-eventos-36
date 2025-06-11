@@ -1002,5 +1002,3 @@ const Settings = () => {
 };
 
 export default Settings;
-
-</edits_to_apply>
