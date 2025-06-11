@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -6,7 +5,9 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import { useSystemSettings, useUpdateSystemSetting, useCourses, useCreateCourse, useLeadStatuses, useCreateLeadStatus } from '@/hooks/useSupabaseData';
+import { useSystemSettings, useUpdateSystemSetting } from '@/hooks/useSystemSettings';
+import { useCourses, useCreateCourse } from '@/hooks/useCourses';
+import { useLeadStatuses, useCreateLeadStatus } from '@/hooks/useLeads';
 import ItemManager from '@/components/ItemManager';
 import EventManager from '@/components/EventManager';
 

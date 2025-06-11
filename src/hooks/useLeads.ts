@@ -1,0 +1,71 @@
+
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+
+export const useLeads = () => {
+  return useQuery({
+    queryKey: ['leads'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('leads')
+        .select(`
+          *,
+          course:courses(name),
+          event:events(name),
+          status:lead_statuses(name, color)
+        `)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data;
+    }
+  });
+};
+
+export const useLeadStatuses = () => {
+  return useQuery({
+    queryKey: ['lead_statuses'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('lead_statuses')
+        .select('*')
+        .order('name');
+      
+      if (error) throw error;
+      return data;
+    }
+  });
+};
+
+export const useCreateLeadStatus = () => {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ name, color }: { name: string; color: string }) => {
+      const { data, error } = await supabase
+        .from('lead_statuses')
+        .insert([{ name, color }])
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lead_statuses'] });
+      toast({
+        title: "Status adicionado",
+        description: "Status adicionado com sucesso!",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao adicionar status",
+        variant: "destructive",
+      });
+    }
+  });
+};

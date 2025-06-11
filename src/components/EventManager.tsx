@@ -3,7 +3,7 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Trash2, Calendar } from 'lucide-react';
-import { useEvents, useDeleteEvent } from '@/hooks/useSupabaseData';
+import { useEvents, useDeleteEvent } from '@/hooks/useEvents';
 import {
   AlertDialog,
   AlertDialogAction,
