@@ -21,6 +21,7 @@ const LeadForm = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [eventName, setEventName] = useState('');
   const [trackingId, setTrackingId] = useState('');
+  const [skipValidation, setSkipValidation] = useState(false);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -41,10 +42,32 @@ const LeadForm = () => {
     }
     if (tracking) {
       setTrackingId(tracking);
-      // Armazenar no sessionStorage para rastreamento
       sessionStorage.setItem('form_tracking_id', tracking);
       sessionStorage.setItem('form_event_name', event || '');
     }
+  }, []);
+
+  // Verificar se webhook está configurado no carregamento
+  useEffect(() => {
+    const checkWebhookConfig = async () => {
+      try {
+        const { data: settings } = await supabase
+          .from('system_settings')
+          .select('*')
+          .eq('key', 'whatsapp_validation_webhook')
+          .maybeSingle();
+
+        if (!settings?.value) {
+          console.log('Webhook não configurado - validação será pulada');
+          setSkipValidation(true);
+        }
+      } catch (error) {
+        console.error('Erro ao verificar configuração do webhook:', error);
+        setSkipValidation(true);
+      }
+    };
+
+    checkWebhookConfig();
   }, []);
 
   const formatWhatsApp = (value: string) => {
@@ -63,7 +86,6 @@ const LeadForm = () => {
   const handleWhatsAppChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = formatWhatsApp(e.target.value);
     setFormData({ ...formData, whatsapp: formatted });
-    // Reset validation quando o usuário muda o número
     if (validationResult) {
       setValidationResult(null);
     }
@@ -80,12 +102,15 @@ const LeadForm = () => {
         return;
       }
 
-      // Se ainda não validou ou a validação falhou, tentar validar
-      if (validationResult !== 'valid') {
+      // Se validação está configurada e ainda não validou, tentar validar
+      if (!skipValidation && validationResult !== 'valid') {
+        console.log('Tentando validar WhatsApp...');
         const isValid = await validateWhatsApp(formData.whatsapp);
         if (!isValid) {
-          return; // Não avançar se a validação falhou
+          return;
         }
+      } else {
+        console.log('Validação pulada ou já realizada');
       }
     }
     
@@ -140,7 +165,6 @@ const LeadForm = () => {
         }
       }
 
-      // Criar o lead
       const leadData = {
         name: formData.name,
         email: formData.email,
@@ -161,7 +185,6 @@ const LeadForm = () => {
 
       // Se há tracking ID, criar/atualizar sessão de scan
       if (trackingId) {
-        // Buscar QR code pelo tracking ID
         const { data: qrCodes } = await supabase
           .from('qr_codes')
           .select('id, event_id')
@@ -170,11 +193,8 @@ const LeadForm = () => {
 
         if (qrCodes && qrCodes.length > 0) {
           const qrCode = qrCodes[0];
-          
-          // Verificar se já existe uma sessão para este tracking
           const sessionId = sessionStorage.getItem('scan_session_id') || crypto.randomUUID();
           
-          // Inserir ou atualizar sessão de scan
           const { error: sessionError } = await supabase
             .from('scan_sessions')
             .upsert({
@@ -193,7 +213,6 @@ const LeadForm = () => {
             console.error('Erro ao registrar sessão:', sessionError);
           }
 
-          // Atualizar o lead com o session_id
           await supabase
             .from('leads')
             .update({ scan_session_id: sessionId })
@@ -219,7 +238,6 @@ const LeadForm = () => {
       setCurrentStep(1);
       setValidationResult(null);
 
-      // Limpar tracking do sessionStorage após sucesso
       sessionStorage.removeItem('form_tracking_id');
       sessionStorage.removeItem('form_event_name');
       sessionStorage.removeItem('scan_session_id');
@@ -251,6 +269,11 @@ const LeadForm = () => {
               ID: {trackingId}
             </div>
           )}
+          {skipValidation && (
+            <div className="text-xs text-yellow-600 mt-2">
+              Validação WhatsApp não configurada
+            </div>
+          )}
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Step 1: WhatsApp com validação */}
@@ -277,10 +300,10 @@ const LeadForm = () => {
                     disabled={isValidating}
                   />
                   {/* Ícones de status de validação */}
-                  {validationResult === 'valid' && (
+                  {!skipValidation && validationResult === 'valid' && (
                     <CheckCircle className="absolute right-3 top-3 h-4 w-4 text-green-600" />
                   )}
-                  {validationResult === 'invalid' && (
+                  {!skipValidation && validationResult === 'invalid' && (
                     <XCircle className="absolute right-3 top-3 h-4 w-4 text-red-600" />
                   )}
                   {isValidating && (
@@ -295,11 +318,14 @@ const LeadForm = () => {
                 {isValidating && (
                   <p className="text-sm text-blue-600">Verificando número...</p>
                 )}
-                {validationResult === 'valid' && (
+                {!skipValidation && validationResult === 'valid' && (
                   <p className="text-sm text-green-600">Número verificado ✓</p>
                 )}
-                {validationResult === 'invalid' && (
+                {!skipValidation && validationResult === 'invalid' && (
                   <p className="text-sm text-red-500">Número não encontrado ou inválido</p>
+                )}
+                {skipValidation && (
+                  <p className="text-sm text-yellow-600">Validação não está configurada</p>
                 )}
               </div>
               
@@ -370,7 +396,6 @@ const LeadForm = () => {
             </div>
           )}
 
-          {/* Step 3: Course Interest */}
           {currentStep === 3 && (
             <div className="space-y-4">
               <div className="text-center mb-4">

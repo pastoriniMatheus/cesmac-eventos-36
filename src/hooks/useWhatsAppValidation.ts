@@ -13,33 +13,40 @@ export const useWhatsAppValidation = () => {
     
     if (numbers.length !== 11) {
       setValidationResult('invalid');
+      toast({
+        title: "Formato inválido",
+        description: "O número deve ter 11 dígitos (DD + 9 dígitos)",
+        variant: "destructive",
+      });
       return false;
     }
 
     setIsValidating(true);
     
     try {
-      console.log('🔄 Iniciando validação WhatsApp...');
+      console.log('🔄 Iniciando validação WhatsApp para:', numbers);
 
       // Buscar webhook de validação nas configurações
-      const { data: settings } = await supabase
+      const { data: settings, error: settingsError } = await supabase
         .from('system_settings')
         .select('*')
         .eq('key', 'whatsapp_validation_webhook')
         .single();
 
-      if (!settings?.value) {
-        console.log('❌ Webhook não configurado');
+      if (settingsError || !settings?.value) {
+        console.log('❌ Webhook não configurado:', settingsError);
         toast({
-          title: "Erro de configuração",
-          description: "Webhook de validação WhatsApp não configurado. Configure nas configurações do sistema.",
+          title: "Configuração necessária",
+          description: "Configure o webhook de validação WhatsApp nas configurações do sistema para usar esta funcionalidade.",
           variant: "destructive",
         });
         setIsValidating(false);
-        return false;
+        setValidationResult('valid'); // Permitir prosseguir sem validação se não configurado
+        return true;
       }
 
-      console.log('✅ Webhook encontrado:', settings.value);
+      const webhookUrl = typeof settings.value === 'string' ? settings.value : settings.value.toString();
+      console.log('✅ Webhook encontrado:', webhookUrl);
 
       // Gerar ID único para a validação
       const validationId = crypto.randomUUID();
@@ -60,10 +67,10 @@ export const useWhatsAppValidation = () => {
 
       console.log('✅ Edge function retornou:', data);
 
-      // Aguardar resposta da validação com timeout melhorado
+      // Aguardar resposta da validação com timeout
       const pollValidation = async (): Promise<boolean> => {
         let attempts = 0;
-        const maxAttempts = 30; // 30 segundos máximo
+        const maxAttempts = 20; // 20 segundos máximo
         
         console.log('🔍 Iniciando polling para validação ID:', validationId);
         
@@ -74,32 +81,32 @@ export const useWhatsAppValidation = () => {
             .from('whatsapp_validations')
             .select('*')
             .eq('id', validationId)
-            .single();
+            .maybeSingle();
 
           if (queryError) {
             console.error('❌ Erro na consulta:', queryError);
-          } else {
-            console.log('📋 Status da validação:', validation?.status);
-          }
-
-          if (validation && validation.status !== 'pending') {
-            console.log('🎯 Validação finalizada:', validation.status);
+          } else if (validation) {
+            console.log('📋 Status da validação:', validation.status);
             
-            if (validation.status === 'valid') {
-              setValidationResult('valid');
-              setIsValidating(false);
-              console.log('✅ Número validado com sucesso!');
-              return true;
-            } else {
-              setValidationResult('invalid');
-              setIsValidating(false);
-              console.log('❌ Número inválido:', validation.response_message);
-              toast({
-                title: "Número inválido",
-                description: validation.response_message || "Número WhatsApp não encontrado ou inválido",
-                variant: "destructive",
-              });
-              return false;
+            if (validation.status !== 'pending') {
+              console.log('🎯 Validação finalizada:', validation.status);
+              
+              if (validation.status === 'valid') {
+                setValidationResult('valid');
+                setIsValidating(false);
+                console.log('✅ Número validado com sucesso!');
+                return true;
+              } else {
+                setValidationResult('invalid');
+                setIsValidating(false);
+                console.log('❌ Número inválido:', validation.response_message);
+                toast({
+                  title: "Número inválido",
+                  description: validation.response_message || "Número WhatsApp não encontrado ou inválido",
+                  variant: "destructive",
+                });
+                return false;
+              }
             }
           }
 
@@ -108,37 +115,38 @@ export const useWhatsAppValidation = () => {
           attempts++;
         }
 
-        // Timeout
-        console.log('⏰ Timeout na validação');
+        // Timeout - permitir prosseguir
+        console.log('⏰ Timeout na validação - permitindo prosseguir');
         toast({
           title: "Timeout na validação",
-          description: "Não foi possível validar o número em tempo hábil. Tente novamente.",
-          variant: "destructive",
+          description: "Não foi possível validar o número em tempo hábil, mas você pode prosseguir.",
+          variant: "default",
         });
-        setValidationResult('invalid');
+        setValidationResult('valid');
         setIsValidating(false);
-        return false;
+        return true;
       };
 
       return await pollValidation();
 
     } catch (error: any) {
       console.error('💥 Erro na validação:', error);
-      setValidationResult('invalid');
       setIsValidating(false);
       
-      // Mostrar erro mais específico se disponível
-      let errorMessage = "Não foi possível validar o número";
-      if (error.message?.includes('Webhook error')) {
-        errorMessage = "Erro no serviço de validação. Verifique a configuração do webhook.";
+      // Em caso de erro, permitir prosseguir mas avisar o usuário
+      let errorMessage = "Erro na validação, mas você pode prosseguir";
+      if (error.message?.includes('Webhook')) {
+        errorMessage = "Serviço de validação indisponível. Você pode prosseguir.";
       }
       
       toast({
-        title: "Erro na validação",
+        title: "Aviso",
         description: errorMessage,
-        variant: "destructive",
+        variant: "default",
       });
-      return false;
+      
+      setValidationResult('valid'); // Permitir prosseguir em caso de erro
+      return true;
     }
   };
 
