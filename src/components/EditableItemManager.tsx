@@ -81,7 +81,7 @@ const EditableItemManager = ({
       }
 
       const { error } = await supabase
-        .from(tableName)
+        .from(tableName as any)
         .update(updateData)
         .eq('id', editingId);
 
@@ -112,7 +112,7 @@ const EditableItemManager = ({
   const handleDelete = async (id: string) => {
     try {
       const { error } = await supabase
-        .from(tableName)
+        .from(tableName as any)
         .delete()
         .eq('id', id);
 
