@@ -32,7 +32,7 @@ const Sidebar = ({ collapsed }: SidebarProps) => {
     {
       title: 'QR Code',
       icon: QrCode,
-      path: '/qrcode',
+      path: '/qr-code',
     },
     {
       title: 'Configurações',
