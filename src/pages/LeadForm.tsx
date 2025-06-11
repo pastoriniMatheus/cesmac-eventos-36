@@ -97,6 +97,7 @@ const LeadForm = () => {
     if (validationId && whatsappValidation.status === 'validating') {
       const interval = setInterval(async () => {
         try {
+          // Query the whatsapp_validations table directly
           const { data, error } = await supabase
             .from('whatsapp_validations')
             .select('status, response_message')
@@ -108,7 +109,7 @@ const LeadForm = () => {
             return;
           }
 
-          if (data.status !== 'pending') {
+          if (data && data.status !== 'pending') {
             clearInterval(interval);
             if (data.status === 'valid') {
               setWhatsappValidation({ status: 'valid', message: 'WhatsApp válido!' });

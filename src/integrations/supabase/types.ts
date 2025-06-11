@@ -320,6 +320,33 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_validations: {
+        Row: {
+          created_at: string
+          id: string
+          response_message: string | null
+          status: string
+          validated_at: string | null
+          whatsapp: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          response_message?: string | null
+          status?: string
+          validated_at?: string | null
+          whatsapp: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          response_message?: string | null
+          status?: string
+          validated_at?: string | null
+          whatsapp?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
