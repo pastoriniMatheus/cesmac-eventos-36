@@ -25,7 +25,6 @@ serve(async (req) => {
 
     console.log('Redirecionamento solicitado para:', shortUrl);
     console.log('URL completa:', req.url);
-    console.log('Host da requisição:', req.headers.get('host'));
 
     if (!shortUrl) {
       console.log('Short URL não encontrada na URL:', req.url);
@@ -38,7 +37,10 @@ serve(async (req) => {
     // Buscar o QR code pelo short_url
     const { data: qrCode, error } = await supabase
       .from('qr_codes')
-      .select('*')
+      .select(`
+        *,
+        event:events(*)
+      `)
       .eq('short_url', shortUrl)
       .single();
 
@@ -90,11 +92,36 @@ serve(async (req) => {
       console.log('Erro ao incrementar scans:', updateError);
     }
 
-    console.log('Redirecionando para:', qrCode.original_url);
+    // Construir URL de redirecionamento baseada no tipo
+    let redirectUrl = '';
+    
+    if (qrCode.type === 'whatsapp') {
+      // Para QR codes WhatsApp, construir URL wa.me
+      const whatsappNumber = qrCode.event?.whatsapp_number;
+      const eventName = qrCode.event?.name || '';
+      const trackingId = qrCode.tracking_id || '';
+      
+      if (!whatsappNumber) {
+        console.log('Número WhatsApp não encontrado para QR Code WhatsApp');
+        return new Response('WhatsApp number not configured', { 
+          status: 400,
+          headers: corsHeaders 
+        });
+      }
+      
+      // Construir mensagem: "Nome do Evento id:TRACKING_ID"
+      const message = `${eventName} id:${trackingId}`;
+      redirectUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
+    } else {
+      // Para outros tipos (formulário), usar a URL original
+      redirectUrl = qrCode.original_url;
+    }
+
+    console.log('Redirecionando para:', redirectUrl);
 
     // Criar headers de resposta incluindo o cookie de sessão
     const responseHeaders = new Headers();
-    responseHeaders.set('Location', qrCode.original_url);
+    responseHeaders.set('Location', redirectUrl);
     responseHeaders.set('Set-Cookie', `scan_session=${sessionId}; Path=/; Max-Age=3600; SameSite=Lax`);
     
     // Adicionar headers CORS

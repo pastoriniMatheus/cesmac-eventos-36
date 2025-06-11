@@ -27,3 +27,9 @@ export const getCurrentDomain = (): string => {
   // Para SSR ou contextos sem window, usar uma URL padrão ou vazia
   return '';
 };
+
+// Função para construir URL de redirecionamento para QR codes WhatsApp
+export const buildQRRedirectUrl = (shortUrl: string): string => {
+  const currentDomain = getCurrentDomain();
+  return `${currentDomain}/r/${shortUrl}`;
+};
