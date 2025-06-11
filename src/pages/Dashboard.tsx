@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
@@ -6,6 +7,7 @@ import { useLeads, useEvents, useCourses, useQRCodes } from '@/hooks/useSupabase
 import DashboardVisibilityMenu, { DashboardVisibility } from '@/components/DashboardVisibilityMenu';
 import ConversionMetrics from '@/components/ConversionMetrics';
 import SessionMetrics from '@/components/SessionMetrics';
+import EventReportGenerator from '@/components/EventReportGenerator';
 
 const Dashboard = () => {
   const { data: leads = [] } = useLeads();
@@ -68,6 +70,7 @@ const Dashboard = () => {
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-foreground">Dashboard CESMAC</h1>
         <div className="flex items-center gap-4">
+          <EventReportGenerator />
           <DashboardVisibilityMenu 
             visibility={visibility} 
             onVisibilityChange={setVisibility} 

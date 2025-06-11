@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,6 +13,7 @@ import { useCourses, useEvents, useLeads, useLeadStatuses } from '@/hooks/useSup
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import StatusEditor from '@/components/StatusEditor';
+import { exportLeadsToCSV } from '@/utils/csvExport';
 
 const Leads = () => {
   const { toast } = useToast();
@@ -166,6 +168,14 @@ const Leads = () => {
       shift: lead.shift || ''
     });
     setIsEditDialogOpen(true);
+  };
+
+  const handleExportCSV = () => {
+    exportLeadsToCSV(filteredLeads);
+    toast({
+      title: "Exportação concluída",
+      description: "Os leads foram exportados para CSV com sucesso!",
+    });
   };
 
   // Filter leads based on search and filters
@@ -338,9 +348,9 @@ const Leads = () => {
             </div>
             <div className="space-y-2">
               <Label>Ações</Label>
-              <Button variant="outline" className="w-full">
+              <Button variant="outline" className="w-full" onClick={handleExportCSV}>
                 <Download className="h-4 w-4 mr-2" />
-                Exportar
+                Exportar CSV
               </Button>
             </div>
           </div>
