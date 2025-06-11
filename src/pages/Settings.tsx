@@ -1,13 +1,13 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { useSystemSettings, useUpdateSystemSetting, useCourses, useCreateCourse, useLeadStatuses, useCreateLeadStatus } from '@/hooks/useSupabaseData';
-import StatusEditor from '@/components/StatusEditor';
+import ItemManager from '@/components/ItemManager';
 import EventManager from '@/components/EventManager';
 
 const Settings = () => {
@@ -27,8 +27,9 @@ const Settings = () => {
       const whatsappSetting = settings.find(s => s.key === 'whatsapp_number');
       const templateSetting = settings.find(s => s.key === 'message_template');
 
-      setWhatsappNumber(whatsappSetting?.value || '');
-      setMessageTemplate(templateSetting?.value || '');
+      // Fix type conversion issues by ensuring we convert to string
+      setWhatsappNumber(whatsappSetting?.value ? String(whatsappSetting.value) : '');
+      setMessageTemplate(templateSetting?.value ? String(templateSetting.value) : '');
     }
   }, [settings]);
 
@@ -136,10 +137,10 @@ const Settings = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <StatusEditor 
+          <ItemManager 
             title="Novo Curso"
             description="Adicione um novo curso à lista"
-            items={courses}
+            items={courses || []}
             onCreate={createCourse}
             itemName="curso"
           />
@@ -157,10 +158,10 @@ const Settings = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <StatusEditor 
+          <ItemManager 
             title="Novo Status"
             description="Adicione um novo status à lista"
-            items={leadStatuses}
+            items={leadStatuses || []}
             onCreate={createLeadStatus}
             itemName="status"
             withColor
