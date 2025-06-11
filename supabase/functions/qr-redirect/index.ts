@@ -22,10 +22,13 @@ serve(async (req) => {
     const url = new URL(req.url);
     const shortUrl = url.pathname.split('/').pop();
 
-    console.log('Redirecionamento solicitado para:', shortUrl);
+    console.log('=== QR REDIRECT DEBUG ===');
+    console.log('URL solicitada:', req.url);
+    console.log('Short URL extraída:', shortUrl);
+    console.log('Pathname completo:', url.pathname);
 
     if (!shortUrl) {
-      console.log('Short URL não encontrada');
+      console.log('Short URL não encontrada na URL');
       return new Response('Short URL not found', { 
         status: 404,
         headers: corsHeaders 
@@ -42,8 +45,11 @@ serve(async (req) => {
       .eq('short_url', shortUrl)
       .single();
 
+    console.log('QR Code encontrado:', qrCode);
+    console.log('Erro na busca:', error);
+
     if (error || !qrCode) {
-      console.log('QR Code não encontrado:', error);
+      console.log('QR Code não encontrado no banco:', error);
       return new Response('QR Code not found', { 
         status: 404,
         headers: corsHeaders 
@@ -66,6 +72,7 @@ serve(async (req) => {
       }])
       .then(({ error }) => {
         if (error) console.log('Erro ao registrar sessão:', error);
+        else console.log('Sessão registrada com sucesso');
       });
 
     // Incrementar contador de scans em background
@@ -75,6 +82,7 @@ serve(async (req) => {
       .eq('id', qrCode.id)
       .then(({ error }) => {
         if (error) console.log('Erro ao incrementar scans:', error);
+        else console.log('Contador de scans incrementado');
       });
 
     // Construir URL de redirecionamento baseada no tipo
@@ -85,8 +93,10 @@ serve(async (req) => {
       const eventName = qrCode.event?.name || '';
       const trackingId = qrCode.tracking_id || '';
       
+      console.log('Dados WhatsApp:', { whatsappNumber, eventName, trackingId });
+      
       if (!whatsappNumber) {
-        console.log('Número WhatsApp não encontrado');
+        console.log('Número WhatsApp não encontrado no evento');
         return new Response('WhatsApp number not configured', { 
           status: 400,
           headers: corsHeaders 
@@ -95,24 +105,29 @@ serve(async (req) => {
       
       const message = `${eventName} id:${trackingId}`;
       redirectUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
+      
+      console.log('URL WhatsApp construída:', redirectUrl);
     } else {
       redirectUrl = qrCode.original_url;
+      console.log('URL original:', redirectUrl);
     }
 
     console.log('Redirecionando para:', redirectUrl);
 
-    // Retornar redirecionamento 301 (permanente) para garantir que não carregue a página
+    // Retornar redirecionamento 302 (temporário) para garantir que redirecione imediatamente
     return new Response(null, { 
-      status: 301,
+      status: 302,
       headers: {
         ...corsHeaders,
         'Location': redirectUrl,
-        'Cache-Control': 'no-cache, no-store, must-revalidate'
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
       }
     });
 
   } catch (error) {
-    console.error('Erro no redirecionamento:', error);
+    console.error('Erro crítico no redirecionamento:', error);
     return new Response('Internal Server Error', { 
       status: 500,
       headers: corsHeaders 
