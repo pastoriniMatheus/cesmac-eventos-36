@@ -101,8 +101,8 @@ export const useWhatsAppValidation = () => {
                 setIsValidating(false);
                 console.log('❌ Número inválido:', validation.response_message);
                 toast({
-                  title: "Número inválido",
-                  description: validation.response_message || "Número WhatsApp não encontrado ou inválido",
+                  title: "WhatsApp não encontrado",
+                  description: "Por favor, verifique e digite novamente seu número do WhatsApp. Certifique-se de que o número está correto e ativo.",
                   variant: "destructive",
                 });
                 return false;

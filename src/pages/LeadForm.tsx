@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -27,8 +26,7 @@ const LeadForm = () => {
     name: '',
     email: '',
     whatsapp: '',
-    course_id: '',
-    message: ''
+    course_id: ''
   });
 
   // Extrair parâmetros da URL
@@ -170,7 +168,6 @@ const LeadForm = () => {
         email: formData.email,
         whatsapp: formData.whatsapp.replace(/\D/g, ''),
         course_id: formData.course_id,
-        message: formData.message || null,
         event_id: eventId,
         source: 'form'
       };
@@ -232,8 +229,7 @@ const LeadForm = () => {
         name: '',
         email: '',
         whatsapp: '',
-        course_id: '',
-        message: ''
+        course_id: ''
       });
       setCurrentStep(1);
       setValidationResult(null);
@@ -424,17 +420,6 @@ const LeadForm = () => {
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="message">Mensagem (opcional)</Label>
-                <Textarea
-                  id="message"
-                  value={formData.message}
-                  onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                  placeholder="Conte-nos mais sobre seu interesse..."
-                  rows={3}
-                />
-              </div>
-              
               <div className="flex space-x-2">
                 <Button
                   variant="outline"
