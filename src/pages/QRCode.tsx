@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,13 +7,14 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { QrCode, Download, Plus, Copy, Eye, Trash2 } from 'lucide-react';
+import { QrCode, Download, Plus, Copy, Eye, Trash2, MessageCircle, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQRCodes } from '@/hooks/useSupabaseData';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { generateShortUrl, buildWhatsAppUrl } from '@/utils/urlShortener';
 import { generateTrackingId } from '@/utils/trackingId';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const QRCodePage = () => {
   const { toast } = useToast();
@@ -22,35 +24,53 @@ const QRCodePage = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newQRCode, setNewQRCode] = useState({
     eventName: '',
-    whatsappNumber: ''
+    whatsappNumber: '',
+    type: 'whatsapp' // 'whatsapp' ou 'form'
   });
   const [previewQR, setPreviewQR] = useState<any>(null);
 
-  const generateQRCode = (whatsappNumber: string, eventName: string, trackingId: string) => {
-    const waLink = buildWhatsAppUrl(whatsappNumber, eventName, trackingId);
-    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(waLink)}`;
-    
-    return { waLink, qrCodeUrl };
+  const generateQRCode = (whatsappNumber: string, eventName: string, trackingId: string, type: string) => {
+    if (type === 'whatsapp') {
+      const waLink = buildWhatsAppUrl(whatsappNumber, eventName, trackingId);
+      const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(waLink)}`;
+      return { waLink, qrCodeUrl };
+    } else {
+      // Para formulário, gera URL direta sem redirecionamento
+      const formUrl = `${window.location.origin}/form?event=${encodeURIComponent(eventName)}&tracking=${trackingId}`;
+      const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(formUrl)}`;
+      return { waLink: formUrl, qrCodeUrl };
+    }
   };
 
   const handleCreateQRCode = async () => {
-    if (!newQRCode.eventName || !newQRCode.whatsappNumber) {
+    if (!newQRCode.eventName) {
       toast({
         title: "Erro",
-        description: "Por favor, preencha todos os campos.",
+        description: "Por favor, preencha o nome do evento.",
         variant: "destructive",
       });
       return;
     }
 
-    const whatsappRegex = /^[1-9]\d{1,14}$/;
-    if (!whatsappRegex.test(newQRCode.whatsappNumber)) {
+    if (newQRCode.type === 'whatsapp' && !newQRCode.whatsappNumber) {
       toast({
         title: "Erro",
-        description: "Número do WhatsApp inválido. Use apenas números (ex: 5582988898565).",
+        description: "Por favor, preencha o número do WhatsApp para QR Code WhatsApp.",
         variant: "destructive",
       });
       return;
+    }
+
+    if (newQRCode.type === 'whatsapp') {
+      const whatsappRegex = /^[1-9]\d{1,14}$/;
+      if (!whatsappRegex.test(newQRCode.whatsappNumber)) {
+        toast({
+          title: "Erro",
+          description: "Número do WhatsApp inválido. Use apenas números (ex: 5582988898565).",
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     try {
@@ -59,7 +79,7 @@ const QRCodePage = () => {
         .from('events')
         .insert([{
           name: newQRCode.eventName,
-          whatsapp_number: newQRCode.whatsappNumber
+          whatsapp_number: newQRCode.type === 'whatsapp' ? newQRCode.whatsappNumber : null
         }])
         .select()
         .single();
@@ -68,8 +88,10 @@ const QRCodePage = () => {
 
       // Gerar tracking ID e URLs
       const trackingId = generateTrackingId();
-      const { waLink } = generateQRCode(newQRCode.whatsappNumber, newQRCode.eventName, trackingId);
-      const shortUrl = generateShortUrl();
+      const { waLink } = generateQRCode(newQRCode.whatsappNumber, newQRCode.eventName, trackingId, newQRCode.type);
+      
+      // Para WhatsApp usa short_url, para formulário deixa null
+      const shortUrl = newQRCode.type === 'whatsapp' ? generateShortUrl() : null;
 
       // Criar o QR code com tracking ID
       const { error: qrError } = await supabase
@@ -78,7 +100,8 @@ const QRCodePage = () => {
           event_id: event.id,
           short_url: shortUrl,
           original_url: waLink,
-          tracking_id: trackingId
+          tracking_id: trackingId,
+          type: newQRCode.type
         }]);
 
       if (qrError) throw qrError;
@@ -86,12 +109,12 @@ const QRCodePage = () => {
       queryClient.invalidateQueries({ queryKey: ['qr_codes'] });
       queryClient.invalidateQueries({ queryKey: ['events'] });
       
-      setNewQRCode({ eventName: '', whatsappNumber: '' });
+      setNewQRCode({ eventName: '', whatsappNumber: '', type: 'whatsapp' });
       setIsCreateDialogOpen(false);
 
       toast({
         title: "QR Code criado",
-        description: `QR Code para o evento "${newQRCode.eventName}" foi criado com sucesso!`,
+        description: `QR Code ${newQRCode.type === 'whatsapp' ? 'WhatsApp' : 'Formulário'} para o evento "${newQRCode.eventName}" foi criado com sucesso!`,
       });
     } catch (error: any) {
       toast({
@@ -136,11 +159,18 @@ const QRCodePage = () => {
   };
 
   const downloadQRCode = (qrCode: any) => {
-    const shortUrl = `${window.location.origin}/r/${qrCode.short_url}`;
-    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(shortUrl)}`;
+    let qrUrl;
+    if (qrCode.type === 'whatsapp') {
+      const shortUrl = `${window.location.origin}/r/${qrCode.short_url}`;
+      qrUrl = shortUrl;
+    } else {
+      qrUrl = qrCode.original_url;
+    }
+    
+    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(qrUrl)}`;
     const link = document.createElement('a');
     link.href = qrCodeUrl;
-    link.download = `qrcode-${qrCode.event?.name?.replace(/\s+/g, '-').toLowerCase() || 'qrcode'}.png`;
+    link.download = `qrcode-${qrCode.type}-${qrCode.event?.name?.replace(/\s+/g, '-').toLowerCase() || 'qrcode'}.png`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -154,6 +184,14 @@ const QRCodePage = () => {
   const getPreviewMessage = (qrCode: any) => {
     if (!qrCode?.event?.name || !qrCode?.tracking_id) return '';
     return `${qrCode.event.name} id:${qrCode.tracking_id}`;
+  };
+
+  const getQRCodeDisplayUrl = (qrCode: any) => {
+    if (qrCode.type === 'whatsapp') {
+      return `${window.location.origin}/r/${qrCode.short_url}`;
+    } else {
+      return qrCode.original_url;
+    }
   };
 
   return (
@@ -171,22 +209,54 @@ const QRCodePage = () => {
             <DialogHeader>
               <DialogTitle>Criar Novo QR Code</DialogTitle>
               <DialogDescription>
-                Gere um QR Code que direciona para uma conversa do WhatsApp com texto pré-definido.
+                Escolha o tipo de QR Code que deseja gerar
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="whatsapp">Número do WhatsApp*</Label>
-                <Input
-                  id="whatsapp"
-                  value={newQRCode.whatsappNumber}
-                  onChange={(e) => setNewQRCode({...newQRCode, whatsappNumber: e.target.value})}
-                  placeholder="5582988898565"
-                />
+                <Label htmlFor="type">Tipo de QR Code*</Label>
+                <Select value={newQRCode.type} onValueChange={(value) => setNewQRCode({...newQRCode, type: value})}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="whatsapp">
+                      <div className="flex items-center space-x-2">
+                        <MessageCircle className="h-4 w-4" />
+                        <span>WhatsApp</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="form">
+                      <div className="flex items-center space-x-2">
+                        <FileText className="h-4 w-4" />
+                        <span>Formulário</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
                 <p className="text-xs text-muted-foreground">
-                  Formato: código do país + DDD + número (sem espaços ou símbolos)
+                  {newQRCode.type === 'whatsapp' 
+                    ? 'Direciona para uma conversa do WhatsApp com texto pré-definido'
+                    : 'Direciona para o formulário de captura de leads'
+                  }
                 </p>
               </div>
+
+              {newQRCode.type === 'whatsapp' && (
+                <div className="grid gap-2">
+                  <Label htmlFor="whatsapp">Número do WhatsApp*</Label>
+                  <Input
+                    id="whatsapp"
+                    value={newQRCode.whatsappNumber}
+                    onChange={(e) => setNewQRCode({...newQRCode, whatsappNumber: e.target.value})}
+                    placeholder="5582988898565"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Formato: código do país + DDD + número (sem espaços ou símbolos)
+                  </p>
+                </div>
+              )}
+
               <div className="grid gap-2">
                 <Label htmlFor="event">Nome do Evento/Palavra-chave*</Label>
                 <Input
@@ -196,14 +266,21 @@ const QRCodePage = () => {
                   placeholder="Feira Estudante 23"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Este texto aparecerá automaticamente na conversa do WhatsApp com um ID de rastreamento
+                  {newQRCode.type === 'whatsapp' 
+                    ? 'Este texto aparecerá automaticamente na conversa do WhatsApp com um ID de rastreamento'
+                    : 'Nome do evento que aparecerá no formulário'
+                  }
                 </p>
               </div>
-              {newQRCode.whatsappNumber && newQRCode.eventName && (
+
+              {newQRCode.eventName && (
                 <div className="mt-4 p-4 bg-muted rounded-lg">
-                  <Label>Preview da Mensagem (com ID):</Label>
+                  <Label>Preview {newQRCode.type === 'whatsapp' ? 'da Mensagem' : 'da URL'}:</Label>
                   <p className="text-sm font-mono mt-1 break-all">
-                    {newQRCode.eventName} id:XXXXXX
+                    {newQRCode.type === 'whatsapp' 
+                      ? `${newQRCode.eventName} id:XXXXXX`
+                      : `${window.location.origin}/form?event=${encodeURIComponent(newQRCode.eventName)}&tracking=XXXXXX`
+                    }
                   </p>
                   <p className="text-xs text-muted-foreground mt-2">
                     O ID real será gerado automaticamente (6 caracteres)
@@ -235,11 +312,12 @@ const QRCodePage = () => {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>Tipo</TableHead>
                 <TableHead>Evento</TableHead>
                 <TableHead>Tracking ID</TableHead>
-                <TableHead>WhatsApp</TableHead>
+                <TableHead>Destino</TableHead>
                 <TableHead>QR Code</TableHead>
-                <TableHead>Link Curto</TableHead>
+                <TableHead>Link/URL</TableHead>
                 <TableHead>Scans</TableHead>
                 <TableHead>Criado em</TableHead>
                 <TableHead>Ações</TableHead>
@@ -247,9 +325,24 @@ const QRCodePage = () => {
             </TableHeader>
             <TableBody>
               {qrCodes.map((qrCode: any) => {
-                const shortUrl = `${window.location.origin}/r/${qrCode.short_url}`;
+                const displayUrl = getQRCodeDisplayUrl(qrCode);
                 return (
                   <TableRow key={qrCode.id}>
+                    <TableCell>
+                      <div className="flex items-center space-x-2">
+                        {qrCode.type === 'whatsapp' ? (
+                          <>
+                            <MessageCircle className="h-4 w-4 text-green-600" />
+                            <Badge variant="secondary" className="bg-green-100 text-green-800">WhatsApp</Badge>
+                          </>
+                        ) : (
+                          <>
+                            <FileText className="h-4 w-4 text-blue-600" />
+                            <Badge variant="secondary" className="bg-blue-100 text-blue-800">Formulário</Badge>
+                          </>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell className="font-medium">{qrCode.event?.name}</TableCell>
                     <TableCell>
                       <div className="flex items-center space-x-2">
@@ -267,30 +360,32 @@ const QRCodePage = () => {
                         )}
                       </div>
                     </TableCell>
-                    <TableCell className="font-mono">{qrCode.event?.whatsapp_number}</TableCell>
+                    <TableCell className="font-mono text-xs">
+                      {qrCode.type === 'whatsapp' ? qrCode.event?.whatsapp_number : 'Formulário'}
+                    </TableCell>
                     <TableCell>
                       <img
-                        src={`https://api.qrserver.com/v1/create-qr-code/?size=64x64&data=${encodeURIComponent(shortUrl)}`}
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=64x64&data=${encodeURIComponent(displayUrl)}`}
                         alt={`QR Code ${qrCode.event?.name}`}
                         className="w-16 h-16 border rounded"
                       />
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center space-x-2">
-                        <code className="text-xs bg-muted px-2 py-1 rounded">
-                          /r/{qrCode.short_url}
+                        <code className="text-xs bg-muted px-2 py-1 rounded max-w-32 truncate">
+                          {qrCode.type === 'whatsapp' ? `/r/${qrCode.short_url}` : displayUrl}
                         </code>
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => copyToClipboard(shortUrl, 'Link encurtado')}
+                          onClick={() => copyToClipboard(displayUrl, qrCode.type === 'whatsapp' ? 'Link encurtado' : 'URL do formulário')}
                         >
                           <Copy className="h-3 w-3" />
                         </Button>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="secondary">{qrCode.scans}</Badge>
+                      <Badge variant="secondary">{qrCode.scans || 0}</Badge>
                     </TableCell>
                     <TableCell>
                       {new Date(qrCode.created_at).toLocaleDateString('pt-BR')}
@@ -340,9 +435,16 @@ const QRCodePage = () => {
       <Dialog open={!!previewQR} onOpenChange={() => setPreviewQR(null)}>
         <DialogContent className="sm:max-w-[480px]">
           <DialogHeader className="pb-4">
-            <DialogTitle className="text-lg">{previewQR?.event?.name}</DialogTitle>
+            <DialogTitle className="flex items-center space-x-2">
+              {previewQR?.type === 'whatsapp' ? (
+                <MessageCircle className="h-5 w-5 text-green-600" />
+              ) : (
+                <FileText className="h-5 w-5 text-blue-600" />
+              )}
+              <span>{previewQR?.event?.name}</span>
+            </DialogTitle>
             <DialogDescription>
-              Preview do QR Code para direcionamento ao WhatsApp
+              Preview do QR Code {previewQR?.type === 'whatsapp' ? 'WhatsApp' : 'Formulário'}
             </DialogDescription>
           </DialogHeader>
           {previewQR && (
@@ -350,7 +452,7 @@ const QRCodePage = () => {
               {/* QR Code centralizado */}
               <div className="flex justify-center py-2">
                 <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`${window.location.origin}/r/${previewQR.short_url}`)}`}
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(getQRCodeDisplayUrl(previewQR))}`}
                   alt={`QR Code ${previewQR.event?.name}`}
                   className="w-48 h-48 border rounded-lg shadow-sm"
                 />
@@ -358,6 +460,23 @@ const QRCodePage = () => {
               
               {/* Informações compactas */}
               <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="col-span-2">
+                  <Label className="text-xs font-medium text-muted-foreground">Tipo</Label>
+                  <div className="flex items-center space-x-2 mt-1">
+                    {previewQR.type === 'whatsapp' ? (
+                      <Badge variant="secondary" className="bg-green-100 text-green-800">
+                        <MessageCircle className="h-3 w-3 mr-1" />
+                        WhatsApp
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                        <FileText className="h-3 w-3 mr-1" />
+                        Formulário
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+
                 <div className="col-span-2">
                   <Label className="text-xs font-medium text-muted-foreground">Tracking ID</Label>
                   <div className="flex items-center space-x-2 mt-1">
@@ -377,44 +496,50 @@ const QRCodePage = () => {
                   </div>
                 </div>
 
-                <div className="col-span-2">
-                  <Label className="text-xs font-medium text-muted-foreground">Mensagem do WhatsApp</Label>
-                  <div className="flex items-center space-x-2 mt-1">
-                    <code className="text-xs bg-muted px-2 py-1 rounded flex-1 font-mono">
-                      {getPreviewMessage(previewQR)}
-                    </code>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-7 w-7 p-0"
-                      onClick={() => copyToClipboard(getPreviewMessage(previewQR), 'Mensagem')}
-                    >
-                      <Copy className="h-3 w-3" />
-                    </Button>
+                {previewQR.type === 'whatsapp' && (
+                  <div className="col-span-2">
+                    <Label className="text-xs font-medium text-muted-foreground">Mensagem do WhatsApp</Label>
+                    <div className="flex items-center space-x-2 mt-1">
+                      <code className="text-xs bg-muted px-2 py-1 rounded flex-1 font-mono">
+                        {getPreviewMessage(previewQR)}
+                      </code>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 w-7 p-0"
+                        onClick={() => copyToClipboard(getPreviewMessage(previewQR), 'Mensagem')}
+                      >
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </div>
-                </div>
+                )}
                 
-                <div>
-                  <Label className="text-xs font-medium text-muted-foreground">WhatsApp</Label>
-                  <p className="text-sm font-mono mt-1">{previewQR.event?.whatsapp_number}</p>
-                </div>
+                {previewQR.type === 'whatsapp' && (
+                  <div>
+                    <Label className="text-xs font-medium text-muted-foreground">WhatsApp</Label>
+                    <p className="text-sm font-mono mt-1">{previewQR.event?.whatsapp_number}</p>
+                  </div>
+                )}
                 
                 <div>
                   <Label className="text-xs font-medium text-muted-foreground">Scans</Label>
-                  <p className="text-sm font-medium mt-1">{previewQR.scans}</p>
+                  <p className="text-sm font-medium mt-1">{previewQR.scans || 0}</p>
                 </div>
                 
                 <div className="col-span-2">
-                  <Label className="text-xs font-medium text-muted-foreground">Link Encurtado</Label>
+                  <Label className="text-xs font-medium text-muted-foreground">
+                    {previewQR.type === 'whatsapp' ? 'Link Encurtado' : 'URL do Formulário'}
+                  </Label>
                   <div className="flex items-center space-x-2 mt-1">
                     <code className="text-xs bg-muted px-2 py-1 rounded flex-1 font-mono">
-                      {window.location.origin}/r/{previewQR.short_url}
+                      {getQRCodeDisplayUrl(previewQR)}
                     </code>
                     <Button
                       variant="outline"
                       size="sm"
                       className="h-7 w-7 p-0"
-                      onClick={() => copyToClipboard(`${window.location.origin}/r/${previewQR.short_url}`, 'Link encurtado')}
+                      onClick={() => copyToClipboard(getQRCodeDisplayUrl(previewQR), previewQR.type === 'whatsapp' ? 'Link encurtado' : 'URL do formulário')}
                     >
                       <Copy className="h-3 w-3" />
                     </Button>
@@ -447,7 +572,7 @@ const QRCodePage = () => {
                 </Button>
                 <Button
                   variant="outline"
-                  onClick={() => copyToClipboard(`${window.location.origin}/r/${previewQR.short_url}`, 'Link encurtado')}
+                  onClick={() => copyToClipboard(getQRCodeDisplayUrl(previewQR), previewQR.type === 'whatsapp' ? 'Link encurtado' : 'URL do formulário')}
                   className="flex-1 h-9"
                   size="sm"
                 >

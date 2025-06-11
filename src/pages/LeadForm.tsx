@@ -1,232 +1,196 @@
+
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, CheckCircle, AlertCircle, Phone, Mail, User, GraduationCap } from 'lucide-react';
-import { useCourses, useSystemSettings } from '@/hooks/useSupabaseData';
-import { supabase } from '@/integrations/supabase/client';
+import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-
-interface FormData {
-  name: string;
-  email: string;
-  whatsapp: string;
-  course_id: string;
-  shift: string;
-}
-
-interface ValidationStatus {
-  status: 'idle' | 'validating' | 'valid' | 'invalid' | 'error';
-  message?: string;
-}
+import { useCourses } from '@/hooks/useSupabaseData';
+import { supabase } from '@/integrations/supabase/client';
 
 const LeadForm = () => {
-  const [currentStep, setCurrentStep] = useState(0);
-  const [formData, setFormData] = useState<FormData>({
+  const { toast } = useToast();
+  const { data: courses = [] } = useCourses();
+  
+  const [currentStep, setCurrentStep] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [eventName, setEventName] = useState('');
+  const [trackingId, setTrackingId] = useState('');
+  
+  const [formData, setFormData] = useState({
     name: '',
     email: '',
     whatsapp: '',
     course_id: '',
-    shift: ''
+    message: ''
   });
-  const [whatsappValidation, setWhatsappValidation] = useState<ValidationStatus>({ status: 'idle' });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [validationId, setValidationId] = useState<string | null>(null);
 
-  const { data: courses = [] } = useCourses();
-  const { data: settings = [] } = useSystemSettings();
-  const { toast } = useToast();
-
-  const getSetting = (key: string) => {
-    const setting = settings.find((s: any) => s.key === key);
-    if (!setting) return null;
-    try {
-      return typeof setting.value === 'string' ? JSON.parse(setting.value) : setting.value;
-    } catch {
-      return setting.value;
-    }
-  };
-
-  const logo = getSetting('company_logo');
-  const companyName = getSetting('company_name') || 'Sistema de Leads';
-
-  const steps = [
-    { id: 'name', label: 'Nome completo', icon: User },
-    { id: 'whatsapp', label: 'WhatsApp', icon: Phone },
-    { id: 'email', label: 'E-mail', icon: Mail },
-    { id: 'course', label: 'Curso de interesse', icon: GraduationCap },
-    { id: 'shift', label: 'Turno preferido', icon: GraduationCap }
-  ];
-
-  // Função para aplicar máscara do WhatsApp
-  const formatWhatsApp = (value: string) => {
-    // Remove tudo que não é número
-    const numbers = value.replace(/\D/g, '');
-    
-    // Aplica a máscara (11) 99999-9999
-    if (numbers.length <= 11) {
-      return numbers
-        .replace(/^(\d{2})(\d{5})(\d{4})$/, '($1) $2-$3')
-        .replace(/^(\d{2})(\d{4,5})/, '($1) $2')
-        .replace(/^(\d{2})/, '($1');
-    }
-    
-    return value;
-  };
-
-  // Função para extrair apenas números do WhatsApp
-  const extractNumbers = (whatsapp: string) => {
-    return whatsapp.replace(/\D/g, '');
-  };
-
-  // Verificar cookies para pré-preenchimento
+  // Extrair parâmetros da URL
   useEffect(() => {
-    const savedData = localStorage.getItem('leadFormData');
-    if (savedData) {
-      try {
-        const parsed = JSON.parse(savedData);
-        const oneHour = 60 * 60 * 1000;
-        if (Date.now() - parsed.timestamp < oneHour) {
-          setFormData(parsed.data);
-          toast({
-            title: "Dados recuperados",
-            description: "Seus dados foram recuperados automaticamente.",
-          });
-        } else {
-          localStorage.removeItem('leadFormData');
-        }
-      } catch (error) {
-        localStorage.removeItem('leadFormData');
-      }
+    const urlParams = new URLSearchParams(window.location.search);
+    const event = urlParams.get('event');
+    const tracking = urlParams.get('tracking');
+    
+    if (event) {
+      setEventName(decodeURIComponent(event));
+    }
+    if (tracking) {
+      setTrackingId(tracking);
+      // Armazenar no sessionStorage para rastreamento
+      sessionStorage.setItem('form_tracking_id', tracking);
+      sessionStorage.setItem('form_event_name', event || '');
     }
   }, []);
 
-  // Salvar dados no localStorage a cada mudança
-  useEffect(() => {
-    const dataToSave = {
-      data: formData,
-      timestamp: Date.now()
-    };
-    localStorage.setItem('leadFormData', JSON.stringify(dataToSave));
-  }, [formData]);
+  const formatWhatsApp = (value: string) => {
+    const numbers = value.replace(/\D/g, '');
+    if (numbers.length <= 2) return numbers;
+    if (numbers.length <= 7) return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`;
+    if (numbers.length <= 11) return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7)}`;
+    return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`;
+  };
 
-  // Polling para verificar status da validação do WhatsApp
-  useEffect(() => {
-    if (validationId && whatsappValidation.status === 'validating') {
-      const interval = setInterval(async () => {
-        try {
-          // Query the whatsapp_validations table directly
-          const { data, error } = await supabase
-            .from('whatsapp_validations')
-            .select('status, response_message')
-            .eq('id', validationId)
-            .single();
+  const validateWhatsApp = (phone: string): boolean => {
+    const numbers = phone.replace(/\D/g, '');
+    return numbers.length === 11 && numbers.startsWith('1') === false;
+  };
 
-          if (error) {
-            console.error('Erro ao verificar validação:', error);
-            return;
-          }
+  const handleWhatsAppChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatWhatsApp(e.target.value);
+    setFormData({ ...formData, whatsapp: formatted });
+  };
 
-          if (data && data.status !== 'pending') {
-            clearInterval(interval);
-            if (data.status === 'valid') {
-              setWhatsappValidation({ status: 'valid', message: 'WhatsApp válido!' });
-              setTimeout(() => setCurrentStep(2), 1000); // Avançar automaticamente após 1s
-            } else {
-              setWhatsappValidation({ 
-                status: 'invalid', 
-                message: data.response_message || 'WhatsApp inválido. Verifique o número.' 
-              });
-            }
-          }
-        } catch (error) {
-          console.error('Erro no polling:', error);
-          clearInterval(interval);
-          setWhatsappValidation({ status: 'error', message: 'Erro na validação' });
-        }
-      }, 2000);
-
-      return () => clearInterval(interval);
+  const handleNext = () => {
+    if (currentStep === 1) {
+      if (!formData.whatsapp || !validateWhatsApp(formData.whatsapp)) {
+        toast({
+          title: "WhatsApp inválido",
+          description: "Por favor, digite um número válido no formato (DD) 99999-9999",
+          variant: "destructive",
+        });
+        return;
+      }
     }
-  }, [validationId, whatsappValidation.status]);
-
-  const validateWhatsApp = async (whatsapp: string) => {
-    const numbers = extractNumbers(whatsapp);
     
-    // Validar se tem pelo menos 10 dígitos (DDD + número)
-    if (numbers.length < 10) {
-      setWhatsappValidation({ 
-        status: 'invalid', 
-        message: 'Número deve ter pelo menos 10 dígitos' 
+    if (currentStep === 2) {
+      if (!formData.name || !formData.email) {
+        toast({
+          title: "Campos obrigatórios",
+          description: "Por favor, preencha nome e email",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email)) {
+        toast({
+          title: "Email inválido",
+          description: "Por favor, digite um email válido",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+    
+    setCurrentStep(currentStep + 1);
+  };
+
+  const handleSubmit = async () => {
+    if (!formData.course_id) {
+      toast({
+        title: "Curso obrigatório",
+        description: "Por favor, selecione um curso",
+        variant: "destructive",
       });
       return;
     }
 
-    const newValidationId = crypto.randomUUID();
-    setValidationId(newValidationId);
-    setWhatsappValidation({ status: 'validating' });
-
-    try {
-      const response = await supabase.functions.invoke('validate-whatsapp', {
-        body: {
-          whatsapp: numbers, // Enviar apenas números
-          validation_id: newValidationId
-        }
-      });
-
-      if (response.error) {
-        throw response.error;
-      }
-    } catch (error) {
-      console.error('Erro na validação:', error);
-      setWhatsappValidation({ status: 'error', message: 'Erro na validação. Tente novamente.' });
-    }
-  };
-
-  const handleNext = () => {
-    const currentStepData = steps[currentStep];
-    
-    if (currentStepData.id === 'name' && formData.name.trim()) {
-      setCurrentStep(1);
-    } else if (currentStepData.id === 'whatsapp' && formData.whatsapp.trim()) {
-      if (whatsappValidation.status === 'valid') {
-        setCurrentStep(2);
-      } else if (whatsappValidation.status === 'idle' || whatsappValidation.status === 'invalid') {
-        validateWhatsApp(formData.whatsapp);
-      }
-    } else if (currentStepData.id === 'email' && formData.email.trim()) {
-      setCurrentStep(3);
-    } else if (currentStepData.id === 'course' && formData.course_id) {
-      setCurrentStep(4);
-    }
-  };
-
-  const handleSubmit = async () => {
     setIsSubmitting(true);
-    
-    try {
-      const response = await supabase.functions.invoke('lead-capture', {
-        body: {
-          name: formData.name,
-          email: formData.email,
-          whatsapp: extractNumbers(formData.whatsapp), // Enviar apenas números
-          course_id: formData.course_id,
-          shift: formData.shift
-        }
-      });
 
-      if (response.error) {
-        throw response.error;
+    try {
+      // Buscar o evento pelo nome se disponível
+      let eventId = null;
+      if (eventName) {
+        const { data: events } = await supabase
+          .from('events')
+          .select('id')
+          .eq('name', eventName)
+          .limit(1);
+        
+        if (events && events.length > 0) {
+          eventId = events[0].id;
+        }
       }
 
-      // Limpar dados salvos
-      localStorage.removeItem('leadFormData');
-      
+      // Criar o lead
+      const leadData = {
+        name: formData.name,
+        email: formData.email,
+        whatsapp: formData.whatsapp.replace(/\D/g, ''),
+        course_id: formData.course_id,
+        message: formData.message || null,
+        event_id: eventId,
+        source: 'form'
+      };
+
+      const { data: lead, error: leadError } = await supabase
+        .from('leads')
+        .insert([leadData])
+        .select()
+        .single();
+
+      if (leadError) throw leadError;
+
+      // Se há tracking ID, criar/atualizar sessão de scan
+      if (trackingId) {
+        // Buscar QR code pelo tracking ID
+        const { data: qrCodes } = await supabase
+          .from('qr_codes')
+          .select('id, event_id')
+          .eq('tracking_id', trackingId)
+          .limit(1);
+
+        if (qrCodes && qrCodes.length > 0) {
+          const qrCode = qrCodes[0];
+          
+          // Verificar se já existe uma sessão para este tracking
+          const sessionId = sessionStorage.getItem('scan_session_id') || crypto.randomUUID();
+          
+          // Inserir ou atualizar sessão de scan
+          const { error: sessionError } = await supabase
+            .from('scan_sessions')
+            .upsert({
+              id: sessionId,
+              qr_code_id: qrCode.id,
+              event_id: qrCode.event_id,
+              scanned_at: new Date().toISOString(),
+              converted: true,
+              converted_at: new Date().toISOString(),
+              lead_id: lead.id,
+              user_agent: navigator.userAgent,
+              ip_address: 'form_submission'
+            });
+
+          if (sessionError) {
+            console.error('Erro ao registrar sessão:', sessionError);
+          }
+
+          // Atualizar o lead com o session_id
+          await supabase
+            .from('leads')
+            .update({ scan_session_id: sessionId })
+            .eq('id', lead.id);
+
+          sessionStorage.setItem('scan_session_id', sessionId);
+        }
+      }
+
       toast({
-        title: "Cadastro realizado!",
-        description: "Seus dados foram registrados com sucesso. Em breve entraremos em contato!",
+        title: "Sucesso!",
+        description: "Seus dados foram enviados com sucesso. Entraremos em contato em breve!",
       });
 
       // Reset form
@@ -235,16 +199,20 @@ const LeadForm = () => {
         email: '',
         whatsapp: '',
         course_id: '',
-        shift: ''
+        message: ''
       });
-      setCurrentStep(0);
-      setWhatsappValidation({ status: 'idle' });
-      
+      setCurrentStep(1);
+
+      // Limpar tracking do sessionStorage após sucesso
+      sessionStorage.removeItem('form_tracking_id');
+      sessionStorage.removeItem('form_event_name');
+      sessionStorage.removeItem('scan_session_id');
+
     } catch (error: any) {
-      console.error('Erro ao submeter:', error);
+      console.error('Erro ao enviar dados:', error);
       toast({
-        title: "Erro no cadastro",
-        description: error.message || "Erro ao registrar seus dados. Tente novamente.",
+        title: "Erro",
+        description: error.message || "Erro ao enviar seus dados. Tente novamente.",
         variant: "destructive",
       });
     } finally {
@@ -252,255 +220,178 @@ const LeadForm = () => {
     }
   };
 
-  const isStepValid = (stepIndex: number) => {
-    const step = steps[stepIndex];
-    switch (step.id) {
-      case 'name': return formData.name.trim().length > 0;
-      case 'whatsapp': {
-        const numbers = extractNumbers(formData.whatsapp);
-        return numbers.length >= 10 && whatsappValidation.status === 'valid';
-      }
-      case 'email': return formData.email.trim().length > 0 && formData.email.includes('@');
-      case 'course': return formData.course_id.length > 0;
-      case 'shift': return formData.shift.length > 0;
-      default: return false;
-    }
-  };
-
-  const handleWhatsAppChange = (value: string) => {
-    const formatted = formatWhatsApp(value);
-    setFormData({...formData, whatsapp: formatted});
-    
-    // Reset validation status when user changes the number
-    if (whatsappValidation.status !== 'idle') {
-      setWhatsappValidation({ status: 'idle' });
-    }
-  };
-
-  const renderStep = () => {
-    const step = steps[currentStep];
-    const StepIcon = step.icon;
-
-    switch (step.id) {
-      case 'name':
-        return (
-          <div className="space-y-4">
-            <div className="flex items-center space-x-3 mb-6">
-              <div className="p-3 bg-blue-100 rounded-full">
-                <StepIcon className="h-6 w-6 text-blue-600" />
-              </div>
-              <div>
-                <h2 className="text-xl font-semibold">Qual é o seu nome?</h2>
-                <p className="text-gray-600">Como podemos te chamar?</p>
-              </div>
-            </div>
-            <Input
-              placeholder="Digite seu nome completo"
-              value={formData.name}
-              onChange={(e) => setFormData({...formData, name: e.target.value})}
-              className="text-lg py-6"
-              autoFocus
-            />
-          </div>
-        );
-
-      case 'whatsapp':
-        return (
-          <div className="space-y-4">
-            <div className="flex items-center space-x-3 mb-6">
-              <div className="p-3 bg-green-100 rounded-full">
-                <StepIcon className="h-6 w-6 text-green-600" />
-              </div>
-              <div>
-                <h2 className="text-xl font-semibold">Qual o seu WhatsApp?</h2>
-                <p className="text-gray-600">Vamos validar se o número está ativo</p>
-              </div>
-            </div>
-            <Input
-              placeholder="(11) 99999-9999"
-              value={formData.whatsapp}
-              onChange={(e) => handleWhatsAppChange(e.target.value)}
-              className="text-lg py-6"
-              autoFocus
-              maxLength={15} // Limitar o tamanho da entrada
-            />
-            {whatsappValidation.status === 'validating' && (
-              <div className="flex items-center space-x-2 text-blue-600">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Validando WhatsApp...</span>
-              </div>
-            )}
-            {whatsappValidation.status === 'valid' && (
-              <div className="flex items-center space-x-2 text-green-600">
-                <CheckCircle className="h-4 w-4" />
-                <span>{whatsappValidation.message}</span>
-              </div>
-            )}
-            {whatsappValidation.status === 'invalid' && (
-              <div className="flex items-center space-x-2 text-red-600">
-                <AlertCircle className="h-4 w-4" />
-                <span>{whatsappValidation.message}</span>
-              </div>
-            )}
-          </div>
-        );
-
-      case 'email':
-        return (
-          <div className="space-y-4">
-            <div className="flex items-center space-x-3 mb-6">
-              <div className="p-3 bg-purple-100 rounded-full">
-                <StepIcon className="h-6 w-6 text-purple-600" />
-              </div>
-              <div>
-                <h2 className="text-xl font-semibold">E qual o seu e-mail?</h2>
-                <p className="text-gray-600">Para enviarmos informações importantes</p>
-              </div>
-            </div>
-            <Input
-              type="email"
-              placeholder="seu@email.com"
-              value={formData.email}
-              onChange={(e) => setFormData({...formData, email: e.target.value})}
-              className="text-lg py-6"
-              autoFocus
-            />
-          </div>
-        );
-
-      case 'course':
-        return (
-          <div className="space-y-4">
-            <div className="flex items-center space-x-3 mb-6">
-              <div className="p-3 bg-orange-100 rounded-full">
-                <StepIcon className="h-6 w-6 text-orange-600" />
-              </div>
-              <div>
-                <h2 className="text-xl font-semibold">Qual curso te interessa?</h2>
-                <p className="text-gray-600">Escolha o curso que mais desperta seu interesse</p>
-              </div>
-            </div>
-            <Select value={formData.course_id} onValueChange={(value) => setFormData({...formData, course_id: value})}>
-              <SelectTrigger className="text-lg py-6">
-                <SelectValue placeholder="Selecione um curso" />
-              </SelectTrigger>
-              <SelectContent>
-                {courses.map((course: any) => (
-                  <SelectItem key={course.id} value={course.id}>
-                    {course.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        );
-
-      case 'shift':
-        return (
-          <div className="space-y-4">
-            <div className="flex items-center space-x-3 mb-6">
-              <div className="p-3 bg-indigo-100 rounded-full">
-                <StepIcon className="h-6 w-6 text-indigo-600" />
-              </div>
-              <div>
-                <h2 className="text-xl font-semibold">Qual turno prefere?</h2>
-                <p className="text-gray-600">Quando seria melhor para você estudar?</p>
-              </div>
-            </div>
-            <Select value={formData.shift} onValueChange={(value) => setFormData({...formData, shift: value})}>
-              <SelectTrigger className="text-lg py-6">
-                <SelectValue placeholder="Selecione um turno" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="manhã">Manhã</SelectItem>
-                <SelectItem value="tarde">Tarde</SelectItem>
-                <SelectItem value="noite">Noite</SelectItem>
-                <SelectItem value="integral">Integral</SelectItem>
-                <SelectItem value="fins de semana">Fins de semana</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        );
-
-      default:
-        return null;
-    }
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md shadow-xl">
-        <CardHeader className="text-center pb-8">
-          {logo && (
-            <img src={logo} alt="Logo" className="h-16 mx-auto mb-4" />
+      <Card className="w-full max-w-lg shadow-xl">
+        <CardHeader className="text-center pb-6">
+          <CardTitle className="text-2xl font-bold text-gray-800">
+            {eventName ? `${eventName}` : 'Interesse em nossos cursos?'}
+          </CardTitle>
+          <CardDescription className="text-gray-600">
+            Preencha os dados abaixo e entraremos em contato
+          </CardDescription>
+          {trackingId && (
+            <div className="text-xs text-muted-foreground mt-2">
+              ID: {trackingId}
+            </div>
           )}
-          <h1 className="text-2xl font-bold text-gray-800">{companyName}</h1>
-          <p className="text-gray-600">Cadastre-se para receber mais informações</p>
-          
-          {/* Progress bar */}
-          <div className="flex justify-center space-x-2 mt-6">
-            {steps.map((_, index) => (
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Step 1: WhatsApp */}
+          {currentStep === 1 && (
+            <div className="space-y-4">
+              <div className="text-center mb-4">
+                <div className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center mx-auto mb-2">
+                  1
+                </div>
+                <h3 className="font-semibold">Seu WhatsApp</h3>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="whatsapp">WhatsApp *</Label>
+                <Input
+                  id="whatsapp"
+                  type="tel"
+                  placeholder="(11) 99999-9999"
+                  value={formData.whatsapp}
+                  onChange={handleWhatsAppChange}
+                  maxLength={15}
+                  className={`${!validateWhatsApp(formData.whatsapp) && formData.whatsapp ? 'border-red-500' : ''}`}
+                />
+                {!validateWhatsApp(formData.whatsapp) && formData.whatsapp && (
+                  <p className="text-sm text-red-500">Formato inválido</p>
+                )}
+              </div>
+              
+              <Button
+                onClick={handleNext}
+                className="w-full"
+                disabled={!validateWhatsApp(formData.whatsapp)}
+              >
+                Próximo
+              </Button>
+            </div>
+          )}
+
+          {/* Step 2: Personal Info */}
+          {currentStep === 2 && (
+            <div className="space-y-4">
+              <div className="text-center mb-4">
+                <div className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center mx-auto mb-2">
+                  2
+                </div>
+                <h3 className="font-semibold">Seus dados</h3>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="name">Nome completo *</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="Seu nome completo"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="email">Email *</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  placeholder="seu@email.com"
+                />
+              </div>
+              
+              <div className="flex space-x-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setCurrentStep(1)}
+                  className="flex-1"
+                >
+                  Voltar
+                </Button>
+                <Button
+                  onClick={handleNext}
+                  className="flex-1"
+                  disabled={!formData.name || !formData.email}
+                >
+                  Próximo
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Course Interest */}
+          {currentStep === 3 && (
+            <div className="space-y-4">
+              <div className="text-center mb-4">
+                <div className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center mx-auto mb-2">
+                  3
+                </div>
+                <h3 className="font-semibold">Interesse</h3>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="course">Curso de interesse *</Label>
+                <Select
+                  value={formData.course_id}
+                  onValueChange={(value) => setFormData({ ...formData, course_id: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um curso" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {courses.map((course: any) => (
+                      <SelectItem key={course.id} value={course.id}>
+                        {course.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="message">Mensagem (opcional)</Label>
+                <Textarea
+                  id="message"
+                  value={formData.message}
+                  onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                  placeholder="Conte-nos mais sobre seu interesse..."
+                  rows={3}
+                />
+              </div>
+              
+              <div className="flex space-x-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setCurrentStep(2)}
+                  className="flex-1"
+                >
+                  Voltar
+                </Button>
+                <Button
+                  onClick={handleSubmit}
+                  className="flex-1"
+                  disabled={isSubmitting || !formData.course_id}
+                >
+                  {isSubmitting ? 'Enviando...' : 'Enviar'}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Progress indicator */}
+          <div className="flex justify-center space-x-2 pt-4">
+            {[1, 2, 3].map((step) => (
               <div
-                key={index}
-                className={`h-2 w-8 rounded-full transition-colors ${
-                  index <= currentStep ? 'bg-blue-600' : 'bg-gray-200'
+                key={step}
+                className={`w-2 h-2 rounded-full ${
+                  step <= currentStep ? 'bg-blue-600' : 'bg-gray-300'
                 }`}
               />
             ))}
-          </div>
-        </CardHeader>
-        
-        <CardContent className="space-y-6">
-          {renderStep()}
-          
-          <div className="flex justify-between pt-6">
-            {currentStep > 0 && (
-              <Button
-                variant="outline"
-                onClick={() => setCurrentStep(currentStep - 1)}
-                disabled={whatsappValidation.status === 'validating'}
-              >
-                Voltar
-              </Button>
-            )}
-            
-            <div className="ml-auto">
-              {currentStep < steps.length - 1 ? (
-                <Button
-                  onClick={handleNext}
-                  disabled={
-                    !isStepValid(currentStep) || 
-                    whatsappValidation.status === 'validating' ||
-                    (steps[currentStep].id === 'whatsapp' && whatsappValidation.status !== 'valid')
-                  }
-                  className="bg-blue-600 hover:bg-blue-700"
-                >
-                  {whatsappValidation.status === 'validating' ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      Validando...
-                    </>
-                  ) : (
-                    'Próximo'
-                  )}
-                </Button>
-              ) : (
-                <Button
-                  onClick={handleSubmit}
-                  disabled={!isStepValid(currentStep) || isSubmitting}
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      Cadastrando...
-                    </>
-                  ) : (
-                    'Concluir Cadastro'
-                  )}
-                </Button>
-              )}
-            </div>
           </div>
         </CardContent>
       </Card>
