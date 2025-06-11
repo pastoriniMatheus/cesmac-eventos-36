@@ -32,19 +32,19 @@ export type Database = {
           created_at: string
           id: string
           name: string
-          whatsapp_number: string
+          whatsapp_number: string | null
         }
         Insert: {
           created_at?: string
           id?: string
           name: string
-          whatsapp_number: string
+          whatsapp_number?: string | null
         }
         Update: {
           created_at?: string
           id?: string
           name?: string
-          whatsapp_number?: string
+          whatsapp_number?: string | null
         }
         Relationships: []
       }

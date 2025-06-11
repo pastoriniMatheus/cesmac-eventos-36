@@ -74,17 +74,53 @@ const QRCodePage = () => {
     }
 
     try {
-      // Primeiro criar o evento
-      const { data: event, error: eventError } = await supabase
-        .from('events')
-        .insert([{
-          name: newQRCode.eventName,
-          whatsapp_number: newQRCode.type === 'whatsapp' ? newQRCode.whatsappNumber : null
-        }])
-        .select()
-        .single();
+      let event;
 
-      if (eventError) throw eventError;
+      // Verificar se já existe um evento com este nome
+      const { data: existingEvents, error: searchError } = await supabase
+        .from('events')
+        .select('*')
+        .eq('name', newQRCode.eventName)
+        .limit(1);
+
+      if (searchError) throw searchError;
+
+      if (existingEvents && existingEvents.length > 0) {
+        // Evento já existe, vamos usá-lo
+        event = existingEvents[0];
+        
+        // Se for QR Code WhatsApp e o evento não tem WhatsApp, atualizar
+        if (newQRCode.type === 'whatsapp' && !event.whatsapp_number) {
+          const { data: updatedEvent, error: updateError } = await supabase
+            .from('events')
+            .update({ whatsapp_number: newQRCode.whatsappNumber })
+            .eq('id', event.id)
+            .select()
+            .single();
+
+          if (updateError) throw updateError;
+          event = updatedEvent;
+        }
+      } else {
+        // Criar novo evento
+        const eventData: any = {
+          name: newQRCode.eventName
+        };
+
+        // Só adicionar WhatsApp se for QR Code WhatsApp
+        if (newQRCode.type === 'whatsapp') {
+          eventData.whatsapp_number = newQRCode.whatsappNumber;
+        }
+
+        const { data: newEvent, error: eventError } = await supabase
+          .from('events')
+          .insert([eventData])
+          .select()
+          .single();
+
+        if (eventError) throw eventError;
+        event = newEvent;
+      }
 
       // Gerar tracking ID e URLs
       const trackingId = generateTrackingId();
@@ -94,15 +130,24 @@ const QRCodePage = () => {
       const shortUrl = newQRCode.type === 'whatsapp' ? generateShortUrl() : null;
 
       // Criar o QR code com tracking ID
+      const qrCodeData: any = {
+        event_id: event.id,
+        original_url: waLink,
+        tracking_id: trackingId,
+        type: newQRCode.type
+      };
+
+      // Só adicionar short_url se for WhatsApp
+      if (newQRCode.type === 'whatsapp') {
+        qrCodeData.short_url = shortUrl;
+      } else {
+        // Para formulário, precisamos de um short_url mesmo que seja só um placeholder
+        qrCodeData.short_url = trackingId; // Usar tracking_id como short_url para formulários
+      }
+
       const { error: qrError } = await supabase
         .from('qr_codes')
-        .insert([{
-          event_id: event.id,
-          short_url: shortUrl,
-          original_url: waLink,
-          tracking_id: trackingId,
-          type: newQRCode.type
-        }]);
+        .insert([qrCodeData]);
 
       if (qrError) throw qrError;
 
@@ -117,6 +162,7 @@ const QRCodePage = () => {
         description: `QR Code ${newQRCode.type === 'whatsapp' ? 'WhatsApp' : 'Formulário'} para o evento "${newQRCode.eventName}" foi criado com sucesso!`,
       });
     } catch (error: any) {
+      console.error('Erro ao criar QR Code:', error);
       toast({
         title: "Erro",
         description: error.message || "Erro ao criar QR Code",
