@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -447,55 +446,50 @@ const QRCodePage = () => {
         </CardContent>
       </Card>
 
-      {/* Preview Dialog */}
+      {/* Preview Dialog - Melhorado e mais compacto */}
       <Dialog open={!!previewQR} onOpenChange={() => setPreviewQR(null)}>
-        <DialogContent className="sm:max-w-[480px]">
-          <DialogHeader className="pb-4">
-            <DialogTitle className="flex items-center space-x-2">
+        <DialogContent className="sm:max-w-[400px] max-h-[80vh] overflow-y-auto">
+          <DialogHeader className="pb-3">
+            <DialogTitle className="flex items-center space-x-2 text-lg">
               {(previewQR?.type || 'whatsapp') === 'whatsapp' ? (
-                <MessageCircle className="h-5 w-5 text-green-600" />
+                <MessageCircle className="h-4 w-4 text-green-600" />
               ) : (
-                <FileText className="h-5 w-5 text-blue-600" />
+                <FileText className="h-4 w-4 text-blue-600" />
               )}
-              <span>{previewQR?.event?.name}</span>
+              <span className="truncate">{previewQR?.event?.name}</span>
             </DialogTitle>
-            <DialogDescription>
-              Preview do QR Code {(previewQR?.type || 'whatsapp') === 'whatsapp' ? 'WhatsApp' : 'Formulário'}
-            </DialogDescription>
           </DialogHeader>
           {previewQR && (
-            <div className="space-y-4">
-              {/* QR Code centralizado */}
-              <div className="flex justify-center py-2">
+            <div className="space-y-3">
+              {/* QR Code centralizado e menor */}
+              <div className="flex justify-center">
                 <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(getQRCodeDisplayUrl(previewQR))}`}
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(getQRCodeDisplayUrl(previewQR))}`}
                   alt={`QR Code ${previewQR.event?.name}`}
-                  className="w-48 h-48 border rounded-lg shadow-sm"
+                  className="w-40 h-40 border rounded shadow-sm"
                 />
               </div>
               
-              {/* Informações compactas */}
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div className="col-span-2">
+              {/* Informações compactas em grid */}
+              <div className="grid grid-cols-1 gap-2 text-sm">
+                <div className="flex justify-between items-center">
                   <Label className="text-xs font-medium text-muted-foreground">Tipo</Label>
-                  <div className="flex items-center space-x-2 mt-1">
-                    {(previewQR.type || 'whatsapp') === 'whatsapp' ? (
-                      <Badge variant="secondary" className="bg-green-100 text-green-800">
-                        <MessageCircle className="h-3 w-3 mr-1" />
-                        WhatsApp
-                      </Badge>
-                    ) : (
-                      <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-                        <FileText className="h-3 w-3 mr-1" />
-                        Formulário
-                      </Badge>
-                    )}
-                  </div>
+                  {(previewQR.type || 'whatsapp') === 'whatsapp' ? (
+                    <Badge variant="secondary" className="bg-green-100 text-green-800 text-xs">
+                      <MessageCircle className="h-3 w-3 mr-1" />
+                      WhatsApp
+                    </Badge>
+                  ) : (
+                    <Badge variant="secondary" className="bg-blue-100 text-blue-800 text-xs">
+                      <FileText className="h-3 w-3 mr-1" />
+                      Formulário
+                    </Badge>
+                  )}
                 </div>
 
-                <div className="col-span-2">
+                <div>
                   <Label className="text-xs font-medium text-muted-foreground">Tracking ID</Label>
-                  <div className="flex items-center space-x-2 mt-1">
+                  <div className="flex items-center space-x-1 mt-1">
                     <code className="text-xs bg-muted px-2 py-1 rounded flex-1 font-mono">
                       {previewQR.tracking_id || 'N/A'}
                     </code>
@@ -503,7 +497,7 @@ const QRCodePage = () => {
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-7 w-7 p-0"
+                        className="h-6 w-6 p-0"
                         onClick={() => copyToClipboard(previewQR.tracking_id, 'Tracking ID')}
                       >
                         <Copy className="h-3 w-3" />
@@ -513,87 +507,82 @@ const QRCodePage = () => {
                 </div>
 
                 {(previewQR.type || 'whatsapp') === 'whatsapp' && (
-                  <div className="col-span-2">
-                    <Label className="text-xs font-medium text-muted-foreground">Mensagem do WhatsApp</Label>
-                    <div className="flex items-center space-x-2 mt-1">
-                      <code className="text-xs bg-muted px-2 py-1 rounded flex-1 font-mono">
-                        {getPreviewMessage(previewQR)}
-                      </code>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 w-7 p-0"
-                        onClick={() => copyToClipboard(getPreviewMessage(previewQR), 'Mensagem')}
-                      >
-                        <Copy className="h-3 w-3" />
-                      </Button>
+                  <>
+                    <div>
+                      <Label className="text-xs font-medium text-muted-foreground">WhatsApp</Label>
+                      <p className="text-xs font-mono mt-1">{previewQR.event?.whatsapp_number}</p>
                     </div>
-                  </div>
+                    
+                    <div>
+                      <Label className="text-xs font-medium text-muted-foreground">Mensagem Preview</Label>
+                      <div className="flex items-center space-x-1 mt-1">
+                        <code className="text-xs bg-muted px-2 py-1 rounded flex-1 font-mono">
+                          {getPreviewMessage(previewQR)}
+                        </code>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          onClick={() => copyToClipboard(getPreviewMessage(previewQR), 'Mensagem')}
+                        >
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  </>
                 )}
                 
-                {(previewQR.type || 'whatsapp') === 'whatsapp' && (
+                <div className="flex justify-between items-center">
                   <div>
-                    <Label className="text-xs font-medium text-muted-foreground">WhatsApp</Label>
-                    <p className="text-sm font-mono mt-1">{previewQR.event?.whatsapp_number}</p>
+                    <Label className="text-xs font-medium text-muted-foreground">Scans</Label>
+                    <p className="text-sm font-medium">{previewQR.scans || 0}</p>
                   </div>
-                )}
-                
-                <div>
-                  <Label className="text-xs font-medium text-muted-foreground">Scans</Label>
-                  <p className="text-sm font-medium mt-1">{previewQR.scans || 0}</p>
+                  <div className="text-right">
+                    <Label className="text-xs font-medium text-muted-foreground">Criado em</Label>
+                    <p className="text-xs">
+                      {new Date(previewQR.created_at).toLocaleDateString('pt-BR')}
+                    </p>
+                  </div>
                 </div>
                 
-                <div className="col-span-2">
+                <div>
                   <Label className="text-xs font-medium text-muted-foreground">
-                    {(previewQR.type || 'whatsapp') === 'whatsapp' ? 'Link Encurtado' : 'URL do Formulário'}
+                    {(previewQR.type || 'whatsapp') === 'whatsapp' ? 'Link Encurtado' : 'URL'}
                   </Label>
-                  <div className="flex items-center space-x-2 mt-1">
-                    <code className="text-xs bg-muted px-2 py-1 rounded flex-1 font-mono">
+                  <div className="flex items-center space-x-1 mt-1">
+                    <code className="text-xs bg-muted px-2 py-1 rounded flex-1 font-mono truncate">
                       {getQRCodeDisplayUrl(previewQR)}
                     </code>
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-7 w-7 p-0"
+                      className="h-6 w-6 p-0"
                       onClick={() => copyToClipboard(getQRCodeDisplayUrl(previewQR), (previewQR.type || 'whatsapp') === 'whatsapp' ? 'Link encurtado' : 'URL do formulário')}
                     >
                       <Copy className="h-3 w-3" />
                     </Button>
                   </div>
                 </div>
-                
-                <div className="col-span-2">
-                  <Label className="text-xs font-medium text-muted-foreground">Criado em</Label>
-                  <p className="text-sm mt-1">
-                    {new Date(previewQR.created_at).toLocaleDateString('pt-BR', {
-                      day: '2-digit',
-                      month: '2-digit', 
-                      year: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
-                  </p>
-                </div>
               </div>
               
-              {/* Botões de ação */}
+              {/* Botões de ação compactos */}
               <div className="flex space-x-2 pt-2">
                 <Button
                   onClick={() => downloadQRCode(previewQR)}
-                  className="flex-1 h-9"
+                  className="flex-1 h-8"
                   size="sm"
                 >
-                  <Download className="h-4 w-4 mr-2" />
+                  <Download className="h-3 w-3 mr-1" />
                   Baixar
                 </Button>
                 <Button
                   variant="outline"
                   onClick={() => copyToClipboard(getQRCodeDisplayUrl(previewQR), (previewQR.type || 'whatsapp') === 'whatsapp' ? 'Link encurtado' : 'URL do formulário')}
-                  className="flex-1 h-9"
+                  className="flex-1 h-8"
                   size="sm"
                 >
-                  <Copy className="h-4 w-4 mr-2" />
-                  Copiar Link
+                  <Copy className="h-3 w-3 mr-1" />
+                  Copiar
                 </Button>
               </div>
             </div>
