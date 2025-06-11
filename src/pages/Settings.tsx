@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -9,7 +10,6 @@ import { useSystemSettings, useUpdateSystemSetting } from '@/hooks/useSystemSett
 import { useCourses, useCreateCourse } from '@/hooks/useCourses';
 import { useLeadStatuses, useCreateLeadStatus } from '@/hooks/useLeads';
 import ItemManager from '@/components/ItemManager';
-import EventManager from '@/components/EventManager';
 
 const Settings = () => {
   const { data: settings, isLoading, refetch } = useSystemSettings();
@@ -22,55 +22,38 @@ const Settings = () => {
 
   const [whatsappNumber, setWhatsappNumber] = useState('');
   const [messageTemplate, setMessageTemplate] = useState('');
+  const [webhookUrl, setWebhookUrl] = useState('');
+  const [validationWebhook, setValidationWebhook] = useState('');
+  const [logoUrl, setLogoUrl] = useState('');
 
   useEffect(() => {
     if (settings) {
       const whatsappSetting = settings.find(s => s.key === 'whatsapp_number');
       const templateSetting = settings.find(s => s.key === 'message_template');
+      const webhookSetting = settings.find(s => s.key === 'whatsapp_webhook');
+      const validationSetting = settings.find(s => s.key === 'whatsapp_validation_webhook');
+      const logoSetting = settings.find(s => s.key === 'logo');
 
-      // Fix type conversion issues by ensuring we convert to string
       setWhatsappNumber(whatsappSetting?.value ? String(whatsappSetting.value) : '');
       setMessageTemplate(templateSetting?.value ? String(templateSetting.value) : '');
+      setWebhookUrl(webhookSetting?.value ? String(webhookSetting.value) : '');
+      setValidationWebhook(validationSetting?.value ? String(validationSetting.value) : '');
+      setLogoUrl(logoSetting?.value ? String(logoSetting.value) : '');
     }
   }, [settings]);
 
-  const handleWhatsappNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setWhatsappNumber(e.target.value);
-  };
-
-  const handleMessageTemplateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setMessageTemplate(e.target.value);
-  };
-
-  const handleSaveWhatsappNumber = async () => {
+  const handleSaveSetting = async (key: string, value: string, successMessage: string) => {
     try {
-      await updateSetting.mutateAsync({ key: 'whatsapp_number', value: whatsappNumber });
+      await updateSetting.mutateAsync({ key, value });
       toast({
-        title: "Número do WhatsApp salvo",
-        description: "Número do WhatsApp salvo com sucesso!",
+        title: "Configuração salva",
+        description: successMessage,
       });
       refetch();
     } catch (error: any) {
       toast({
         title: "Erro",
-        description: error.message || "Erro ao salvar número do WhatsApp",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleSaveMessageTemplate = async () => {
-    try {
-      await updateSetting.mutateAsync({ key: 'message_template', value: messageTemplate });
-      toast({
-        title: "Template de mensagem salvo",
-        description: "Template de mensagem salvo com sucesso!",
-      });
-      refetch();
-    } catch (error: any) {
-      toast({
-        title: "Erro",
-        description: error.message || "Erro ao salvar template de mensagem",
+        description: error.message || "Erro ao salvar configuração",
         variant: "destructive",
       });
     }
@@ -89,41 +72,120 @@ const Settings = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="whatsappNumber">Número do WhatsApp</Label>
-            <Input 
-              type="tel" 
-              id="whatsappNumber" 
-              placeholder="5511999999999" 
-              value={whatsappNumber}
-              onChange={handleWhatsappNumberChange}
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="whatsappNumber">Número do WhatsApp</Label>
+              <Input 
+                type="tel" 
+                id="whatsappNumber" 
+                placeholder="5511999999999" 
+                value={whatsappNumber}
+                onChange={(e) => setWhatsappNumber(e.target.value)}
+              />
+              <Button 
+                onClick={() => handleSaveSetting('whatsapp_number', whatsappNumber, 'Número do WhatsApp salvo com sucesso!')}
+                size="sm"
+              >
+                Salvar Número
+              </Button>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="messageTemplate">Template de Mensagem</Label>
+              <Input 
+                type="text" 
+                id="messageTemplate" 
+                placeholder="Olá, tudo bem?" 
+                value={messageTemplate}
+                onChange={(e) => setMessageTemplate(e.target.value)}
+              />
+              <Button 
+                onClick={() => handleSaveSetting('message_template', messageTemplate, 'Template de mensagem salvo com sucesso!')}
+                size="sm"
+              >
+                Salvar Template
+              </Button>
+            </div>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="messageTemplate">Template de Mensagem</Label>
-            <Input 
-              type="text" 
-              id="messageTemplate" 
-              placeholder="Olá, tudo bem?" 
-              value={messageTemplate}
-              onChange={handleMessageTemplateChange}
-            />
-          </div>
-          <Button onClick={handleSaveWhatsappNumber}>Salvar Número</Button>
-          <Button onClick={handleSaveMessageTemplate}>Salvar Template</Button>
         </CardContent>
       </Card>
 
-      {/* Event Management Section */}
+      {/* Webhook Configuration */}
       <Card>
         <CardHeader>
-          <CardTitle>Gerenciamento de Eventos</CardTitle>
+          <CardTitle>Configuração de Webhooks</CardTitle>
           <CardDescription>
-            Visualize e exclua eventos do sistema
+            Configure URLs de webhook para integrações externas
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <EventManager />
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="webhookUrl">Webhook do WhatsApp</Label>
+              <Input 
+                type="url" 
+                id="webhookUrl" 
+                placeholder="https://exemplo.com/webhook" 
+                value={webhookUrl}
+                onChange={(e) => setWebhookUrl(e.target.value)}
+              />
+              <Button 
+                onClick={() => handleSaveSetting('whatsapp_webhook', webhookUrl, 'Webhook do WhatsApp salvo com sucesso!')}
+                size="sm"
+              >
+                Salvar Webhook
+              </Button>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="validationWebhook">Webhook de Validação</Label>
+              <Input 
+                type="url" 
+                id="validationWebhook" 
+                placeholder="https://exemplo.com/validate" 
+                value={validationWebhook}
+                onChange={(e) => setValidationWebhook(e.target.value)}
+              />
+              <Button 
+                onClick={() => handleSaveSetting('whatsapp_validation_webhook', validationWebhook, 'Webhook de validação salvo com sucesso!')}
+                size="sm"
+              >
+                Salvar Validação
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Logo Configuration */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Configuração do Logo</CardTitle>
+          <CardDescription>
+            Configure a URL do logo do sistema
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="logoUrl">URL do Logo</Label>
+            <Input 
+              type="url" 
+              id="logoUrl" 
+              placeholder="https://exemplo.com/logo.png" 
+              value={logoUrl}
+              onChange={(e) => setLogoUrl(e.target.value)}
+            />
+            <Button 
+              onClick={() => handleSaveSetting('logo', logoUrl, 'Logo salvo com sucesso!')}
+              size="sm"
+            >
+              Salvar Logo
+            </Button>
+          </div>
+          {logoUrl && (
+            <div className="mt-4">
+              <Label>Preview do Logo:</Label>
+              <img src={logoUrl} alt="Logo preview" className="h-16 w-auto mt-2 border rounded" />
+            </div>
+          )}
         </CardContent>
       </Card>
 

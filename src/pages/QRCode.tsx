@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { QrCode, Download, Plus, Copy, Eye, Trash2, MessageCircle, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useQRCodes } from '@/hooks/useSupabaseData';
+import { useQRCodes } from '@/hooks/useQRCodes';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { generateShortUrl, buildWhatsAppUrl, getCurrentDomain } from '@/utils/urlShortener';
@@ -137,8 +136,10 @@ const QRCodePage = () => {
     }
   };
 
+  // Corrigido: deletar apenas o QR code, não o evento
   const handleDeleteQRCode = async (qrCodeId: string) => {
     try {
+      // Deletar apenas o QR code, não o evento
       const { error } = await supabase
         .from('qr_codes')
         .delete()

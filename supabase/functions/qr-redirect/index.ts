@@ -88,7 +88,8 @@ serve(async (req) => {
     // Construir URL de redirecionamento baseada no tipo
     let redirectUrl = '';
     
-    if (qrCode.type === 'whatsapp') {
+    if (qrCode.type === 'whatsapp' || !qrCode.type) {
+      // Para QR codes WhatsApp (incluindo antigos sem type)
       const whatsappNumber = qrCode.event?.whatsapp_number;
       const eventName = qrCode.event?.name || '';
       const trackingId = qrCode.tracking_id || '';
@@ -108,18 +109,37 @@ serve(async (req) => {
       
       console.log('URL WhatsApp construída:', redirectUrl);
     } else {
+      // Para outros tipos, usar URL original
       redirectUrl = qrCode.original_url;
       console.log('URL original:', redirectUrl);
     }
 
     console.log('Redirecionando para:', redirectUrl);
 
-    // Retornar redirecionamento 302 (temporário) para garantir que redirecione imediatamente
-    return new Response(null, { 
-      status: 302,
+    // HTML de redirecionamento imediato com JavaScript
+    const redirectHTML = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>Redirecionando...</title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <script>
+        window.location.href = "${redirectUrl}";
+      </script>
+    </head>
+    <body>
+      <p>Redirecionando... Se não for redirecionado automaticamente, <a href="${redirectUrl}">clique aqui</a>.</p>
+    </body>
+    </html>
+    `;
+
+    // Retornar HTML com redirecionamento automático
+    return new Response(redirectHTML, { 
+      status: 200,
       headers: {
         ...corsHeaders,
-        'Location': redirectUrl,
+        'Content-Type': 'text/html; charset=utf-8',
         'Cache-Control': 'no-cache, no-store, must-revalidate',
         'Pragma': 'no-cache',
         'Expires': '0'
