@@ -226,29 +226,57 @@ export const useMessageHistory = () => {
 };
 
 export const useUpdateSystemSetting = () => {
-  const { toast } = useToast();
   const queryClient = useQueryClient();
-
+  
   return useMutation({
     mutationFn: async ({ key, value }: { key: string; value: any }) => {
-      const { data, error } = await supabase
-        .from('system_settings')
-        .upsert({ key, value })
-        .select()
-        .single();
+      console.log('Salvando configuração:', key, value);
       
-      if (error) throw error;
-      return data;
+      // Primeiro verificar se existe
+      const { data: existing } = await supabase
+        .from('system_settings')
+        .select('*')
+        .eq('key', key)
+        .single();
+
+      let result;
+      
+      if (existing) {
+        // Atualizar
+        result = await supabase
+          .from('system_settings')
+          .update({ 
+            value: typeof value === 'string' ? value : JSON.stringify(value),
+            updated_at: new Date().toISOString()
+          })
+          .eq('key', key)
+          .select()
+          .single();
+      } else {
+        // Inserir
+        result = await supabase
+          .from('system_settings')
+          .insert({ 
+            key, 
+            value: typeof value === 'string' ? value : JSON.stringify(value)
+          })
+          .select()
+          .single();
+      }
+
+      if (result.error) {
+        console.error('Erro ao salvar:', result.error);
+        throw result.error;
+      }
+
+      return result.data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('Configuração salva com sucesso:', data);
       queryClient.invalidateQueries({ queryKey: ['system_settings'] });
     },
-    onError: (error: any) => {
-      toast({
-        title: "Erro",
-        description: error.message || "Erro ao salvar configuração",
-        variant: "destructive",
-      });
+    onError: (error) => {
+      console.error('Erro na mutation:', error);
     }
   });
 };
