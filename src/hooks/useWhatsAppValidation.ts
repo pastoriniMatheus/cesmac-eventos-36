@@ -38,6 +38,7 @@ export const useWhatsAppValidation = () => {
 
       // Gerar ID único para a validação
       const validationId = crypto.randomUUID();
+      console.log('🔄 Iniciando validação WhatsApp com ID:', validationId);
 
       // Chamar a edge function de validação
       const { data, error } = await supabase.functions.invoke('validate-whatsapp', {
@@ -48,29 +49,46 @@ export const useWhatsAppValidation = () => {
       });
 
       if (error) {
+        console.error('❌ Erro na edge function:', error);
         throw new Error(error.message);
       }
 
-      // Aguardar resposta da validação (polling)
+      console.log('✅ Edge function retornou:', data);
+
+      // Aguardar resposta da validação (polling melhorado)
       const pollValidation = async (): Promise<boolean> => {
         let attempts = 0;
-        const maxAttempts = 30; // 30 segundos máximo
+        const maxAttempts = 60; // 60 segundos máximo (aumentado)
+        
+        console.log('🔍 Iniciando polling para validação ID:', validationId);
         
         while (attempts < maxAttempts) {
-          const { data: validation } = await supabase
+          console.log(`📊 Tentativa ${attempts + 1}/${maxAttempts} - Verificando status...`);
+          
+          const { data: validation, error: queryError } = await supabase
             .from('whatsapp_validations')
             .select('*')
             .eq('id', validationId)
             .single();
 
+          if (queryError) {
+            console.error('❌ Erro na consulta:', queryError);
+          } else {
+            console.log('📋 Status atual da validação:', validation);
+          }
+
           if (validation && validation.status !== 'pending') {
+            console.log('🎯 Validação finalizada com status:', validation.status);
+            
             if (validation.status === 'valid') {
               setValidationResult('valid');
               setIsValidating(false);
+              console.log('✅ Número validado com sucesso!');
               return true;
             } else {
               setValidationResult('invalid');
               setIsValidating(false);
+              console.log('❌ Número inválido:', validation.response_message);
               toast({
                 title: "Número inválido",
                 description: validation.response_message || "Número WhatsApp não encontrado ou inválido",
@@ -86,9 +104,10 @@ export const useWhatsAppValidation = () => {
         }
 
         // Timeout
+        console.log('⏰ Timeout na validação após', maxAttempts, 'tentativas');
         toast({
           title: "Timeout na validação",
-          description: "Não foi possível validar o número em tempo hábil",
+          description: "Não foi possível validar o número em tempo hábil. Tente novamente.",
           variant: "destructive",
         });
         setValidationResult('invalid');
@@ -99,7 +118,7 @@ export const useWhatsAppValidation = () => {
       return await pollValidation();
 
     } catch (error: any) {
-      console.error('Erro na validação:', error);
+      console.error('💥 Erro na validação:', error);
       setValidationResult('invalid');
       setIsValidating(false);
       toast({
