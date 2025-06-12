@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
@@ -11,6 +10,7 @@ import DashboardVisibilityMenu, { DashboardVisibility } from '@/components/Dashb
 import ConversionMetrics from '@/components/ConversionMetrics';
 import SessionMetrics from '@/components/SessionMetrics';
 import EventReportGenerator from '@/components/EventReportGenerator';
+import EnrollmentMetrics from '@/components/EnrollmentMetrics';
 
 const Dashboard = () => {
   const { data: leads = [] } = useLeads();
@@ -132,6 +132,12 @@ const Dashboard = () => {
           </Card>
         </div>
       )}
+
+      {/* Enrollment Metrics */}
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight mb-4">Métricas de Matrículas</h2>
+        <EnrollmentMetrics />
+      </div>
 
       {/* Session Tracking Metrics */}
       {visibility.conversion && (
