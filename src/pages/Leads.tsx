@@ -102,10 +102,10 @@ const Leads = () => {
           name: editingLead.name,
           whatsapp: editingLead.whatsapp.replace(/\D/g, ''),
           email: editingLead.email.toLowerCase(),
-          course_id: editingLead.course_id || null,
+          course_id: editingLead.course_id === 'none' ? null : editingLead.course_id,
           event_id: editingLead.event_id || null,
           status_id: editingLead.status_id,
-          shift: editingLead.shift || null
+          shift: editingLead.shift === 'none' ? null : editingLead.shift
         })
         .eq('id', editingLead.id);
 
@@ -164,10 +164,10 @@ const Leads = () => {
   const openEditDialog = (lead: any) => {
     setEditingLead({
       ...lead,
-      course_id: lead.course_id || '',
+      course_id: lead.course_id || 'none',
       event_id: lead.event_id || '',
       status_id: lead.status_id || '',
-      shift: lead.shift || ''
+      shift: lead.shift || 'none'
     });
     setIsEditDialogOpen(true);
   };
@@ -497,7 +497,7 @@ const Leads = () => {
                     <SelectValue placeholder="Selecione um curso" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Nenhum curso</SelectItem>
+                    <SelectItem value="none">Nenhum curso</SelectItem>
                     {courses.map((course: any) => (
                       <SelectItem key={course.id} value={course.id}>{course.name}</SelectItem>
                     ))}
@@ -530,7 +530,7 @@ const Leads = () => {
                     <SelectValue placeholder="Selecione um turno" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Nenhum turno</SelectItem>
+                    <SelectItem value="none">Nenhum turno</SelectItem>
                     <SelectItem value="manhã">Manhã</SelectItem>
                     <SelectItem value="tarde">Tarde</SelectItem>
                     <SelectItem value="noite">Noite</SelectItem>
