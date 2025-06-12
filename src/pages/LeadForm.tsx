@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,7 +12,6 @@ import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { supabase } from '@/integrations/supabase/client';
 import { useWhatsAppValidation } from '@/hooks/useWhatsAppValidation';
 import { Loader2, CheckCircle, XCircle } from 'lucide-react';
-import ThankYouScreen from '@/components/ThankYouScreen';
 
 const LeadForm = () => {
   const { toast } = useToast();
@@ -21,7 +21,6 @@ const LeadForm = () => {
   
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showThankYou, setShowThankYou] = useState(false);
   const [eventName, setEventName] = useState('');
   const [trackingId, setTrackingId] = useState('');
   const [skipValidation, setSkipValidation] = useState(false);
@@ -328,8 +327,10 @@ const LeadForm = () => {
         }
       }
 
-      // Mostrar tela de agradecimento em vez de toast
-      setShowThankYou(true);
+      toast({
+        title: "Sucesso!",
+        description: "Seus dados foram enviados com sucesso. Entraremos em contato em breve!",
+      });
 
       // Reset form
       setFormData({
@@ -356,15 +357,6 @@ const LeadForm = () => {
       setIsSubmitting(false);
     }
   };
-
-  const handleBackToForm = () => {
-    setShowThankYou(false);
-  };
-
-  // Se estiver na tela de agradecimento, mostrar ela
-  if (showThankYou) {
-    return <ThankYouScreen logoUrl={logoUrl} onBack={handleBackToForm} />;
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900 flex items-center justify-center p-3 md:p-6">

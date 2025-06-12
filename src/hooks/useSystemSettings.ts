@@ -71,24 +71,3 @@ export const useUpdateSystemSetting = () => {
     }
   });
 };
-
-// Hook específico para configurações do formulário
-export const useFormSettings = () => {
-  const { data: systemSettings = [] } = useSystemSettings();
-  
-  const getFormSetting = (key: string, defaultValue: string = '') => {
-    const setting = systemSettings.find((s: any) => s.key === key);
-    if (!setting) return defaultValue;
-    
-    try {
-      return typeof setting.value === 'string' ? setting.value : JSON.parse(String(setting.value));
-    } catch {
-      return setting.value || defaultValue;
-    }
-  };
-
-  return {
-    thankYouTitle: getFormSetting('form_thank_you_title', 'Obrigado!'),
-    thankYouMessage: getFormSetting('form_thank_you_message', 'Seus dados foram enviados com sucesso. Entraremos em contato em breve!')
-  };
-};
