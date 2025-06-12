@@ -32,12 +32,22 @@ export const buildQRRedirectUrl = (shortUrl: string): string => {
   return `https://dobtquebpcnzjisftcfh.supabase.co/functions/v1/qr-redirect/${shortUrl}`;
 };
 
-// Função para construir URL do formulário com domínio atual
+// Função para construir URL do formulário com domínio atual - CORRIGIDA
 export const buildFormUrl = (eventName: string, trackingId: string): string => {
   const currentDomain = getCurrentDomain();
-  if (!currentDomain) {
-    // Fallback para URL estática se não conseguir obter o domínio atual
-    return `https://16392f28-253d-4401-9269-5672f0e9ac6a.lovableproject.com/form?event=${encodeURIComponent(eventName)}&tracking=${trackingId}`;
+  
+  // Se não conseguir obter o domínio atual (SSR), usar window.location se disponível
+  if (!currentDomain && typeof window !== 'undefined') {
+    const protocol = window.location.protocol;
+    const host = window.location.host;
+    return `${protocol}//${host}/form?event=${encodeURIComponent(eventName)}&tracking=${trackingId}`;
   }
-  return `${currentDomain}/form?event=${encodeURIComponent(eventName)}&tracking=${trackingId}`;
+  
+  // Se temos o domínio atual, usar ele
+  if (currentDomain) {
+    return `${currentDomain}/form?event=${encodeURIComponent(eventName)}&tracking=${trackingId}`;
+  }
+  
+  // Fallback para URL estática apenas se realmente necessário
+  return `https://16392f28-253d-4401-9269-5672f0e9ac6a.lovableproject.com/form?event=${encodeURIComponent(eventName)}&tracking=${trackingId}`;
 };

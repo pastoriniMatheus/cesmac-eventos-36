@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -63,7 +62,7 @@ serve(async (req) => {
       eventType = 'WhatsApp (legado)';
     }
 
-    // Buscar leads do evento
+    // Buscar leads do evento com verificação adicional de origem
     const { data: leads, error: leadsError } = await supabase
       .from('leads')
       .select(`
@@ -76,6 +75,14 @@ serve(async (req) => {
 
     if (leadsError) {
       console.error('Erro ao buscar leads:', leadsError);
+    }
+
+    // Se não há QR codes mas há leads com source = 'form', considerar como formulário
+    if ((!qrCodes || qrCodes.length === 0) && leads && leads.length > 0) {
+      const formLeads = leads.filter(lead => lead.source === 'form');
+      if (formLeads.length > 0) {
+        eventType = 'Formulário (sem QR Code)';
+      }
     }
 
     // Buscar sessões de scan

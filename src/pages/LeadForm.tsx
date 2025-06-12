@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useCourses } from '@/hooks/useCourses';
+import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { supabase } from '@/integrations/supabase/client';
 import { useWhatsAppValidation } from '@/hooks/useWhatsAppValidation';
 import { Loader2, CheckCircle, XCircle } from 'lucide-react';
@@ -14,6 +15,7 @@ import { Loader2, CheckCircle, XCircle } from 'lucide-react';
 const LeadForm = () => {
   const { toast } = useToast();
   const { data: courses = [] } = useCourses();
+  const { data: systemSettings = [] } = useSystemSettings();
   const { validateWhatsApp, isValidating, validationResult, setValidationResult } = useWhatsAppValidation();
   
   const [currentStep, setCurrentStep] = useState(1);
@@ -28,6 +30,14 @@ const LeadForm = () => {
     whatsapp: '',
     course_id: ''
   });
+
+  // Obter logo do sistema
+  const logoSetting = systemSettings.find((s: any) => s.key === 'logo');
+  const logoUrl = logoSetting ? 
+    (typeof logoSetting.value === 'string' ? 
+      logoSetting.value : 
+      JSON.parse(String(logoSetting.value))
+    ) : '/lovable-uploads/c7eb5d40-5d53-4b46-b5a9-d35d5a784ac7.png';
 
   // Extrair parâmetros da URL
   useEffect(() => {
@@ -351,6 +361,15 @@ const LeadForm = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <Card className="w-full max-w-lg shadow-xl">
         <CardHeader className="text-center pb-6">
+          {/* Logo do sistema */}
+          <div className="flex justify-center mb-4">
+            <img
+              src={logoUrl}
+              alt="Logo"
+              className="h-16 w-auto object-contain"
+            />
+          </div>
+          
           <CardTitle className="text-2xl font-bold text-gray-800">
             {eventName ? `${eventName}` : 'Interesse em nossos cursos?'}
           </CardTitle>
