@@ -63,6 +63,19 @@ serve(async (req) => {
       }
     }
 
+    // Buscar status padrão "pendente"
+    let defaultStatusId = null;
+    const { data: pendingStatus } = await supabase
+      .from('lead_statuses')
+      .select('id')
+      .ilike('name', 'pendente')
+      .limit(1);
+    
+    if (pendingStatus && pendingStatus.length > 0) {
+      defaultStatusId = pendingStatus[0].id;
+      console.log('Status pendente encontrado:', defaultStatusId);
+    }
+
     let scanSessionId = null;
     let eventId = null;
 
@@ -102,7 +115,7 @@ serve(async (req) => {
       }
     }
 
-    // Criar o lead
+    // Criar o lead com status padrão
     const { data: lead, error: leadError } = await supabase
       .from('leads')
       .insert([{
@@ -112,7 +125,8 @@ serve(async (req) => {
         course_id: finalCourseId,
         shift,
         event_id: eventId,
-        scan_session_id: scanSessionId
+        scan_session_id: scanSessionId,
+        status_id: defaultStatusId // Adicionar status padrão
       }])
       .select()
       .single();
@@ -150,7 +164,8 @@ serve(async (req) => {
       lead_id: lead.id,
       course_id: finalCourseId,
       tracking_id,
-      session_linked: !!scanSessionId
+      session_linked: !!scanSessionId,
+      default_status: defaultStatusId
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,

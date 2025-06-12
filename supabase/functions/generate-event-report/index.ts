@@ -8,7 +8,6 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -19,17 +18,10 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    if (req.method !== 'POST') {
-      return new Response('Method not allowed', { 
-        status: 405,
-        headers: corsHeaders 
-      });
-    }
-
     const { event_id } = await req.json();
 
     if (!event_id) {
-      return new Response('Missing event_id', { 
+      return new Response('Event ID is required', { 
         status: 400,
         headers: corsHeaders 
       });
@@ -42,12 +34,33 @@ serve(async (req) => {
       .eq('id', event_id)
       .single();
 
-    if (eventError) {
-      console.error('Erro ao buscar evento:', eventError);
+    if (eventError || !event) {
       return new Response('Event not found', { 
         status: 404,
         headers: corsHeaders 
       });
+    }
+
+    // Buscar QR codes do evento para determinar o tipo
+    const { data: qrCodes, error: qrError } = await supabase
+      .from('qr_codes')
+      .select('type, scans, tracking_id')
+      .eq('event_id', event_id);
+
+    // Determinar tipos de QR codes disponíveis
+    const qrTypes = qrCodes?.map(qr => qr.type || 'whatsapp') || [];
+    const hasWhatsApp = qrTypes.includes('whatsapp');
+    const hasForm = qrTypes.includes('form');
+    
+    let eventType = 'Não definido';
+    if (hasWhatsApp && hasForm) {
+      eventType = 'Híbrido (WhatsApp + Formulário)';
+    } else if (hasWhatsApp) {
+      eventType = 'WhatsApp';
+    } else if (hasForm) {
+      eventType = 'Formulário';
+    } else if (event.whatsapp_number) {
+      eventType = 'WhatsApp (legado)';
     }
 
     // Buscar leads do evento
@@ -63,316 +76,270 @@ serve(async (req) => {
 
     if (leadsError) {
       console.error('Erro ao buscar leads:', leadsError);
-      return new Response('Error fetching leads', { 
-        status: 500,
-        headers: corsHeaders 
-      });
     }
 
-    // Buscar configurações do sistema (para logo)
-    const { data: settings } = await supabase
-      .from('system_settings')
-      .select('*');
+    // Buscar sessões de scan
+    const { data: scanSessions, error: scanError } = await supabase
+      .from('scan_sessions')
+      .select('*')
+      .eq('event_id', event_id);
 
-    const logoUrl = settings?.find(s => s.key === 'company_logo')?.value || '';
-    const companyName = settings?.find(s => s.key === 'company_name')?.value || 'CESMAC';
+    if (scanError) {
+      console.error('Erro ao buscar sessões:', scanError);
+    }
 
-    // Estatísticas
+    // Calcular métricas
     const totalLeads = leads?.length || 0;
-    const leadsByStatus = {};
-    const leadsByCourse = {};
-    const leadsByShift = {};
+    const totalScans = scanSessions?.length || 0;
+    const convertedScans = scanSessions?.filter(s => s.converted)?.length || 0;
+    const conversionRate = totalScans > 0 ? (convertedScans / totalScans) * 100 : 0;
+    const totalQRScans = qrCodes?.reduce((sum, qr) => sum + (qr.scans || 0), 0) || 0;
 
-    leads?.forEach(lead => {
-      // Por status
+    // Agrupar leads por status
+    const leadsByStatus = leads?.reduce((acc: any, lead: any) => {
       const statusName = lead.status?.name || 'Sem status';
-      leadsByStatus[statusName] = (leadsByStatus[statusName] || 0) + 1;
+      acc[statusName] = (acc[statusName] || 0) + 1;
+      return acc;
+    }, {}) || {};
 
-      // Por curso
-      const courseName = lead.course?.name || 'Sem curso';
-      leadsByCourse[courseName] = (leadsByCourse[courseName] || 0) + 1;
+    // Agrupar leads por curso
+    const leadsByCourse = leads?.reduce((acc: any, lead: any) => {
+      const courseName = lead.course?.name || 'Não informado';
+      acc[courseName] = (acc[courseName] || 0) + 1;
+      return acc;
+    }, {}) || {};
 
-      // Por turno
-      const shift = lead.shift || 'Não informado';
-      leadsByShift[shift] = (leadsByShift[shift] || 0) + 1;
-    });
-
-    // Retornar HTML que pode ser usado para gerar PDF no frontend
+    // Gerar HTML do relatório
     const html = `
     <!DOCTYPE html>
-    <html lang="pt-BR">
+    <html>
     <head>
         <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Relatório de Evento - ${event.name}</title>
+        <title>Relatório - ${event.name}</title>
         <style>
-            body {
-                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                margin: 0;
-                padding: 20px;
+            body { 
+                font-family: Arial, sans-serif; 
+                margin: 20px; 
                 color: #333;
                 line-height: 1.6;
             }
-            .header {
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                border-bottom: 3px solid #2563eb;
+            .header { 
+                text-align: center; 
+                margin-bottom: 30px; 
+                border-bottom: 2px solid #2563eb;
                 padding-bottom: 20px;
-                margin-bottom: 30px;
             }
-            .logo {
-                max-height: 60px;
-                max-width: 200px;
+            .metrics { 
+                display: grid; 
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+                gap: 15px; 
+                margin-bottom: 30px; 
             }
-            .company-info {
-                text-align: right;
-            }
-            .company-name {
-                font-size: 24px;
-                font-weight: bold;
-                color: #2563eb;
-                margin: 0;
-            }
-            .report-date {
-                color: #666;
-                font-size: 14px;
-            }
-            .title {
-                color: #2563eb;
-                font-size: 28px;
-                font-weight: bold;
-                text-align: center;
-                margin: 30px 0;
-            }
-            .event-info {
-                background: #f8fafc;
-                padding: 20px;
-                border-radius: 8px;
-                margin-bottom: 30px;
+            .metric-card { 
+                background: #f8fafc; 
+                padding: 15px; 
+                border-radius: 8px; 
                 border-left: 4px solid #2563eb;
-            }
-            .stats-grid {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                gap: 20px;
-                margin: 30px 0;
-            }
-            .stat-card {
-                background: white;
-                padding: 20px;
-                border-radius: 8px;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
                 text-align: center;
-                border-top: 3px solid #2563eb;
             }
-            .stat-number {
-                font-size: 36px;
-                font-weight: bold;
-                color: #2563eb;
-                margin: 10px 0;
+            .metric-value { 
+                font-size: 24px; 
+                font-weight: bold; 
+                color: #2563eb; 
             }
-            .stat-label {
-                color: #666;
-                font-size: 14px;
-                text-transform: uppercase;
-                letter-spacing: 1px;
+            .metric-label { 
+                font-size: 12px; 
+                color: #64748b; 
+                margin-top: 5px;
             }
-            .section {
-                margin: 40px 0;
+            .section { 
+                margin-bottom: 30px; 
             }
-            .section-title {
-                font-size: 20px;
-                font-weight: bold;
-                color: #1e40af;
-                margin-bottom: 20px;
-                border-bottom: 2px solid #e5e7eb;
+            .section h3 { 
+                color: #1e40af; 
+                border-bottom: 1px solid #e2e8f0;
                 padding-bottom: 10px;
             }
-            .table {
-                width: 100%;
-                border-collapse: collapse;
-                margin: 20px 0;
+            table { 
+                width: 100%; 
+                border-collapse: collapse; 
+                margin-top: 15px;
                 background: white;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                border-radius: 8px;
-                overflow: hidden;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
             }
-            .table th {
-                background: #2563eb;
-                color: white;
-                padding: 15px;
-                text-align: left;
-                font-weight: 600;
+            th, td { 
+                padding: 12px; 
+                text-align: left; 
+                border-bottom: 1px solid #e2e8f0; 
             }
-            .table td {
-                padding: 12px 15px;
-                border-bottom: 1px solid #e5e7eb;
+            th { 
+                background-color: #f1f5f9; 
+                font-weight: bold;
+                color: #475569;
             }
-            .table tr:hover {
-                background: #f8fafc;
+            tr:hover { 
+                background-color: #f8fafc; 
             }
             .status-badge {
-                padding: 4px 12px;
-                border-radius: 20px;
+                padding: 4px 8px;
+                border-radius: 4px;
                 font-size: 12px;
-                font-weight: 600;
-                text-transform: uppercase;
+                font-weight: bold;
             }
-            .footer {
-                margin-top: 50px;
-                text-align: center;
-                color: #666;
-                font-size: 12px;
-                border-top: 1px solid #e5e7eb;
-                padding-top: 20px;
-            }
-            .breakdown {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-                gap: 20px;
-                margin: 20px 0;
-            }
-            .breakdown-card {
-                background: white;
+            .event-info {
+                background: #f0f9ff;
                 padding: 20px;
                 border-radius: 8px;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                margin-bottom: 20px;
+                border: 1px solid #0ea5e9;
             }
-            .breakdown-title {
-                font-weight: bold;
-                color: #1e40af;
-                margin-bottom: 15px;
-            }
-            .breakdown-item {
-                display: flex;
-                justify-content: space-between;
-                padding: 8px 0;
-                border-bottom: 1px solid #f1f5f9;
-            }
-            .breakdown-item:last-child {
-                border-bottom: none;
+            .qr-info {
+                background: #fefce8;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+                border: 1px solid #eab308;
             }
             @media print {
                 body { margin: 0; }
-                .header { page-break-inside: avoid; }
-                .stats-grid { page-break-inside: avoid; }
-                .breakdown { page-break-inside: avoid; }
+                .metric-card { break-inside: avoid; }
+                table { break-inside: avoid; }
             }
         </style>
     </head>
     <body>
         <div class="header">
-            <div>
-                ${logoUrl ? `<img src="${logoUrl}" alt="Logo" class="logo">` : ''}
-            </div>
-            <div class="company-info">
-                <h1 class="company-name">${companyName}</h1>
-                <div class="report-date">Relatório gerado em ${new Date().toLocaleDateString('pt-BR', { 
-                  weekday: 'long', 
-                  year: 'numeric', 
-                  month: 'long', 
-                  day: 'numeric' 
-                })}</div>
-            </div>
+            <h1>Relatório do Evento</h1>
+            <h2>${event.name}</h2>
+            <p>Gerado em: ${new Date().toLocaleDateString('pt-BR', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            })}</p>
         </div>
-
-        <h1 class="title">Relatório de Leads por Evento</h1>
 
         <div class="event-info">
-            <h2 style="margin: 0 0 10px 0; color: #1e40af;">📅 ${event.name}</h2>
-            <p style="margin: 5px 0;"><strong>WhatsApp:</strong> ${event.whatsapp_number}</p>
-            <p style="margin: 5px 0;"><strong>Criado em:</strong> ${new Date(event.created_at).toLocaleDateString('pt-BR')}</p>
+            <h3>📋 Informações do Evento</h3>
+            <p><strong>Tipo de Evento:</strong> ${eventType}</p>
+            <p><strong>Data de Criação:</strong> ${new Date(event.created_at).toLocaleDateString('pt-BR')}</p>
+            ${event.whatsapp_number ? `<p><strong>WhatsApp:</strong> ${event.whatsapp_number}</p>` : ''}
+            <p><strong>Total de QR Codes:</strong> ${qrCodes?.length || 0}</p>
         </div>
 
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-number">${totalLeads}</div>
-                <div class="stat-label">Total de Leads</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number">${Object.keys(leadsByCourse).length}</div>
-                <div class="stat-label">Cursos de Interesse</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number">${Object.keys(leadsByStatus).length}</div>
-                <div class="stat-label">Status Diferentes</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number">${Object.keys(leadsByShift).length}</div>
-                <div class="stat-label">Turnos</div>
+        ${qrCodes && qrCodes.length > 0 ? `
+        <div class="qr-info">
+            <h3>📱 QR Codes do Evento</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 10px;">
+                ${qrCodes.map(qr => `
+                    <div style="background: white; padding: 10px; border-radius: 4px; border: 1px solid #d1d5db;">
+                        <strong>Tipo:</strong> ${qr.type === 'form' ? 'Formulário' : 'WhatsApp'}<br>
+                        <strong>ID:</strong> ${qr.tracking_id}<br>
+                        <strong>Scans:</strong> ${qr.scans || 0}
+                    </div>
+                `).join('')}
             </div>
         </div>
+        ` : ''}
 
-        <div class="breakdown">
-            <div class="breakdown-card">
-                <div class="breakdown-title">📊 Leads por Status</div>
-                ${Object.entries(leadsByStatus).map(([status, count]) => 
-                  `<div class="breakdown-item">
-                    <span>${status}</span>
-                    <span style="font-weight: bold;">${count}</span>
-                  </div>`
-                ).join('')}
+        <div class="metrics">
+            <div class="metric-card">
+                <div class="metric-value">${totalLeads}</div>
+                <div class="metric-label">Total de Leads</div>
             </div>
-
-            <div class="breakdown-card">
-                <div class="breakdown-title">🎓 Leads por Curso</div>
-                ${Object.entries(leadsByCourse).map(([course, count]) => 
-                  `<div class="breakdown-item">
-                    <span>${course}</span>
-                    <span style="font-weight: bold;">${count}</span>
-                  </div>`
-                ).join('')}
+            <div class="metric-card">
+                <div class="metric-value">${totalQRScans}</div>
+                <div class="metric-label">Total de Scans QR</div>
             </div>
-
-            <div class="breakdown-card">
-                <div class="breakdown-title">🕒 Leads por Turno</div>
-                ${Object.entries(leadsByShift).map(([shift, count]) => 
-                  `<div class="breakdown-item">
-                    <span>${shift}</span>
-                    <span style="font-weight: bold;">${count}</span>
-                  </div>`
-                ).join('')}
+            <div class="metric-card">
+                <div class="metric-value">${totalScans}</div>
+                <div class="metric-label">Sessões de Scan</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">${convertedScans}</div>
+                <div class="metric-label">Conversões</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">${conversionRate.toFixed(1)}%</div>
+                <div class="metric-label">Taxa de Conversão</div>
             </div>
         </div>
 
         <div class="section">
-            <h2 class="section-title">📋 Lista Detalhada de Leads</h2>
-            <table class="table">
+            <h3>📊 Leads por Status</h3>
+            <table>
                 <thead>
                     <tr>
-                        <th>Nome</th>
-                        <th>E-mail</th>
-                        <th>WhatsApp</th>
-                        <th>Curso</th>
                         <th>Status</th>
-                        <th>Turno</th>
-                        <th>Data</th>
+                        <th>Quantidade</th>
+                        <th>Percentual</th>
                     </tr>
                 </thead>
                 <tbody>
-                    ${leads?.map(lead => `
+                    ${Object.entries(leadsByStatus).map(([status, count]: [string, any]) => `
                         <tr>
-                            <td><strong>${lead.name}</strong></td>
-                            <td>${lead.email}</td>
-                            <td>${lead.whatsapp}</td>
-                            <td>${lead.course?.name || '-'}</td>
-                            <td>
-                                <span class="status-badge" style="background-color: ${lead.status?.color || '#64748b'}20; color: ${lead.status?.color || '#64748b'};">
-                                    ${lead.status?.name || 'Sem status'}
-                                </span>
-                            </td>
-                            <td>${lead.shift || '-'}</td>
-                            <td>${new Date(lead.created_at).toLocaleDateString('pt-BR')}</td>
+                            <td>${status}</td>
+                            <td>${count}</td>
+                            <td>${((count / totalLeads) * 100).toFixed(1)}%</td>
                         </tr>
-                    `).join('') || '<tr><td colspan="7" style="text-align: center; color: #666;">Nenhum lead encontrado para este evento</td></tr>'}
+                    `).join('')}
                 </tbody>
             </table>
         </div>
 
-        <div class="footer">
-            <p>Relatório gerado automaticamente pelo sistema ${companyName}</p>
-            <p>Data de geração: ${new Date().toLocaleString('pt-BR')}</p>
+        <div class="section">
+            <h3>🎓 Leads por Curso</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Curso</th>
+                        <th>Quantidade</th>
+                        <th>Percentual</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${Object.entries(leadsByCourse).map(([course, count]: [string, any]) => `
+                        <tr>
+                            <td>${course}</td>
+                            <td>${count}</td>
+                            <td>${((count / totalLeads) * 100).toFixed(1)}%</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="section">
+            <h3>👥 Lista de Leads</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Email</th>
+                        <th>WhatsApp</th>
+                        <th>Curso</th>
+                        <th>Status</th>
+                        <th>Data</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${leads?.map((lead: any) => `
+                        <tr>
+                            <td>${lead.name}</td>
+                            <td>${lead.email}</td>
+                            <td>${lead.whatsapp}</td>
+                            <td>${lead.course?.name || 'N/A'}</td>
+                            <td>
+                                <span class="status-badge" style="background-color: ${lead.status?.color || '#6b7280'}20; color: ${lead.status?.color || '#6b7280'};">
+                                    ${lead.status?.name || 'Sem status'}
+                                </span>
+                            </td>
+                            <td>${new Date(lead.created_at).toLocaleDateString('pt-BR')}</td>
+                        </tr>
+                    `).join('') || '<tr><td colspan="6">Nenhum lead encontrado</td></tr>'}
+                </tbody>
+            </table>
         </div>
     </body>
     </html>
@@ -386,7 +353,7 @@ serve(async (req) => {
     });
 
   } catch (error) {
-    console.error('Erro no endpoint:', error);
+    console.error('Erro ao gerar relatório:', error);
     return new Response('Internal Server Error', { 
       status: 500,
       headers: corsHeaders 

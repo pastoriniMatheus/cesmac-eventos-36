@@ -42,8 +42,69 @@ const LeadForm = () => {
       setTrackingId(tracking);
       sessionStorage.setItem('form_tracking_id', tracking);
       sessionStorage.setItem('form_event_name', event || '');
+      
+      // Registrar scan para QR codes de formulário
+      registerFormScan(tracking);
     }
   }, []);
+
+  // Função para registrar scan de formulário
+  const registerFormScan = async (trackingId: string) => {
+    try {
+      console.log('🔍 Registrando scan de formulário para tracking ID:', trackingId);
+      
+      // Buscar QR Code pelo tracking_id
+      const { data: qrCode, error: qrError } = await supabase
+        .from('qr_codes')
+        .select('id, event_id, scans')
+        .eq('tracking_id', trackingId)
+        .eq('type', 'form') // Apenas para QR codes de formulário
+        .single();
+
+      if (qrError) {
+        console.log('❌ QR Code não encontrado:', qrError);
+        return;
+      }
+
+      if (qrCode) {
+        console.log('✅ QR Code encontrado:', qrCode);
+        
+        // Incrementar contador de scans
+        const { error: updateError } = await supabase
+          .from('qr_codes')
+          .update({ scans: (qrCode.scans || 0) + 1 })
+          .eq('id', qrCode.id);
+
+        if (updateError) {
+          console.error('❌ Erro ao incrementar scans:', updateError);
+        } else {
+          console.log('✅ Contador de scans incrementado');
+        }
+
+        // Criar sessão de scan
+        const sessionId = crypto.randomUUID();
+        const { error: sessionError } = await supabase
+          .from('scan_sessions')
+          .insert({
+            id: sessionId,
+            qr_code_id: qrCode.id,
+            event_id: qrCode.event_id,
+            scanned_at: new Date().toISOString(),
+            user_agent: navigator.userAgent,
+            ip_address: 'form_access'
+          });
+
+        if (sessionError) {
+          console.error('❌ Erro ao criar sessão de scan:', sessionError);
+        } else {
+          console.log('✅ Sessão de scan criada:', sessionId);
+          sessionStorage.setItem('scan_session_id', sessionId);
+        }
+      }
+    } catch (error) {
+      console.error('💥 Erro ao registrar scan de formulário:', error);
+    }
+  };
 
   // Verificar se webhook está configurado no carregamento
   useEffect(() => {
@@ -163,13 +224,26 @@ const LeadForm = () => {
         }
       }
 
+      // Buscar status padrão "pendente"
+      let defaultStatusId = null;
+      const { data: pendingStatus } = await supabase
+        .from('lead_statuses')
+        .select('id')
+        .ilike('name', 'pendente')
+        .limit(1);
+      
+      if (pendingStatus && pendingStatus.length > 0) {
+        defaultStatusId = pendingStatus[0].id;
+      }
+
       const leadData = {
         name: formData.name,
         email: formData.email,
         whatsapp: formData.whatsapp.replace(/\D/g, ''),
         course_id: formData.course_id,
         event_id: eventId,
-        source: 'form'
+        source: 'form',
+        status_id: defaultStatusId // Adicionar status padrão
       };
 
       const { data: lead, error: leadError } = await supabase
@@ -182,40 +256,63 @@ const LeadForm = () => {
 
       // Se há tracking ID, criar/atualizar sessão de scan
       if (trackingId) {
-        const { data: qrCodes } = await supabase
-          .from('qr_codes')
-          .select('id, event_id')
-          .eq('tracking_id', trackingId)
-          .limit(1);
-
-        if (qrCodes && qrCodes.length > 0) {
-          const qrCode = qrCodes[0];
-          const sessionId = sessionStorage.getItem('scan_session_id') || crypto.randomUUID();
-          
+        const scanSessionId = sessionStorage.getItem('scan_session_id');
+        
+        if (scanSessionId) {
+          // Atualizar sessão existente como convertida
           const { error: sessionError } = await supabase
             .from('scan_sessions')
-            .upsert({
-              id: sessionId,
-              qr_code_id: qrCode.id,
-              event_id: qrCode.event_id,
-              scanned_at: new Date().toISOString(),
+            .update({
               converted: true,
               converted_at: new Date().toISOString(),
-              lead_id: lead.id,
-              user_agent: navigator.userAgent,
-              ip_address: 'form_submission'
-            });
+              lead_id: lead.id
+            })
+            .eq('id', scanSessionId);
 
           if (sessionError) {
-            console.error('Erro ao registrar sessão:', sessionError);
+            console.error('Erro ao atualizar sessão:', sessionError);
+          } else {
+            console.log('✅ Sessão de scan atualizada como convertida');
           }
 
+          // Vincular lead à sessão
           await supabase
             .from('leads')
-            .update({ scan_session_id: sessionId })
+            .update({ scan_session_id: scanSessionId })
             .eq('id', lead.id);
+        } else {
+          // Fallback: buscar QR code e criar sessão retroativamente
+          const { data: qrCodes } = await supabase
+            .from('qr_codes')
+            .select('id, event_id')
+            .eq('tracking_id', trackingId)
+            .limit(1);
 
-          sessionStorage.setItem('scan_session_id', sessionId);
+          if (qrCodes && qrCodes.length > 0) {
+            const qrCode = qrCodes[0];
+            const newSessionId = crypto.randomUUID();
+            
+            const { error: sessionError } = await supabase
+              .from('scan_sessions')
+              .insert({
+                id: newSessionId,
+                qr_code_id: qrCode.id,
+                event_id: qrCode.event_id,
+                scanned_at: new Date().toISOString(),
+                converted: true,
+                converted_at: new Date().toISOString(),
+                lead_id: lead.id,
+                user_agent: navigator.userAgent,
+                ip_address: 'form_submission'
+              });
+
+            if (!sessionError) {
+              await supabase
+                .from('leads')
+                .update({ scan_session_id: newSessionId })
+                .eq('id', lead.id);
+            }
+          }
         }
       }
 
