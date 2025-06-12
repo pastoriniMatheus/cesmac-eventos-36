@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -358,216 +359,243 @@ const LeadForm = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <Card className="w-full max-w-lg shadow-xl">
-        <CardHeader className="text-center pb-6">
-          {/* Logo do sistema */}
-          <div className="flex justify-center mb-4">
-            <img
-              src={logoUrl}
-              alt="Logo"
-              className="h-16 w-auto object-contain"
-            />
-          </div>
-          
-          <CardTitle className="text-2xl font-bold text-gray-800">
-            {eventName ? `${eventName}` : 'Interesse em nossos cursos?'}
-          </CardTitle>
-          <CardDescription className="text-gray-600">
-            Preencha os dados abaixo e entraremos em contato
-          </CardDescription>
-          {trackingId && (
-            <div className="text-xs text-muted-foreground mt-2">
-              ID: {trackingId}
-            </div>
-          )}
-          {skipValidation && (
-            <div className="text-xs text-yellow-600 mt-2">
-              Validação WhatsApp não configurada
-            </div>
-          )}
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Step 1: WhatsApp com validação */}
-          {currentStep === 1 && (
-            <div className="space-y-4">
-              <div className="text-center mb-4">
-                <div className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center mx-auto mb-2">
-                  1
-                </div>
-                <h3 className="font-semibold">Seu WhatsApp</h3>
+    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900 flex items-center justify-center p-3 md:p-6">
+      <div className="w-full max-w-md mx-auto">
+        <Card className="shadow-2xl border-0 bg-white/95 backdrop-blur-sm">
+          <CardHeader className="text-center pb-6 pt-8 px-6">
+            {/* Logo do sistema */}
+            <div className="flex justify-center mb-6">
+              <div className="bg-white rounded-full p-3 shadow-lg">
+                <img
+                  src={logoUrl}
+                  alt="Logo CESMAC"
+                  className="h-16 w-auto object-contain"
+                />
               </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="whatsapp">WhatsApp *</Label>
-                <div className="relative">
-                  <Input
-                    id="whatsapp"
-                    type="tel"
-                    placeholder="(11) 99999-9999"
-                    value={formData.whatsapp}
-                    onChange={handleWhatsAppChange}
-                    maxLength={15}
-                    className={`${!validateWhatsAppFormat(formData.whatsapp) && formData.whatsapp ? 'border-red-500' : ''} ${validationResult === 'valid' ? 'border-green-500' : ''}`}
-                    disabled={isValidating}
-                  />
-                  {/* Ícones de status de validação */}
-                  {!skipValidation && validationResult === 'valid' && (
-                    <CheckCircle className="absolute right-3 top-3 h-4 w-4 text-green-600" />
-                  )}
-                  {!skipValidation && validationResult === 'invalid' && (
-                    <XCircle className="absolute right-3 top-3 h-4 w-4 text-red-600" />
+            </div>
+            
+            <CardTitle className="text-2xl md:text-3xl font-bold text-blue-900 mb-2">
+              {eventName ? `${eventName}` : 'Interesse em nossos cursos?'}
+            </CardTitle>
+            <CardDescription className="text-gray-700 text-base">
+              Preencha os dados abaixo e entraremos em contato
+            </CardDescription>
+            {trackingId && (
+              <div className="text-xs text-blue-600 mt-2 bg-blue-50 rounded-full px-3 py-1 inline-block">
+                ID: {trackingId}
+              </div>
+            )}
+            {skipValidation && (
+              <div className="text-xs text-amber-600 mt-2 bg-amber-50 rounded-full px-3 py-1">
+                Validação WhatsApp não configurada
+              </div>
+            )}
+          </CardHeader>
+          
+          <CardContent className="space-y-6 px-6 pb-8">
+            {/* Step 1: WhatsApp com validação */}
+            {currentStep === 1 && (
+              <div className="space-y-6">
+                <div className="text-center mb-6">
+                  <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg">
+                    <span className="text-lg font-bold">1</span>
+                  </div>
+                  <h3 className="font-semibold text-lg text-blue-900">Seu WhatsApp</h3>
+                  <p className="text-sm text-gray-600 mt-1">Vamos verificar seu número</p>
+                </div>
+                
+                <div className="space-y-3">
+                  <Label htmlFor="whatsapp" className="text-blue-900 font-medium">WhatsApp *</Label>
+                  <div className="relative">
+                    <Input
+                      id="whatsapp"
+                      type="tel"
+                      placeholder="(11) 99999-9999"
+                      value={formData.whatsapp}
+                      onChange={handleWhatsAppChange}
+                      maxLength={15}
+                      className={`h-12 text-lg border-2 transition-all duration-200 ${
+                        !validateWhatsAppFormat(formData.whatsapp) && formData.whatsapp 
+                          ? 'border-red-400 focus:border-red-500' 
+                          : validationResult === 'valid'
+                          ? 'border-green-400 focus:border-green-500'
+                          : 'border-blue-200 focus:border-blue-500'
+                      }`}
+                      disabled={isValidating}
+                    />
+                    {/* Ícones de status de validação */}
+                    {!skipValidation && validationResult === 'valid' && (
+                      <CheckCircle className="absolute right-3 top-3 h-6 w-6 text-green-600" />
+                    )}
+                    {!skipValidation && validationResult === 'invalid' && (
+                      <XCircle className="absolute right-3 top-3 h-6 w-6 text-red-600" />
+                    )}
+                    {isValidating && (
+                      <Loader2 className="absolute right-3 top-3 h-6 w-6 animate-spin text-blue-600" />
+                    )}
+                  </div>
+                  
+                  {/* Mensagens de status */}
+                  {!validateWhatsAppFormat(formData.whatsapp) && formData.whatsapp && (
+                    <p className="text-sm text-red-600 bg-red-50 p-2 rounded">Formato inválido</p>
                   )}
                   {isValidating && (
-                    <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-blue-600" />
+                    <p className="text-sm text-blue-600 bg-blue-50 p-2 rounded">Verificando número...</p>
+                  )}
+                  {!skipValidation && validationResult === 'valid' && (
+                    <p className="text-sm text-green-600 bg-green-50 p-2 rounded">Número verificado ✓</p>
+                  )}
+                  {!skipValidation && validationResult === 'invalid' && (
+                    <p className="text-sm text-red-600 bg-red-50 p-2 rounded">Número não encontrado ou inválido</p>
+                  )}
+                  {skipValidation && (
+                    <p className="text-sm text-amber-600 bg-amber-50 p-2 rounded">Validação não está configurada</p>
                   )}
                 </div>
                 
-                {/* Mensagens de status */}
-                {!validateWhatsAppFormat(formData.whatsapp) && formData.whatsapp && (
-                  <p className="text-sm text-red-500">Formato inválido</p>
-                )}
-                {isValidating && (
-                  <p className="text-sm text-blue-600">Verificando número...</p>
-                )}
-                {!skipValidation && validationResult === 'valid' && (
-                  <p className="text-sm text-green-600">Número verificado ✓</p>
-                )}
-                {!skipValidation && validationResult === 'invalid' && (
-                  <p className="text-sm text-red-500">Número não encontrado ou inválido</p>
-                )}
-                {skipValidation && (
-                  <p className="text-sm text-yellow-600">Validação não está configurada</p>
-                )}
-              </div>
-              
-              <Button
-                onClick={handleNext}
-                className="w-full"
-                disabled={!validateWhatsAppFormat(formData.whatsapp) || isValidating}
-              >
-                {isValidating ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Verificando...
-                  </>
-                ) : (
-                  'Próximo'
-                )}
-              </Button>
-            </div>
-          )}
-
-          {/* Step 2: Personal Info */}
-          {currentStep === 2 && (
-            <div className="space-y-4">
-              <div className="text-center mb-4">
-                <div className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center mx-auto mb-2">
-                  2
-                </div>
-                <h3 className="font-semibold">Seus dados</h3>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="name">Nome completo *</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Seu nome completo"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="email">Email *</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  placeholder="seu@email.com"
-                />
-              </div>
-              
-              <div className="flex space-x-2">
-                <Button
-                  variant="outline"
-                  onClick={() => setCurrentStep(1)}
-                  className="flex-1"
-                >
-                  Voltar
-                </Button>
                 <Button
                   onClick={handleNext}
-                  className="flex-1"
-                  disabled={!formData.name || !formData.email}
+                  className="w-full h-12 text-lg font-semibold bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-lg"
+                  disabled={!validateWhatsAppFormat(formData.whatsapp) || isValidating}
                 >
-                  Próximo
+                  {isValidating ? (
+                    <>
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      Verificando...
+                    </>
+                  ) : (
+                    'Próximo'
+                  )}
                 </Button>
               </div>
-            </div>
-          )}
+            )}
 
-          {currentStep === 3 && (
-            <div className="space-y-4">
-              <div className="text-center mb-4">
-                <div className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center mx-auto mb-2">
-                  3
+            {/* Step 2: Personal Info */}
+            {currentStep === 2 && (
+              <div className="space-y-6">
+                <div className="text-center mb-6">
+                  <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg">
+                    <span className="text-lg font-bold">2</span>
+                  </div>
+                  <h3 className="font-semibold text-lg text-blue-900">Seus dados</h3>
+                  <p className="text-sm text-gray-600 mt-1">Precisamos saber mais sobre você</p>
                 </div>
-                <h3 className="font-semibold">Interesse</h3>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="course">Curso de interesse *</Label>
-                <Select
-                  value={formData.course_id}
-                  onValueChange={(value) => setFormData({ ...formData, course_id: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione um curso" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {courses.map((course: any) => (
-                      <SelectItem key={course.id} value={course.id}>
-                        {course.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name" className="text-blue-900 font-medium">Nome completo *</Label>
+                    <Input
+                      id="name"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      placeholder="Seu nome completo"
+                      className="h-12 text-lg border-2 border-blue-200 focus:border-blue-500"
+                    />
+                  </div>
 
-              <div className="flex space-x-2">
-                <Button
-                  variant="outline"
-                  onClick={() => setCurrentStep(2)}
-                  className="flex-1"
-                >
-                  Voltar
-                </Button>
-                <Button
-                  onClick={handleSubmit}
-                  className="flex-1"
-                  disabled={isSubmitting || !formData.course_id}
-                >
-                  {isSubmitting ? 'Enviando...' : 'Enviar'}
-                </Button>
+                  <div className="space-y-2">
+                    <Label htmlFor="email" className="text-blue-900 font-medium">Email *</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      placeholder="seu@email.com"
+                      className="h-12 text-lg border-2 border-blue-200 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+                
+                <div className="flex space-x-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => setCurrentStep(1)}
+                    className="flex-1 h-12 text-lg border-2 border-blue-200 text-blue-700 hover:bg-blue-50"
+                  >
+                    Voltar
+                  </Button>
+                  <Button
+                    onClick={handleNext}
+                    className="flex-1 h-12 text-lg font-semibold bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-lg"
+                    disabled={!formData.name || !formData.email}
+                  >
+                    Próximo
+                  </Button>
+                </div>
               </div>
+            )}
+
+            {currentStep === 3 && (
+              <div className="space-y-6">
+                <div className="text-center mb-6">
+                  <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg">
+                    <span className="text-lg font-bold">3</span>
+                  </div>
+                  <h3 className="font-semibold text-lg text-blue-900">Interesse</h3>
+                  <p className="text-sm text-gray-600 mt-1">Qual curso desperta seu interesse?</p>
+                </div>
+                
+                <div className="space-y-3">
+                  <Label htmlFor="course" className="text-blue-900 font-medium">Curso de interesse *</Label>
+                  <Select
+                    value={formData.course_id}
+                    onValueChange={(value) => setFormData({ ...formData, course_id: value })}
+                  >
+                    <SelectTrigger className="h-12 text-lg border-2 border-blue-200 focus:border-blue-500">
+                      <SelectValue placeholder="Selecione um curso" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {courses.map((course: any) => (
+                        <SelectItem key={course.id} value={course.id} className="text-lg py-3">
+                          {course.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex space-x-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => setCurrentStep(2)}
+                    className="flex-1 h-12 text-lg border-2 border-blue-200 text-blue-700 hover:bg-blue-50"
+                  >
+                    Voltar
+                  </Button>
+                  <Button
+                    onClick={handleSubmit}
+                    className="flex-1 h-12 text-lg font-semibold bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 shadow-lg"
+                    disabled={isSubmitting || !formData.course_id}
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                        Enviando...
+                      </>
+                    ) : (
+                      'Enviar'
+                    )}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Progress indicator */}
+            <div className="flex justify-center space-x-3 pt-6">
+              {[1, 2, 3].map((step) => (
+                <div
+                  key={step}
+                  className={`w-3 h-3 rounded-full transition-all duration-300 ${
+                    step <= currentStep 
+                      ? 'bg-gradient-to-r from-blue-600 to-blue-700 shadow-md' 
+                      : 'bg-gray-300'
+                  }`}
+                />
+              ))}
             </div>
-          )}
-
-          {/* Progress indicator */}
-          <div className="flex justify-center space-x-2 pt-4">
-            {[1, 2, 3].map((step) => (
-              <div
-                key={step}
-                className={`w-2 h-2 rounded-full ${
-                  step <= currentStep ? 'bg-blue-600' : 'bg-gray-300'
-                }`}
-              />
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };

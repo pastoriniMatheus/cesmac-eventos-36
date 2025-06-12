@@ -2,7 +2,7 @@
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { GraduationCap, Users, Target, TrendingUp } from 'lucide-react';
+import { GraduationCap, Target, TrendingUp } from 'lucide-react';
 import { useEnrollmentMetrics } from '@/hooks/useEnrollmentMetrics';
 
 const EnrollmentMetrics = () => {
@@ -11,8 +11,8 @@ const EnrollmentMetrics = () => {
   if (isLoading || !metrics) {
     return (
       <div className="space-y-6">
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {[1, 2, 3, 4].map((i) => (
+        <div className="grid gap-4 md:grid-cols-3">
+          {[1, 2, 3].map((i) => (
             <Card key={i}>
               <CardContent className="p-6">
                 <div className="animate-pulse bg-muted h-4 rounded w-3/4 mb-2"></div>
@@ -27,21 +27,8 @@ const EnrollmentMetrics = () => {
 
   return (
     <div className="space-y-6">
-      {/* Métricas Gerais de Matriculados */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Leads</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{metrics.totalLeads}</div>
-            <p className="text-xs text-muted-foreground">
-              Leads capturados
-            </p>
-          </CardContent>
-        </Card>
-
+      {/* Métricas Resumidas de Matriculados */}
+      <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Matriculados</CardTitle>
@@ -82,51 +69,70 @@ const EnrollmentMetrics = () => {
         </Card>
       </div>
 
-      {/* Matriculados por Evento */}
+      {/* Lista Completa de Matrículas por Evento */}
       <Card>
         <CardHeader>
           <CardTitle>Matrículas por Evento</CardTitle>
           <CardDescription>
-            Performance de matrículas por evento
+            Performance detalhada de matrículas por evento
           </CardDescription>
         </CardHeader>
         <CardContent>
           {metrics.enrollmentByEvent.length > 0 ? (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {metrics.enrollmentByEvent.map((event) => (
-                <div key={event.eventId} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium">{event.eventName}</span>
-                      <div className="flex items-center space-x-2">
-                        <Badge variant="secondary">
-                          {event.enrolledCount}/{event.totalLeads}
-                        </Badge>
-                        <Badge 
-                          variant={event.enrollmentRate >= 50 ? "default" : event.enrollmentRate >= 25 ? "secondary" : "destructive"}
-                        >
-                          {event.enrollmentRate.toFixed(1)}%
-                        </Badge>
-                      </div>
+                <div key={event.eventId} className="border rounded-lg p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold text-lg">{event.eventName}</h3>
+                    <div className="flex items-center space-x-2">
+                      <Badge variant="outline" className="text-sm">
+                        {event.enrolledCount}/{event.totalLeads} leads
+                      </Badge>
+                      <Badge 
+                        variant={event.enrollmentRate >= 50 ? "default" : event.enrollmentRate >= 25 ? "secondary" : "destructive"}
+                        className="text-sm font-medium"
+                      >
+                        {event.enrollmentRate.toFixed(1)}%
+                      </Badge>
                     </div>
-                    <div className="mt-2 w-full bg-muted rounded-full h-2">
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm text-muted-foreground">
+                      <span>Progresso de matrículas</span>
+                      <span>{event.enrolledCount} de {event.totalLeads}</span>
+                    </div>
+                    <div className="w-full bg-muted rounded-full h-3">
                       <div 
-                        className="bg-primary h-2 rounded-full transition-all duration-300" 
+                        className="bg-primary h-3 rounded-full transition-all duration-500 ease-out" 
                         style={{ width: `${Math.min(event.enrollmentRate, 100)}%` }}
                       />
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {event.enrolledCount} matriculados de {event.totalLeads} leads
-                    </p>
+                  </div>
+                  
+                  <div className="grid grid-cols-3 gap-4 pt-2 border-t">
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-primary">{event.totalLeads}</div>
+                      <div className="text-xs text-muted-foreground">Total Leads</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-green-600">{event.enrolledCount}</div>
+                      <div className="text-xs text-muted-foreground">Matriculados</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-orange-600">{event.totalLeads - event.enrolledCount}</div>
+                      <div className="text-xs text-muted-foreground">Pendentes</div>
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="text-center py-8">
-              <GraduationCap className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <div className="text-center py-12">
+              <GraduationCap className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-medium mb-2">Nenhuma matrícula registrada</h3>
               <p className="text-muted-foreground">
-                Nenhuma matrícula registrada ainda.
+                Quando houver matrículas, elas aparecerão aqui organizadas por evento.
               </p>
             </div>
           )}
