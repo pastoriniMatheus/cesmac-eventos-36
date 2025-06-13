@@ -9,7 +9,7 @@ export const useFormSettings = () => {
       const { data, error } = await supabase
         .from('system_settings')
         .select('*')
-        .in('key', ['form_thank_you_message', 'form_thank_you_title']);
+        .in('key', ['form_thank_you_message', 'form_thank_you_title', 'form_redirect_url']);
       
       if (error) throw error;
       return data;

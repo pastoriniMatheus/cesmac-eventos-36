@@ -33,6 +33,7 @@ const Settings = () => {
   const [faviconUrl, setFaviconUrl] = useState('');
   const [formThankYouTitle, setFormThankYouTitle] = useState('');
   const [formThankYouMessage, setFormThankYouMessage] = useState('');
+  const [formRedirectUrl, setFormRedirectUrl] = useState('');
 
   // Database configuration states
   const [supabaseUrl, setSupabaseUrl] = useState('');
@@ -43,6 +44,16 @@ const Settings = () => {
   const [formPrimaryColor, setFormPrimaryColor] = useState('');
   const [formSecondaryColor, setFormSecondaryColor] = useState('');
   const [formTextColor, setFormTextColor] = useState('');
+  const [formSelectColor, setFormSelectColor] = useState('');
+  const [formButtonColor, setFormButtonColor] = useState('');
+
+  // System color configuration states
+  const [systemPrimaryColor, setSystemPrimaryColor] = useState('');
+  const [systemSecondaryColor, setSystemSecondaryColor] = useState('');
+  const [systemAccentColor, setSystemAccentColor] = useState('');
+  const [systemBackgroundColor, setSystemBackgroundColor] = useState('');
+  const [systemForegroundColor, setSystemForegroundColor] = useState('');
+  const [systemMutedColor, setSystemMutedColor] = useState('');
 
   useEffect(() => {
     if (settings) {
@@ -71,11 +82,30 @@ const Settings = () => {
       const primaryColorSetting = settings.find(s => s.key === 'form_primary_color');
       const secondaryColorSetting = settings.find(s => s.key === 'form_secondary_color');
       const textColorSetting = settings.find(s => s.key === 'form_text_color');
+      const selectColorSetting = settings.find(s => s.key === 'form_select_color');
+      const buttonColorSetting = settings.find(s => s.key === 'form_button_color');
 
       setFormBgColor(bgColorSetting?.value ? String(bgColorSetting.value) : '#1e40af');
       setFormPrimaryColor(primaryColorSetting?.value ? String(primaryColorSetting.value) : '#2563eb');
       setFormSecondaryColor(secondaryColorSetting?.value ? String(secondaryColorSetting.value) : '#3b82f6');
       setFormTextColor(textColorSetting?.value ? String(textColorSetting.value) : '#ffffff');
+      setFormSelectColor(selectColorSetting?.value ? String(selectColorSetting.value) : '#374151');
+      setFormButtonColor(buttonColorSetting?.value ? String(buttonColorSetting.value) : '#10b981');
+
+      // System colors
+      const sysPrimaryColorSetting = settings.find(s => s.key === 'system_primary_color');
+      const sysSecondaryColorSetting = settings.find(s => s.key === 'system_secondary_color');
+      const sysAccentColorSetting = settings.find(s => s.key === 'system_accent_color');
+      const sysBackgroundColorSetting = settings.find(s => s.key === 'system_background_color');
+      const sysForegroundColorSetting = settings.find(s => s.key === 'system_foreground_color');
+      const sysMutedColorSetting = settings.find(s => s.key === 'system_muted_color');
+
+      setSystemPrimaryColor(sysPrimaryColorSetting?.value ? String(sysPrimaryColorSetting.value) : '#2563eb');
+      setSystemSecondaryColor(sysSecondaryColorSetting?.value ? String(sysSecondaryColorSetting.value) : '#fbbf24');
+      setSystemAccentColor(sysAccentColorSetting?.value ? String(sysAccentColorSetting.value) : '#fbbf24');
+      setSystemBackgroundColor(sysBackgroundColorSetting?.value ? String(sysBackgroundColorSetting.value) : '#ffffff');
+      setSystemForegroundColor(sysForegroundColorSetting?.value ? String(sysForegroundColorSetting.value) : '#0f172a');
+      setSystemMutedColor(sysMutedColorSetting?.value ? String(sysMutedColorSetting.value) : '#f1f5f9');
     }
   }, [settings]);
 
@@ -83,9 +113,11 @@ const Settings = () => {
     if (formSettings) {
       const titleSetting = formSettings.find(s => s.key === 'form_thank_you_title');
       const messageSetting = formSettings.find(s => s.key === 'form_thank_you_message');
+      const redirectSetting = formSettings.find(s => s.key === 'form_redirect_url');
 
       setFormThankYouTitle(titleSetting?.value ? String(titleSetting.value) : '');
       setFormThankYouMessage(messageSetting?.value ? String(messageSetting.value) : '');
+      setFormRedirectUrl(redirectSetting?.value ? String(redirectSetting.value) : '');
     }
   }, [formSettings]);
 
@@ -140,10 +172,44 @@ const Settings = () => {
     try {
       toast({
         title: "Iniciando backup",
-        description: "O download do banco de dados será iniciado em breve...",
+        description: "Gerando arquivo de backup do banco de dados...",
       });
-      // Implementar lógica de backup aqui
+
+      // Buscar todos os dados das tabelas principais
+      const tables = ['leads', 'courses', 'events', 'lead_statuses', 'qr_codes', 'whatsapp_validations', 'system_settings'];
+      const backupData: any = {
+        timestamp: new Date().toISOString(),
+        tables: {}
+      };
+
+      for (const table of tables) {
+        const { data, error } = await supabase.from(table).select('*');
+        if (error) {
+          console.error(`Erro ao buscar dados da tabela ${table}:`, error);
+          continue;
+        }
+        backupData.tables[table] = data;
+      }
+
+      // Criar arquivo para download
+      const dataStr = JSON.stringify(backupData, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(dataBlob);
+      
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `backup-database-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: "Backup concluído",
+        description: "Arquivo de backup baixado com sucesso!",
+      });
     } catch (error) {
+      console.error('Erro no backup:', error);
       toast({
         title: "Erro",
         description: "Erro ao fazer backup do banco de dados",
@@ -155,11 +221,33 @@ const Settings = () => {
   const handleDatabaseRestore = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      toast({
-        title: "Restauração iniciada",
-        description: "O arquivo do banco de dados está sendo processado...",
-      });
-      // Implementar lógica de restore aqui
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const backupData = JSON.parse(e.target?.result as string);
+          
+          toast({
+            title: "Restauração iniciada",
+            description: "Processando arquivo de backup...",
+          });
+
+          // Implementar lógica de restore aqui
+          // Por segurança, apenas mostrar que está processando
+          console.log('Dados do backup:', backupData);
+          
+          toast({
+            title: "Aviso",
+            description: "Funcionalidade de restore em desenvolvimento. Contate o suporte para restauração manual.",
+          });
+        } catch (error) {
+          toast({
+            title: "Erro",
+            description: "Arquivo de backup inválido",
+            variant: "destructive",
+          });
+        }
+      };
+      reader.readAsText(file);
     }
   };
 
@@ -464,14 +552,14 @@ const Settings = () => {
                       <input
                         id="database-upload"
                         type="file"
-                        accept=".sql,.json"
+                        accept=".json"
                         className="absolute inset-0 opacity-0 cursor-pointer"
                         onChange={handleDatabaseRestore}
                       />
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground mt-2">
-                    Faça backup regularmente e use arquivos .sql ou .json para restauração
+                    Faça backup regularmente e use arquivos .json para restauração
                   </p>
                 </div>
               </div>
@@ -584,7 +672,7 @@ const Settings = () => {
                 <span>Configuração Visual</span>
               </CardTitle>
               <CardDescription>
-                Configure a identidade visual do sistema
+                Configure a identidade visual e cores do sistema
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -636,6 +724,167 @@ const Settings = () => {
                       <img src={faviconUrl} alt="Favicon preview" className="h-8 w-8 mt-2 border rounded" />
                     </div>
                   )}
+                </div>
+              </div>
+
+              <div className="border-t pt-6">
+                <h3 className="text-lg font-semibold mb-4">Cores do Sistema</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="systemPrimaryColor">Cor Primária do Sistema</Label>
+                    <div className="flex gap-2">
+                      <Input 
+                        type="color" 
+                        id="systemPrimaryColor" 
+                        value={systemPrimaryColor}
+                        onChange={(e) => setSystemPrimaryColor(e.target.value)}
+                        className="w-16 h-10"
+                      />
+                      <Input 
+                        type="text" 
+                        placeholder="#2563eb" 
+                        value={systemPrimaryColor}
+                        onChange={(e) => setSystemPrimaryColor(e.target.value)}
+                        className="flex-1"
+                      />
+                    </div>
+                    <Button 
+                      onClick={() => handleSaveSetting('system_primary_color', systemPrimaryColor, 'Cor primária do sistema salva!')}
+                      size="sm"
+                    >
+                      Salvar
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="systemSecondaryColor">Cor Secundária do Sistema</Label>
+                    <div className="flex gap-2">
+                      <Input 
+                        type="color" 
+                        id="systemSecondaryColor" 
+                        value={systemSecondaryColor}
+                        onChange={(e) => setSystemSecondaryColor(e.target.value)}
+                        className="w-16 h-10"
+                      />
+                      <Input 
+                        type="text" 
+                        placeholder="#fbbf24" 
+                        value={systemSecondaryColor}
+                        onChange={(e) => setSystemSecondaryColor(e.target.value)}
+                        className="flex-1"
+                      />
+                    </div>
+                    <Button 
+                      onClick={() => handleSaveSetting('system_secondary_color', systemSecondaryColor, 'Cor secundária do sistema salva!')}
+                      size="sm"
+                    >
+                      Salvar
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="systemAccentColor">Cor de Destaque</Label>
+                    <div className="flex gap-2">
+                      <Input 
+                        type="color" 
+                        id="systemAccentColor" 
+                        value={systemAccentColor}
+                        onChange={(e) => setSystemAccentColor(e.target.value)}
+                        className="w-16 h-10"
+                      />
+                      <Input 
+                        type="text" 
+                        placeholder="#fbbf24" 
+                        value={systemAccentColor}
+                        onChange={(e) => setSystemAccentColor(e.target.value)}
+                        className="flex-1"
+                      />
+                    </div>
+                    <Button 
+                      onClick={() => handleSaveSetting('system_accent_color', systemAccentColor, 'Cor de destaque salva!')}
+                      size="sm"
+                    >
+                      Salvar
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="systemBackgroundColor">Cor de Fundo</Label>
+                    <div className="flex gap-2">
+                      <Input 
+                        type="color" 
+                        id="systemBackgroundColor" 
+                        value={systemBackgroundColor}
+                        onChange={(e) => setSystemBackgroundColor(e.target.value)}
+                        className="w-16 h-10"
+                      />
+                      <Input 
+                        type="text" 
+                        placeholder="#ffffff" 
+                        value={systemBackgroundColor}
+                        onChange={(e) => setSystemBackgroundColor(e.target.value)}
+                        className="flex-1"
+                      />
+                    </div>
+                    <Button 
+                      onClick={() => handleSaveSetting('system_background_color', systemBackgroundColor, 'Cor de fundo salva!')}
+                      size="sm"
+                    >
+                      Salvar
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="systemForegroundColor">Cor do Texto Principal</Label>
+                    <div className="flex gap-2">
+                      <Input 
+                        type="color" 
+                        id="systemForegroundColor" 
+                        value={systemForegroundColor}
+                        onChange={(e) => setSystemForegroundColor(e.target.value)}
+                        className="w-16 h-10"
+                      />
+                      <Input 
+                        type="text" 
+                        placeholder="#0f172a" 
+                        value={systemForegroundColor}
+                        onChange={(e) => setSystemForegroundColor(e.target.value)}
+                        className="flex-1"
+                      />
+                    </div>
+                    <Button 
+                      onClick={() => handleSaveSetting('system_foreground_color', systemForegroundColor, 'Cor do texto principal salva!')}
+                      size="sm"
+                    >
+                      Salvar
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="systemMutedColor">Cor do Texto Secundário</Label>
+                    <div className="flex gap-2">
+                      <Input 
+                        type="color" 
+                        id="systemMutedColor" 
+                        value={systemMutedColor}
+                        onChange={(e) => setSystemMutedColor(e.target.value)}
+                        className="w-16 h-10"
+                      />
+                      <Input 
+                        type="text" 
+                        placeholder="#f1f5f9" 
+                        value={systemMutedColor}
+                        onChange={(e) => setSystemMutedColor(e.target.value)}
+                        className="flex-1"
+                      />
+                    </div>
+                    <Button 
+                      onClick={() => handleSaveSetting('system_muted_color', systemMutedColor, 'Cor do texto secundário salva!')}
+                      size="sm"
+                    >
+                      Salvar
+                    </Button>
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -694,9 +943,29 @@ const Settings = () => {
                   </p>
                 </div>
 
+                <div className="space-y-2">
+                  <Label htmlFor="formRedirectUrl">Link de Redirecionamento</Label>
+                  <Input 
+                    type="url"
+                    id="formRedirectUrl" 
+                    placeholder="https://exemplo.com/whatsapp" 
+                    value={formRedirectUrl}
+                    onChange={(e) => setFormRedirectUrl(e.target.value)}
+                  />
+                  <Button 
+                    onClick={() => handleSaveFormSetting('form_redirect_url', formRedirectUrl, 'Link de redirecionamento salvo!')}
+                    size="sm"
+                  >
+                    Salvar Link
+                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    Link que será aberto quando o usuário clicar no botão da tela de agradecimento
+                  </p>
+                </div>
+
                 <div className="border-t pt-6">
                   <h3 className="text-lg font-semibold mb-4">Configuração de Cores do Formulário</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     <div className="space-y-2">
                       <Label htmlFor="formBgColor">Cor de Fundo</Label>
                       <div className="flex gap-2">
@@ -719,7 +988,7 @@ const Settings = () => {
                         onClick={() => handleSaveSetting('form_bg_color', formBgColor, 'Cor de fundo salva!')}
                         size="sm"
                       >
-                        Salvar Cor de Fundo
+                        Salvar
                       </Button>
                     </div>
 
@@ -745,7 +1014,7 @@ const Settings = () => {
                         onClick={() => handleSaveSetting('form_primary_color', formPrimaryColor, 'Cor primária salva!')}
                         size="sm"
                       >
-                        Salvar Cor Primária
+                        Salvar
                       </Button>
                     </div>
 
@@ -771,7 +1040,7 @@ const Settings = () => {
                         onClick={() => handleSaveSetting('form_secondary_color', formSecondaryColor, 'Cor secundária salva!')}
                         size="sm"
                       >
-                        Salvar Cor Secundária
+                        Salvar
                       </Button>
                     </div>
 
@@ -797,7 +1066,59 @@ const Settings = () => {
                         onClick={() => handleSaveSetting('form_text_color', formTextColor, 'Cor do texto salva!')}
                         size="sm"
                       >
-                        Salvar Cor do Texto
+                        Salvar
+                      </Button>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="formSelectColor">Cor da Lista Suspensa</Label>
+                      <div className="flex gap-2">
+                        <Input 
+                          type="color" 
+                          id="formSelectColor" 
+                          value={formSelectColor}
+                          onChange={(e) => setFormSelectColor(e.target.value)}
+                          className="w-16 h-10"
+                        />
+                        <Input 
+                          type="text" 
+                          placeholder="#374151" 
+                          value={formSelectColor}
+                          onChange={(e) => setFormSelectColor(e.target.value)}
+                          className="flex-1"
+                        />
+                      </div>
+                      <Button 
+                        onClick={() => handleSaveSetting('form_select_color', formSelectColor, 'Cor da lista suspensa salva!')}
+                        size="sm"
+                      >
+                        Salvar
+                      </Button>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="formButtonColor">Cor do Botão de Envio</Label>
+                      <div className="flex gap-2">
+                        <Input 
+                          type="color" 
+                          id="formButtonColor" 
+                          value={formButtonColor}
+                          onChange={(e) => setFormButtonColor(e.target.value)}
+                          className="w-16 h-10"
+                        />
+                        <Input 
+                          type="text" 
+                          placeholder="#10b981" 
+                          value={formButtonColor}
+                          onChange={(e) => setFormButtonColor(e.target.value)}
+                          className="flex-1"
+                        />
+                      </div>
+                      <Button 
+                        onClick={() => handleSaveSetting('form_button_color', formButtonColor, 'Cor do botão salva!')}
+                        size="sm"
+                      >
+                        Salvar
                       </Button>
                     </div>
                   </div>
