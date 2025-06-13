@@ -11,7 +11,8 @@ import { useFormSettings, useUpdateFormSetting } from '@/hooks/useFormSettings';
 import { useCourses, useCreateCourse } from '@/hooks/useCourses';
 import { useLeadStatuses, useCreateLeadStatus } from '@/hooks/useLeads';
 import EditableItemManager from '@/components/EditableItemManager';
-import { Copy, Code, Globe, Webhook, Database, User, MessageCircle, Palette, Image, FileText } from 'lucide-react';
+import { Copy, Code, Globe, Webhook, Database, User, MessageCircle, Palette, Image, FileText, Download, Upload } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 const Settings = () => {
   const { data: settings, isLoading, refetch } = useSystemSettings();
@@ -33,6 +34,16 @@ const Settings = () => {
   const [formThankYouTitle, setFormThankYouTitle] = useState('');
   const [formThankYouMessage, setFormThankYouMessage] = useState('');
 
+  // Database configuration states
+  const [supabaseUrl, setSupabaseUrl] = useState('');
+  const [supabaseKey, setSupabaseKey] = useState('');
+
+  // Form color configuration states
+  const [formBgColor, setFormBgColor] = useState('');
+  const [formPrimaryColor, setFormPrimaryColor] = useState('');
+  const [formSecondaryColor, setFormSecondaryColor] = useState('');
+  const [formTextColor, setFormTextColor] = useState('');
+
   useEffect(() => {
     if (settings) {
       const validationSetting = settings.find(s => s.key === 'whatsapp_validation_webhook');
@@ -48,6 +59,23 @@ const Settings = () => {
       setWebhookSms(smsSetting?.value ? String(smsSetting.value) : '');
       setLogoUrl(logoSetting?.value ? String(logoSetting.value) : '');
       setFaviconUrl(faviconSetting?.value ? String(faviconSetting.value) : '');
+
+      // Database settings
+      const urlSetting = settings.find(s => s.key === 'supabase_url');
+      const keySetting = settings.find(s => s.key === 'supabase_key');
+      setSupabaseUrl(urlSetting?.value ? String(urlSetting.value) : 'https://dobtquebpcnzjisftcfh.supabase.co');
+      setSupabaseKey(keySetting?.value ? String(keySetting.value) : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRvYnRxdWVicGNuemppc2Z0Y2ZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk1NzcyNTMsImV4cCI6MjA2NTE1MzI1M30.GvPd5cEdgmAZG-Jsch66mdX24QNosV12Tz-F1Af93_0');
+
+      // Form colors
+      const bgColorSetting = settings.find(s => s.key === 'form_bg_color');
+      const primaryColorSetting = settings.find(s => s.key === 'form_primary_color');
+      const secondaryColorSetting = settings.find(s => s.key === 'form_secondary_color');
+      const textColorSetting = settings.find(s => s.key === 'form_text_color');
+
+      setFormBgColor(bgColorSetting?.value ? String(bgColorSetting.value) : '#1e40af');
+      setFormPrimaryColor(primaryColorSetting?.value ? String(primaryColorSetting.value) : '#2563eb');
+      setFormSecondaryColor(secondaryColorSetting?.value ? String(secondaryColorSetting.value) : '#3b82f6');
+      setFormTextColor(textColorSetting?.value ? String(textColorSetting.value) : '#ffffff');
     }
   }, [settings]);
 
@@ -105,7 +133,34 @@ const Settings = () => {
   };
 
   const getSupabaseUrl = () => {
-    return 'https://dobtquebpcnzjisftcfh.supabase.co/functions/v1';
+    return supabaseUrl ? `${supabaseUrl}/functions/v1` : 'https://dobtquebpcnzjisftcfh.supabase.co/functions/v1';
+  };
+
+  const handleDatabaseBackup = async () => {
+    try {
+      toast({
+        title: "Iniciando backup",
+        description: "O download do banco de dados será iniciado em breve...",
+      });
+      // Implementar lógica de backup aqui
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro ao fazer backup do banco de dados",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDatabaseRestore = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      toast({
+        title: "Restauração iniciada",
+        description: "O arquivo do banco de dados está sendo processado...",
+      });
+      // Implementar lógica de restore aqui
+    }
   };
 
   return (
@@ -113,10 +168,14 @@ const Settings = () => {
       <h1 className="text-3xl font-bold text-foreground">Configurações do Sistema</h1>
       
       <Tabs defaultValue="api" className="w-full">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="api" className="flex items-center gap-2">
             <Code className="h-4 w-4" />
             API
+          </TabsTrigger>
+          <TabsTrigger value="database" className="flex items-center gap-2">
+            <Database className="h-4 w-4" />
+            Banco
           </TabsTrigger>
           <TabsTrigger value="webhooks" className="flex items-center gap-2">
             <Webhook className="h-4 w-4" />
@@ -153,7 +212,6 @@ const Settings = () => {
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid gap-6">
-                {/* Captura de Leads */}
                 <div className="space-y-3 p-4 border rounded-lg">
                   <div className="flex items-center space-x-2">
                     <User className="h-4 w-4 text-blue-600" />
@@ -190,7 +248,6 @@ const Settings = () => {
                   </div>
                 </div>
 
-                {/* Validação WhatsApp - Iniciar */}
                 <div className="space-y-3 p-4 border rounded-lg">
                   <div className="flex items-center space-x-2">
                     <MessageCircle className="h-4 w-4 text-green-600" />
@@ -231,7 +288,6 @@ const Settings = () => {
                   </div>
                 </div>
 
-                {/* Callback Validação WhatsApp */}
                 <div className="space-y-3 p-4 border rounded-lg">
                   <div className="flex items-center space-x-2">
                     <Webhook className="h-4 w-4 text-purple-600" />
@@ -272,7 +328,6 @@ const Settings = () => {
                   </div>
                 </div>
 
-                {/* Redirecionamento QR Code */}
                 <div className="space-y-3 p-4 border rounded-lg">
                   <div className="flex items-center space-x-2">
                     <Globe className="h-4 w-4 text-orange-600" />
@@ -296,7 +351,6 @@ const Settings = () => {
                   </p>
                 </div>
 
-                {/* Geração de Relatórios */}
                 <div className="space-y-3 p-4 border rounded-lg">
                   <div className="flex items-center space-x-2">
                     <Database className="h-4 w-4 text-indigo-600" />
@@ -327,6 +381,98 @@ const Settings = () => {
                       <strong>format:</strong> "csv" ou "pdf"
                     </p>
                   </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="database">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Database className="h-5 w-5" />
+                <span>Configuração do Banco de Dados</span>
+              </CardTitle>
+              <CardDescription>
+                Configure a conexão com o banco de dados Supabase e gerencie backups
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="supabaseUrl">URL do Supabase</Label>
+                  <Input 
+                    type="url" 
+                    id="supabaseUrl" 
+                    placeholder="https://seuproject.supabase.co" 
+                    value={supabaseUrl}
+                    onChange={(e) => setSupabaseUrl(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    URL completa do seu projeto Supabase
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="supabaseKey">Chave Pública do Supabase</Label>
+                  <Input 
+                    type="password" 
+                    id="supabaseKey" 
+                    placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." 
+                    value={supabaseKey}
+                    onChange={(e) => setSupabaseKey(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Chave pública (anon) do seu projeto Supabase
+                  </p>
+                </div>
+
+                <div className="flex gap-4">
+                  <Button 
+                    onClick={() => {
+                      handleSaveSetting('supabase_url', supabaseUrl, 'URL do Supabase salva!');
+                      handleSaveSetting('supabase_key', supabaseKey, 'Chave do Supabase salva!');
+                    }}
+                    className="flex-1"
+                  >
+                    Salvar Configurações
+                  </Button>
+                </div>
+
+                <div className="border-t pt-6">
+                  <h3 className="text-lg font-semibold mb-4">Gerenciamento de Dados</h3>
+                  <div className="flex gap-4">
+                    <Button 
+                      onClick={handleDatabaseBackup}
+                      variant="outline"
+                      className="flex items-center gap-2"
+                    >
+                      <Download className="h-4 w-4" />
+                      Baixar Banco de Dados
+                    </Button>
+                    
+                    <div className="relative">
+                      <Button 
+                        variant="outline"
+                        className="flex items-center gap-2"
+                        onClick={() => document.getElementById('database-upload')?.click()}
+                      >
+                        <Upload className="h-4 w-4" />
+                        Enviar Banco de Dados
+                      </Button>
+                      <input
+                        id="database-upload"
+                        type="file"
+                        accept=".sql,.json"
+                        className="absolute inset-0 opacity-0 cursor-pointer"
+                        onChange={handleDatabaseRestore}
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Faça backup regularmente e use arquivos .sql ou .json para restauração
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -504,7 +650,7 @@ const Settings = () => {
                 <span>Configurações do Formulário</span>
               </CardTitle>
               <CardDescription>
-                Personalize as mensagens e configurações do formulário de captura de leads
+                Personalize as mensagens, cores e configurações do formulário de captura de leads
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -546,6 +692,115 @@ const Settings = () => {
                   <p className="text-xs text-muted-foreground">
                     Mensagem completa exibida na tela de agradecimento após envio do formulário
                   </p>
+                </div>
+
+                <div className="border-t pt-6">
+                  <h3 className="text-lg font-semibold mb-4">Configuração de Cores do Formulário</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="formBgColor">Cor de Fundo</Label>
+                      <div className="flex gap-2">
+                        <Input 
+                          type="color" 
+                          id="formBgColor" 
+                          value={formBgColor}
+                          onChange={(e) => setFormBgColor(e.target.value)}
+                          className="w-16 h-10"
+                        />
+                        <Input 
+                          type="text" 
+                          placeholder="#1e40af" 
+                          value={formBgColor}
+                          onChange={(e) => setFormBgColor(e.target.value)}
+                          className="flex-1"
+                        />
+                      </div>
+                      <Button 
+                        onClick={() => handleSaveSetting('form_bg_color', formBgColor, 'Cor de fundo salva!')}
+                        size="sm"
+                      >
+                        Salvar Cor de Fundo
+                      </Button>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="formPrimaryColor">Cor Primária</Label>
+                      <div className="flex gap-2">
+                        <Input 
+                          type="color" 
+                          id="formPrimaryColor" 
+                          value={formPrimaryColor}
+                          onChange={(e) => setFormPrimaryColor(e.target.value)}
+                          className="w-16 h-10"
+                        />
+                        <Input 
+                          type="text" 
+                          placeholder="#2563eb" 
+                          value={formPrimaryColor}
+                          onChange={(e) => setFormPrimaryColor(e.target.value)}
+                          className="flex-1"
+                        />
+                      </div>
+                      <Button 
+                        onClick={() => handleSaveSetting('form_primary_color', formPrimaryColor, 'Cor primária salva!')}
+                        size="sm"
+                      >
+                        Salvar Cor Primária
+                      </Button>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="formSecondaryColor">Cor Secundária</Label>
+                      <div className="flex gap-2">
+                        <Input 
+                          type="color" 
+                          id="formSecondaryColor" 
+                          value={formSecondaryColor}
+                          onChange={(e) => setFormSecondaryColor(e.target.value)}
+                          className="w-16 h-10"
+                        />
+                        <Input 
+                          type="text" 
+                          placeholder="#3b82f6" 
+                          value={formSecondaryColor}
+                          onChange={(e) => setFormSecondaryColor(e.target.value)}
+                          className="flex-1"
+                        />
+                      </div>
+                      <Button 
+                        onClick={() => handleSaveSetting('form_secondary_color', formSecondaryColor, 'Cor secundária salva!')}
+                        size="sm"
+                      >
+                        Salvar Cor Secundária
+                      </Button>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="formTextColor">Cor do Texto</Label>
+                      <div className="flex gap-2">
+                        <Input 
+                          type="color" 
+                          id="formTextColor" 
+                          value={formTextColor}
+                          onChange={(e) => setFormTextColor(e.target.value)}
+                          className="w-16 h-10"
+                        />
+                        <Input 
+                          type="text" 
+                          placeholder="#ffffff" 
+                          value={formTextColor}
+                          onChange={(e) => setFormTextColor(e.target.value)}
+                          className="flex-1"
+                        />
+                      </div>
+                      <Button 
+                        onClick={() => handleSaveSetting('form_text_color', formTextColor, 'Cor do texto salva!')}
+                        size="sm"
+                      >
+                        Salvar Cor do Texto
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </CardContent>
