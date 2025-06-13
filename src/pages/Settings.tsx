@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -39,13 +40,42 @@ const Settings = () => {
   const [supabaseUrl, setSupabaseUrl] = useState('');
   const [supabaseKey, setSupabaseKey] = useState('');
 
+  // Form text configuration states
+  const [formTitle, setFormTitle] = useState('');
+  const [formSubtitle, setFormSubtitle] = useState('');
+  const [formNameLabel, setFormNameLabel] = useState('');
+  const [formNamePlaceholder, setFormNamePlaceholder] = useState('');
+  const [formEmailLabel, setFormEmailLabel] = useState('');
+  const [formEmailPlaceholder, setFormEmailPlaceholder] = useState('');
+  const [formWhatsappLabel, setFormWhatsappLabel] = useState('');
+  const [formWhatsappPlaceholder, setFormWhatsappPlaceholder] = useState('');
+  const [formCourseLabel, setFormCourseLabel] = useState('');
+  const [formCoursePlaceholder, setFormCoursePlaceholder] = useState('');
+  const [formEventLabel, setFormEventLabel] = useState('');
+  const [formEventPlaceholder, setFormEventPlaceholder] = useState('');
+  const [formButtonText, setFormButtonText] = useState('');
+  const [formPrivacyText, setFormPrivacyText] = useState('');
+
   // Form color configuration states
   const [formBgColor, setFormBgColor] = useState('');
+  const [formContainerBgColor, setFormContainerBgColor] = useState('');
   const [formPrimaryColor, setFormPrimaryColor] = useState('');
   const [formSecondaryColor, setFormSecondaryColor] = useState('');
   const [formTextColor, setFormTextColor] = useState('');
+  const [formLabelColor, setFormLabelColor] = useState('');
+  const [formInputBgColor, setFormInputBgColor] = useState('');
+  const [formInputBorderColor, setFormInputBorderColor] = useState('');
+  const [formInputTextColor, setFormInputTextColor] = useState('');
   const [formSelectColor, setFormSelectColor] = useState('');
+  const [formSelectBgColor, setFormSelectBgColor] = useState('');
+  const [formSelectTextColor, setFormSelectTextColor] = useState('');
   const [formButtonColor, setFormButtonColor] = useState('');
+  const [formButtonHoverColor, setFormButtonHoverColor] = useState('');
+  const [formButtonTextColor, setFormButtonTextColor] = useState('');
+  const [formErrorColor, setFormErrorColor] = useState('');
+  const [formSuccessColor, setFormSuccessColor] = useState('');
+  const [formBorderColor, setFormBorderColor] = useState('');
+  const [formShadowColor, setFormShadowColor] = useState('');
 
   // System color configuration states
   const [systemPrimaryColor, setSystemPrimaryColor] = useState('');
@@ -77,20 +107,77 @@ const Settings = () => {
       setSupabaseUrl(urlSetting?.value ? String(urlSetting.value) : 'https://dobtquebpcnzjisftcfh.supabase.co');
       setSupabaseKey(keySetting?.value ? String(keySetting.value) : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRvYnRxdWVicGNuemppc2Z0Y2ZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk1NzcyNTMsImV4cCI6MjA2NTE1MzI1M30.GvPd5cEdgmAZG-Jsch66mdX24QNosV12Tz-F1Af93_0');
 
+      // Form text settings
+      const titleSetting = settings.find(s => s.key === 'form_title');
+      const subtitleSetting = settings.find(s => s.key === 'form_subtitle');
+      const nameLabelSetting = settings.find(s => s.key === 'form_name_label');
+      const namePlaceholderSetting = settings.find(s => s.key === 'form_name_placeholder');
+      const emailLabelSetting = settings.find(s => s.key === 'form_email_label');
+      const emailPlaceholderSetting = settings.find(s => s.key === 'form_email_placeholder');
+      const whatsappLabelSetting = settings.find(s => s.key === 'form_whatsapp_label');
+      const whatsappPlaceholderSetting = settings.find(s => s.key === 'form_whatsapp_placeholder');
+      const courseLabelSetting = settings.find(s => s.key === 'form_course_label');
+      const coursePlaceholderSetting = settings.find(s => s.key === 'form_course_placeholder');
+      const eventLabelSetting = settings.find(s => s.key === 'form_event_label');
+      const eventPlaceholderSetting = settings.find(s => s.key === 'form_event_placeholder');
+      const buttonTextSetting = settings.find(s => s.key === 'form_button_text');
+      const privacyTextSetting = settings.find(s => s.key === 'form_privacy_text');
+
+      setFormTitle(titleSetting?.value ? String(titleSetting.value) : 'Cadastre-se Agora');
+      setFormSubtitle(subtitleSetting?.value ? String(subtitleSetting.value) : 'Preencha os dados abaixo para se inscrever');
+      setFormNameLabel(nameLabelSetting?.value ? String(nameLabelSetting.value) : 'Nome Completo');
+      setFormNamePlaceholder(namePlaceholderSetting?.value ? String(namePlaceholderSetting.value) : 'Digite seu nome completo');
+      setFormEmailLabel(emailLabelSetting?.value ? String(emailLabelSetting.value) : 'E-mail');
+      setFormEmailPlaceholder(emailPlaceholderSetting?.value ? String(emailPlaceholderSetting.value) : 'Digite seu e-mail');
+      setFormWhatsappLabel(whatsappLabelSetting?.value ? String(whatsappLabelSetting.value) : 'WhatsApp');
+      setFormWhatsappPlaceholder(whatsappPlaceholderSetting?.value ? String(whatsappPlaceholderSetting.value) : '(11) 99999-9999');
+      setFormCourseLabel(courseLabelSetting?.value ? String(courseLabelSetting.value) : 'Curso de Interesse');
+      setFormCoursePlaceholder(coursePlaceholderSetting?.value ? String(coursePlaceholderSetting.value) : 'Selecione um curso');
+      setFormEventLabel(eventLabelSetting?.value ? String(eventLabelSetting.value) : 'Evento');
+      setFormEventPlaceholder(eventPlaceholderSetting?.value ? String(eventPlaceholderSetting.value) : 'Selecione um evento');
+      setFormButtonText(buttonTextSetting?.value ? String(buttonTextSetting.value) : 'Cadastrar');
+      setFormPrivacyText(privacyTextSetting?.value ? String(privacyTextSetting.value) : 'Ao enviar este formulário, você concorda com nossa política de privacidade.');
+
       // Form colors
       const bgColorSetting = settings.find(s => s.key === 'form_bg_color');
+      const containerBgColorSetting = settings.find(s => s.key === 'form_container_bg_color');
       const primaryColorSetting = settings.find(s => s.key === 'form_primary_color');
       const secondaryColorSetting = settings.find(s => s.key === 'form_secondary_color');
       const textColorSetting = settings.find(s => s.key === 'form_text_color');
+      const labelColorSetting = settings.find(s => s.key === 'form_label_color');
+      const inputBgColorSetting = settings.find(s => s.key === 'form_input_bg_color');
+      const inputBorderColorSetting = settings.find(s => s.key === 'form_input_border_color');
+      const inputTextColorSetting = settings.find(s => s.key === 'form_input_text_color');
       const selectColorSetting = settings.find(s => s.key === 'form_select_color');
+      const selectBgColorSetting = settings.find(s => s.key === 'form_select_bg_color');
+      const selectTextColorSetting = settings.find(s => s.key === 'form_select_text_color');
       const buttonColorSetting = settings.find(s => s.key === 'form_button_color');
+      const buttonHoverColorSetting = settings.find(s => s.key === 'form_button_hover_color');
+      const buttonTextColorSetting = settings.find(s => s.key === 'form_button_text_color');
+      const errorColorSetting = settings.find(s => s.key === 'form_error_color');
+      const successColorSetting = settings.find(s => s.key === 'form_success_color');
+      const borderColorSetting = settings.find(s => s.key === 'form_border_color');
+      const shadowColorSetting = settings.find(s => s.key === 'form_shadow_color');
 
       setFormBgColor(bgColorSetting?.value ? String(bgColorSetting.value) : '#1e40af');
+      setFormContainerBgColor(containerBgColorSetting?.value ? String(containerBgColorSetting.value) : '#ffffff');
       setFormPrimaryColor(primaryColorSetting?.value ? String(primaryColorSetting.value) : '#2563eb');
       setFormSecondaryColor(secondaryColorSetting?.value ? String(secondaryColorSetting.value) : '#3b82f6');
-      setFormTextColor(textColorSetting?.value ? String(textColorSetting.value) : '#ffffff');
+      setFormTextColor(textColorSetting?.value ? String(textColorSetting.value) : '#1f2937');
+      setFormLabelColor(labelColorSetting?.value ? String(labelColorSetting.value) : '#374151');
+      setFormInputBgColor(inputBgColorSetting?.value ? String(inputBgColorSetting.value) : '#ffffff');
+      setFormInputBorderColor(inputBorderColorSetting?.value ? String(inputBorderColorSetting.value) : '#d1d5db');
+      setFormInputTextColor(inputTextColorSetting?.value ? String(inputTextColorSetting.value) : '#1f2937');
       setFormSelectColor(selectColorSetting?.value ? String(selectColorSetting.value) : '#374151');
+      setFormSelectBgColor(selectBgColorSetting?.value ? String(selectBgColorSetting.value) : '#ffffff');
+      setFormSelectTextColor(selectTextColorSetting?.value ? String(selectTextColorSetting.value) : '#1f2937');
       setFormButtonColor(buttonColorSetting?.value ? String(buttonColorSetting.value) : '#10b981');
+      setFormButtonHoverColor(buttonHoverColorSetting?.value ? String(buttonHoverColorSetting.value) : '#059669');
+      setFormButtonTextColor(buttonTextColorSetting?.value ? String(buttonTextColorSetting.value) : '#ffffff');
+      setFormErrorColor(errorColorSetting?.value ? String(errorColorSetting.value) : '#ef4444');
+      setFormSuccessColor(successColorSetting?.value ? String(successColorSetting.value) : '#10b981');
+      setFormBorderColor(borderColorSetting?.value ? String(borderColorSetting.value) : '#e5e7eb');
+      setFormShadowColor(shadowColorSetting?.value ? String(shadowColorSetting.value) : '#00000020');
 
       // System colors
       const sysPrimaryColorSetting = settings.find(s => s.key === 'system_primary_color');
@@ -899,228 +986,803 @@ const Settings = () => {
                 <span>Configurações do Formulário</span>
               </CardTitle>
               <CardDescription>
-                Personalize as mensagens, cores e configurações do formulário de captura de leads
+                Personalize todos os textos, cores e configurações do formulário de captura de leads
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="formThankYouTitle">Título da Tela de Agradecimento</Label>
-                  <Input 
-                    id="formThankYouTitle" 
-                    placeholder="Obrigado!" 
-                    value={formThankYouTitle}
-                    onChange={(e) => setFormThankYouTitle(e.target.value)}
-                  />
-                  <Button 
-                    onClick={() => handleSaveFormSetting('form_thank_you_title', formThankYouTitle, 'Título salvo com sucesso!')}
-                    size="sm"
-                  >
-                    Salvar Título
-                  </Button>
-                  <p className="text-xs text-muted-foreground">
-                    Título exibido na tela de agradecimento após envio do formulário
-                  </p>
+            <CardContent className="space-y-8">
+              {/* Textos e Títulos */}
+              <div className="border-b pb-6">
+                <h3 className="text-lg font-semibold mb-4">Textos e Títulos do Formulário</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="formTitle">Título Principal</Label>
+                    <Input 
+                      id="formTitle" 
+                      placeholder="Cadastre-se Agora" 
+                      value={formTitle}
+                      onChange={(e) => setFormTitle(e.target.value)}
+                    />
+                    <Button 
+                      onClick={() => handleSaveSetting('form_title', formTitle, 'Título principal salvo!')}
+                      size="sm"
+                    >
+                      Salvar
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="formSubtitle">Subtítulo</Label>
+                    <Input 
+                      id="formSubtitle" 
+                      placeholder="Preencha os dados abaixo para se inscrever" 
+                      value={formSubtitle}
+                      onChange={(e) => setFormSubtitle(e.target.value)}
+                    />
+                    <Button 
+                      onClick={() => handleSaveSetting('form_subtitle', formSubtitle, 'Subtítulo salvo!')}
+                      size="sm"
+                    >
+                      Salvar
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="formNameLabel">Label do Campo Nome</Label>
+                    <Input 
+                      id="formNameLabel" 
+                      placeholder="Nome Completo" 
+                      value={formNameLabel}
+                      onChange={(e) => setFormNameLabel(e.target.value)}
+                    />
+                    <Button 
+                      onClick={() => handleSaveSetting('form_name_label', formNameLabel, 'Label do nome salvo!')}
+                      size="sm"
+                    >
+                      Salvar
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="formNamePlaceholder">Placeholder do Campo Nome</Label>
+                    <Input 
+                      id="formNamePlaceholder" 
+                      placeholder="Digite seu nome completo" 
+                      value={formNamePlaceholder}
+                      onChange={(e) => setFormNamePlaceholder(e.target.value)}
+                    />
+                    <Button 
+                      onClick={() => handleSaveSetting('form_name_placeholder', formNamePlaceholder, 'Placeholder do nome salvo!')}
+                      size="sm"
+                    >
+                      Salvar
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="formEmailLabel">Label do Campo E-mail</Label>
+                    <Input 
+                      id="formEmailLabel" 
+                      placeholder="E-mail" 
+                      value={formEmailLabel}
+                      onChange={(e) => setFormEmailLabel(e.target.value)}
+                    />
+                    <Button 
+                      onClick={() => handleSaveSetting('form_email_label', formEmailLabel, 'Label do e-mail salvo!')}
+                      size="sm"
+                    >
+                      Salvar
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="formEmailPlaceholder">Placeholder do Campo E-mail</Label>
+                    <Input 
+                      id="formEmailPlaceholder" 
+                      placeholder="Digite seu e-mail" 
+                      value={formEmailPlaceholder}
+                      onChange={(e) => setFormEmailPlaceholder(e.target.value)}
+                    />
+                    <Button 
+                      onClick={() => handleSaveSetting('form_email_placeholder', formEmailPlaceholder, 'Placeholder do e-mail salvo!')}
+                      size="sm"
+                    >
+                      Salvar
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="formWhatsappLabel">Label do Campo WhatsApp</Label>
+                    <Input 
+                      id="formWhatsappLabel" 
+                      placeholder="WhatsApp" 
+                      value={formWhatsappLabel}
+                      onChange={(e) => setFormWhatsappLabel(e.target.value)}
+                    />
+                    <Button 
+                      onClick={() => handleSaveSetting('form_whatsapp_label', formWhatsappLabel, 'Label do WhatsApp salvo!')}
+                      size="sm"
+                    >
+                      Salvar
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="formWhatsappPlaceholder">Placeholder do Campo WhatsApp</Label>
+                    <Input 
+                      id="formWhatsappPlaceholder" 
+                      placeholder="(11) 99999-9999" 
+                      value={formWhatsappPlaceholder}
+                      onChange={(e) => setFormWhatsappPlaceholder(e.target.value)}
+                    />
+                    <Button 
+                      onClick={() => handleSaveSetting('form_whatsapp_placeholder', formWhatsappPlaceholder, 'Placeholder do WhatsApp salvo!')}
+                      size="sm"
+                    >
+                      Salvar
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="formCourseLabel">Label do Campo Curso</Label>
+                    <Input 
+                      id="formCourseLabel" 
+                      placeholder="Curso de Interesse" 
+                      value={formCourseLabel}
+                      onChange={(e) => setFormCourseLabel(e.target.value)}
+                    />
+                    <Button 
+                      onClick={() => handleSaveSetting('form_course_label', formCourseLabel, 'Label do curso salvo!')}
+                      size="sm"
+                    >
+                      Salvar
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="formCoursePlaceholder">Placeholder do Campo Curso</Label>
+                    <Input 
+                      id="formCoursePlaceholder" 
+                      placeholder="Selecione um curso" 
+                      value={formCoursePlaceholder}
+                      onChange={(e) => setFormCoursePlaceholder(e.target.value)}
+                    />
+                    <Button 
+                      onClick={() => handleSaveSetting('form_course_placeholder', formCoursePlaceholder, 'Placeholder do curso salvo!')}
+                      size="sm"
+                    >
+                      Salvar
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="formEventLabel">Label do Campo Evento</Label>
+                    <Input 
+                      id="formEventLabel" 
+                      placeholder="Evento" 
+                      value={formEventLabel}
+                      onChange={(e) => setFormEventLabel(e.target.value)}
+                    />
+                    <Button 
+                      onClick={() => handleSaveSetting('form_event_label', formEventLabel, 'Label do evento salvo!')}
+                      size="sm"
+                    >
+                      Salvar
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="formEventPlaceholder">Placeholder do Campo Evento</Label>
+                    <Input 
+                      id="formEventPlaceholder" 
+                      placeholder="Selecione um evento" 
+                      value={formEventPlaceholder}
+                      onChange={(e) => setFormEventPlaceholder(e.target.value)}
+                    />
+                    <Button 
+                      onClick={() => handleSaveSetting('form_event_placeholder', formEventPlaceholder, 'Placeholder do evento salvo!')}
+                      size="sm"
+                    >
+                      Salvar
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="formButtonText">Texto do Botão de Envio</Label>
+                    <Input 
+                      id="formButtonText" 
+                      placeholder="Cadastrar" 
+                      value={formButtonText}
+                      onChange={(e) => setFormButtonText(e.target.value)}
+                    />
+                    <Button 
+                      onClick={() => handleSaveSetting('form_button_text', formButtonText, 'Texto do botão salvo!')}
+                      size="sm"
+                    >
+                      Salvar
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="formPrivacyText">Texto de Política de Privacidade</Label>
+                    <Textarea 
+                      id="formPrivacyText" 
+                      placeholder="Ao enviar este formulário, você concorda com nossa política de privacidade." 
+                      value={formPrivacyText}
+                      onChange={(e) => setFormPrivacyText(e.target.value)}
+                      rows={3}
+                    />
+                    <Button 
+                      onClick={() => handleSaveSetting('form_privacy_text', formPrivacyText, 'Texto de privacidade salvo!')}
+                      size="sm"
+                    >
+                      Salvar
+                    </Button>
+                  </div>
                 </div>
+              </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="formThankYouMessage">Mensagem da Tela de Agradecimento</Label>
-                  <Textarea 
-                    id="formThankYouMessage" 
-                    placeholder="Seus dados foram enviados com sucesso. Entraremos em contato em breve!" 
-                    value={formThankYouMessage}
-                    onChange={(e) => setFormThankYouMessage(e.target.value)}
-                    rows={4}
-                  />
-                  <Button 
-                    onClick={() => handleSaveFormSetting('form_thank_you_message', formThankYouMessage, 'Mensagem salva com sucesso!')}
-                    size="sm"
-                  >
-                    Salvar Mensagem
-                  </Button>
-                  <p className="text-xs text-muted-foreground">
-                    Mensagem completa exibida na tela de agradecimento após envio do formulário
-                  </p>
+              {/* Tela de Agradecimento */}
+              <div className="border-b pb-6">
+                <h3 className="text-lg font-semibold mb-4">Tela de Agradecimento</h3>
+                <div className="grid grid-cols-1 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="formThankYouTitle">Título da Tela de Agradecimento</Label>
+                    <Input 
+                      id="formThankYouTitle" 
+                      placeholder="Obrigado!" 
+                      value={formThankYouTitle}
+                      onChange={(e) => setFormThankYouTitle(e.target.value)}
+                    />
+                    <Button 
+                      onClick={() => handleSaveFormSetting('form_thank_you_title', formThankYouTitle, 'Título salvo com sucesso!')}
+                      size="sm"
+                    >
+                      Salvar Título
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="formThankYouMessage">Mensagem da Tela de Agradecimento</Label>
+                    <Textarea 
+                      id="formThankYouMessage" 
+                      placeholder="Seus dados foram enviados com sucesso. Entraremos em contato em breve!" 
+                      value={formThankYouMessage}
+                      onChange={(e) => setFormThankYouMessage(e.target.value)}
+                      rows={4}
+                    />
+                    <Button 
+                      onClick={() => handleSaveFormSetting('form_thank_you_message', formThankYouMessage, 'Mensagem salva com sucesso!')}
+                      size="sm"
+                    >
+                      Salvar Mensagem
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="formRedirectUrl">Link de Redirecionamento</Label>
+                    <Input 
+                      type="url"
+                      id="formRedirectUrl" 
+                      placeholder="https://exemplo.com/whatsapp" 
+                      value={formRedirectUrl}
+                      onChange={(e) => setFormRedirectUrl(e.target.value)}
+                    />
+                    <Button 
+                      onClick={() => handleSaveFormSetting('form_redirect_url', formRedirectUrl, 'Link de redirecionamento salvo!')}
+                      size="sm"
+                    >
+                      Salvar Link
+                    </Button>
+                    <p className="text-xs text-muted-foreground">
+                      Link que será aberto quando o usuário clicar no botão da tela de agradecimento
+                    </p>
+                  </div>
                 </div>
+              </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="formRedirectUrl">Link de Redirecionamento</Label>
-                  <Input 
-                    type="url"
-                    id="formRedirectUrl" 
-                    placeholder="https://exemplo.com/whatsapp" 
-                    value={formRedirectUrl}
-                    onChange={(e) => setFormRedirectUrl(e.target.value)}
-                  />
-                  <Button 
-                    onClick={() => handleSaveFormSetting('form_redirect_url', formRedirectUrl, 'Link de redirecionamento salvo!')}
-                    size="sm"
-                  >
-                    Salvar Link
-                  </Button>
-                  <p className="text-xs text-muted-foreground">
-                    Link que será aberto quando o usuário clicar no botão da tela de agradecimento
-                  </p>
-                </div>
-
-                <div className="border-t pt-6">
-                  <h3 className="text-lg font-semibold mb-4">Configuração de Cores do Formulário</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="formBgColor">Cor de Fundo</Label>
-                      <div className="flex gap-2">
-                        <Input 
-                          type="color" 
-                          id="formBgColor" 
-                          value={formBgColor}
-                          onChange={(e) => setFormBgColor(e.target.value)}
-                          className="w-16 h-10"
-                        />
-                        <Input 
-                          type="text" 
-                          placeholder="#1e40af" 
-                          value={formBgColor}
-                          onChange={(e) => setFormBgColor(e.target.value)}
-                          className="flex-1"
-                        />
-                      </div>
-                      <Button 
-                        onClick={() => handleSaveSetting('form_bg_color', formBgColor, 'Cor de fundo salva!')}
-                        size="sm"
-                      >
-                        Salvar
-                      </Button>
+              {/* Configuração de Cores Completa */}
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Configuração Completa de Cores</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {/* Cores Gerais */}
+                  <div className="space-y-2">
+                    <Label htmlFor="formBgColor">Cor de Fundo da Página</Label>
+                    <div className="flex gap-2">
+                      <Input 
+                        type="color" 
+                        id="formBgColor" 
+                        value={formBgColor}
+                        onChange={(e) => setFormBgColor(e.target.value)}
+                        className="w-16 h-10"
+                      />
+                      <Input 
+                        type="text" 
+                        placeholder="#1e40af" 
+                        value={formBgColor}
+                        onChange={(e) => setFormBgColor(e.target.value)}
+                        className="flex-1"
+                      />
                     </div>
+                    <Button 
+                      onClick={() => handleSaveSetting('form_bg_color', formBgColor, 'Cor de fundo da página salva!')}
+                      size="sm"
+                    >
+                      Salvar
+                    </Button>
+                  </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="formPrimaryColor">Cor Primária</Label>
-                      <div className="flex gap-2">
-                        <Input 
-                          type="color" 
-                          id="formPrimaryColor" 
-                          value={formPrimaryColor}
-                          onChange={(e) => setFormPrimaryColor(e.target.value)}
-                          className="w-16 h-10"
-                        />
-                        <Input 
-                          type="text" 
-                          placeholder="#2563eb" 
-                          value={formPrimaryColor}
-                          onChange={(e) => setFormPrimaryColor(e.target.value)}
-                          className="flex-1"
-                        />
-                      </div>
-                      <Button 
-                        onClick={() => handleSaveSetting('form_primary_color', formPrimaryColor, 'Cor primária salva!')}
-                        size="sm"
-                      >
-                        Salvar
-                      </Button>
+                  <div className="space-y-2">
+                    <Label htmlFor="formContainerBgColor">Cor de Fundo do Formulário</Label>
+                    <div className="flex gap-2">
+                      <Input 
+                        type="color" 
+                        id="formContainerBgColor" 
+                        value={formContainerBgColor}
+                        onChange={(e) => setFormContainerBgColor(e.target.value)}
+                        className="w-16 h-10"
+                      />
+                      <Input 
+                        type="text" 
+                        placeholder="#ffffff" 
+                        value={formContainerBgColor}
+                        onChange={(e) => setFormContainerBgColor(e.target.value)}
+                        className="flex-1"
+                      />
                     </div>
+                    <Button 
+                      onClick={() => handleSaveSetting('form_container_bg_color', formContainerBgColor, 'Cor de fundo do formulário salva!')}
+                      size="sm"
+                    >
+                      Salvar
+                    </Button>
+                  </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="formSecondaryColor">Cor Secundária</Label>
-                      <div className="flex gap-2">
-                        <Input 
-                          type="color" 
-                          id="formSecondaryColor" 
-                          value={formSecondaryColor}
-                          onChange={(e) => setFormSecondaryColor(e.target.value)}
-                          className="w-16 h-10"
-                        />
-                        <Input 
-                          type="text" 
-                          placeholder="#3b82f6" 
-                          value={formSecondaryColor}
-                          onChange={(e) => setFormSecondaryColor(e.target.value)}
-                          className="flex-1"
-                        />
-                      </div>
-                      <Button 
-                        onClick={() => handleSaveSetting('form_secondary_color', formSecondaryColor, 'Cor secundária salva!')}
-                        size="sm"
-                      >
-                        Salvar
-                      </Button>
+                  <div className="space-y-2">
+                    <Label htmlFor="formPrimaryColor">Cor Primária</Label>
+                    <div className="flex gap-2">
+                      <Input 
+                        type="color" 
+                        id="formPrimaryColor" 
+                        value={formPrimaryColor}
+                        onChange={(e) => setFormPrimaryColor(e.target.value)}
+                        className="w-16 h-10"
+                      />
+                      <Input 
+                        type="text" 
+                        placeholder="#2563eb" 
+                        value={formPrimaryColor}
+                        onChange={(e) => setFormPrimaryColor(e.target.value)}
+                        className="flex-1"
+                      />
                     </div>
+                    <Button 
+                      onClick={() => handleSaveSetting('form_primary_color', formPrimaryColor, 'Cor primária salva!')}
+                      size="sm"
+                    >
+                      Salvar
+                    </Button>
+                  </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="formTextColor">Cor do Texto</Label>
-                      <div className="flex gap-2">
-                        <Input 
-                          type="color" 
-                          id="formTextColor" 
-                          value={formTextColor}
-                          onChange={(e) => setFormTextColor(e.target.value)}
-                          className="w-16 h-10"
-                        />
-                        <Input 
-                          type="text" 
-                          placeholder="#ffffff" 
-                          value={formTextColor}
-                          onChange={(e) => setFormTextColor(e.target.value)}
-                          className="flex-1"
-                        />
-                      </div>
-                      <Button 
-                        onClick={() => handleSaveSetting('form_text_color', formTextColor, 'Cor do texto salva!')}
-                        size="sm"
-                      >
-                        Salvar
-                      </Button>
+                  <div className="space-y-2">
+                    <Label htmlFor="formSecondaryColor">Cor Secundária</Label>
+                    <div className="flex gap-2">
+                      <Input 
+                        type="color" 
+                        id="formSecondaryColor" 
+                        value={formSecondaryColor}
+                        onChange={(e) => setFormSecondaryColor(e.target.value)}
+                        className="w-16 h-10"
+                      />
+                      <Input 
+                        type="text" 
+                        placeholder="#3b82f6" 
+                        value={formSecondaryColor}
+                        onChange={(e) => setFormSecondaryColor(e.target.value)}
+                        className="flex-1"
+                      />
                     </div>
+                    <Button 
+                      onClick={() => handleSaveSetting('form_secondary_color', formSecondaryColor, 'Cor secundária salva!')}
+                      size="sm"
+                    >
+                      Salvar
+                    </Button>
+                  </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="formSelectColor">Cor da Lista Suspensa</Label>
-                      <div className="flex gap-2">
-                        <Input 
-                          type="color" 
-                          id="formSelectColor" 
-                          value={formSelectColor}
-                          onChange={(e) => setFormSelectColor(e.target.value)}
-                          className="w-16 h-10"
-                        />
-                        <Input 
-                          type="text" 
-                          placeholder="#374151" 
-                          value={formSelectColor}
-                          onChange={(e) => setFormSelectColor(e.target.value)}
-                          className="flex-1"
-                        />
-                      </div>
-                      <Button 
-                        onClick={() => handleSaveSetting('form_select_color', formSelectColor, 'Cor da lista suspensa salva!')}
-                        size="sm"
-                      >
-                        Salvar
-                      </Button>
+                  {/* Cores de Texto */}
+                  <div className="space-y-2">
+                    <Label htmlFor="formTextColor">Cor do Texto Principal</Label>
+                    <div className="flex gap-2">
+                      <Input 
+                        type="color" 
+                        id="formTextColor" 
+                        value={formTextColor}
+                        onChange={(e) => setFormTextColor(e.target.value)}
+                        className="w-16 h-10"
+                      />
+                      <Input 
+                        type="text" 
+                        placeholder="#1f2937" 
+                        value={formTextColor}
+                        onChange={(e) => setFormTextColor(e.target.value)}
+                        className="flex-1"
+                      />
                     </div>
+                    <Button 
+                      onClick={() => handleSaveSetting('form_text_color', formTextColor, 'Cor do texto principal salva!')}
+                      size="sm"
+                    >
+                      Salvar
+                    </Button>
+                  </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="formButtonColor">Cor do Botão de Envio</Label>
-                      <div className="flex gap-2">
-                        <Input 
-                          type="color" 
-                          id="formButtonColor" 
-                          value={formButtonColor}
-                          onChange={(e) => setFormButtonColor(e.target.value)}
-                          className="w-16 h-10"
-                        />
-                        <Input 
-                          type="text" 
-                          placeholder="#10b981" 
-                          value={formButtonColor}
-                          onChange={(e) => setFormButtonColor(e.target.value)}
-                          className="flex-1"
-                        />
-                      </div>
-                      <Button 
-                        onClick={() => handleSaveSetting('form_button_color', formButtonColor, 'Cor do botão salva!')}
-                        size="sm"
-                      >
-                        Salvar
-                      </Button>
+                  <div className="space-y-2">
+                    <Label htmlFor="formLabelColor">Cor dos Labels</Label>
+                    <div className="flex gap-2">
+                      <Input 
+                        type="color" 
+                        id="formLabelColor" 
+                        value={formLabelColor}
+                        onChange={(e) => setFormLabelColor(e.target.value)}
+                        className="w-16 h-10"
+                      />
+                      <Input 
+                        type="text" 
+                        placeholder="#374151" 
+                        value={formLabelColor}
+                        onChange={(e) => setFormLabelColor(e.target.value)}
+                        className="flex-1"
+                      />
                     </div>
+                    <Button 
+                      onClick={() => handleSaveSetting('form_label_color', formLabelColor, 'Cor dos labels salva!')}
+                      size="sm"
+                    >
+                      Salvar
+                    </Button>
+                  </div>
+
+                  {/* Cores dos Campos de Input */}
+                  <div className="space-y-2">
+                    <Label htmlFor="formInputBgColor">Cor de Fundo dos Campos</Label>
+                    <div className="flex gap-2">
+                      <Input 
+                        type="color" 
+                        id="formInputBgColor" 
+                        value={formInputBgColor}
+                        onChange={(e) => setFormInputBgColor(e.target.value)}
+                        className="w-16 h-10"
+                      />
+                      <Input 
+                        type="text" 
+                        placeholder="#ffffff" 
+                        value={formInputBgColor}
+                        onChange={(e) => setFormInputBgColor(e.target.value)}
+                        className="flex-1"
+                      />
+                    </div>
+                    <Button 
+                      onClick={() => handleSaveSetting('form_input_bg_color', formInputBgColor, 'Cor de fundo dos campos salva!')}
+                      size="sm"
+                    >
+                      Salvar
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="formInputBorderColor">Cor da Borda dos Campos</Label>
+                    <div className="flex gap-2">
+                      <Input 
+                        type="color" 
+                        id="formInputBorderColor" 
+                        value={formInputBorderColor}
+                        onChange={(e) => setFormInputBorderColor(e.target.value)}
+                        className="w-16 h-10"
+                      />
+                      <Input 
+                        type="text" 
+                        placeholder="#d1d5db" 
+                        value={formInputBorderColor}
+                        onChange={(e) => setFormInputBorderColor(e.target.value)}
+                        className="flex-1"
+                      />
+                    </div>
+                    <Button 
+                      onClick={() => handleSaveSetting('form_input_border_color', formInputBorderColor, 'Cor da borda dos campos salva!')}
+                      size="sm"
+                    >
+                      Salvar
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="formInputTextColor">Cor do Texto dos Campos</Label>
+                    <div className="flex gap-2">
+                      <Input 
+                        type="color" 
+                        id="formInputTextColor" 
+                        value={formInputTextColor}
+                        onChange={(e) => setFormInputTextColor(e.target.value)}
+                        className="w-16 h-10"
+                      />
+                      <Input 
+                        type="text" 
+                        placeholder="#1f2937" 
+                        value={formInputTextColor}
+                        onChange={(e) => setFormInputTextColor(e.target.value)}
+                        className="flex-1"
+                      />
+                    </div>
+                    <Button 
+                      onClick={() => handleSaveSetting('form_input_text_color', formInputTextColor, 'Cor do texto dos campos salva!')}
+                      size="sm"
+                    >
+                      Salvar
+                    </Button>
+                  </div>
+
+                  {/* Cores das Listas Suspensas */}
+                  <div className="space-y-2">
+                    <Label htmlFor="formSelectColor">Cor da Lista Suspensa</Label>
+                    <div className="flex gap-2">
+                      <Input 
+                        type="color" 
+                        id="formSelectColor" 
+                        value={formSelectColor}
+                        onChange={(e) => setFormSelectColor(e.target.value)}
+                        className="w-16 h-10"
+                      />
+                      <Input 
+                        type="text" 
+                        placeholder="#374151" 
+                        value={formSelectColor}
+                        onChange={(e) => setFormSelectColor(e.target.value)}
+                        className="flex-1"
+                      />
+                    </div>
+                    <Button 
+                      onClick={() => handleSaveSetting('form_select_color', formSelectColor, 'Cor da lista suspensa salva!')}
+                      size="sm"
+                    >
+                      Salvar
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="formSelectBgColor">Cor de Fundo da Lista Suspensa</Label>
+                    <div className="flex gap-2">
+                      <Input 
+                        type="color" 
+                        id="formSelectBgColor" 
+                        value={formSelectBgColor}
+                        onChange={(e) => setFormSelectBgColor(e.target.value)}
+                        className="w-16 h-10"
+                      />
+                      <Input 
+                        type="text" 
+                        placeholder="#ffffff" 
+                        value={formSelectBgColor}
+                        onChange={(e) => setFormSelectBgColor(e.target.value)}
+                        className="flex-1"
+                      />
+                    </div>
+                    <Button 
+                      onClick={() => handleSaveSetting('form_select_bg_color', formSelectBgColor, 'Cor de fundo da lista suspensa salva!')}
+                      size="sm"
+                    >
+                      Salvar
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="formSelectTextColor">Cor do Texto da Lista Suspensa</Label>
+                    <div className="flex gap-2">
+                      <Input 
+                        type="color" 
+                        id="formSelectTextColor" 
+                        value={formSelectTextColor}
+                        onChange={(e) => setFormSelectTextColor(e.target.value)}
+                        className="w-16 h-10"
+                      />
+                      <Input 
+                        type="text" 
+                        placeholder="#1f2937" 
+                        value={formSelectTextColor}
+                        onChange={(e) => setFormSelectTextColor(e.target.value)}
+                        className="flex-1"
+                      />
+                    </div>
+                    <Button 
+                      onClick={() => handleSaveSetting('form_select_text_color', formSelectTextColor, 'Cor do texto da lista suspensa salva!')}
+                      size="sm"
+                    >
+                      Salvar
+                    </Button>
+                  </div>
+
+                  {/* Cores do Botão */}
+                  <div className="space-y-2">
+                    <Label htmlFor="formButtonColor">Cor do Botão de Envio</Label>
+                    <div className="flex gap-2">
+                      <Input 
+                        type="color" 
+                        id="formButtonColor" 
+                        value={formButtonColor}
+                        onChange={(e) => setFormButtonColor(e.target.value)}
+                        className="w-16 h-10"
+                      />
+                      <Input 
+                        type="text" 
+                        placeholder="#10b981" 
+                        value={formButtonColor}
+                        onChange={(e) => setFormButtonColor(e.target.value)}
+                        className="flex-1"
+                      />
+                    </div>
+                    <Button 
+                      onClick={() => handleSaveSetting('form_button_color', formButtonColor, 'Cor do botão salva!')}
+                      size="sm"
+                    >
+                      Salvar
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="formButtonHoverColor">Cor do Botão ao Passar o Mouse</Label>
+                    <div className="flex gap-2">
+                      <Input 
+                        type="color" 
+                        id="formButtonHoverColor" 
+                        value={formButtonHoverColor}
+                        onChange={(e) => setFormButtonHoverColor(e.target.value)}
+                        className="w-16 h-10"
+                      />
+                      <Input 
+                        type="text" 
+                        placeholder="#059669" 
+                        value={formButtonHoverColor}
+                        onChange={(e) => setFormButtonHoverColor(e.target.value)}
+                        className="flex-1"
+                      />
+                    </div>
+                    <Button 
+                      onClick={() => handleSaveSetting('form_button_hover_color', formButtonHoverColor, 'Cor do botão hover salva!')}
+                      size="sm"
+                    >
+                      Salvar
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="formButtonTextColor">Cor do Texto do Botão</Label>
+                    <div className="flex gap-2">
+                      <Input 
+                        type="color" 
+                        id="formButtonTextColor" 
+                        value={formButtonTextColor}
+                        onChange={(e) => setFormButtonTextColor(e.target.value)}
+                        className="w-16 h-10"
+                      />
+                      <Input 
+                        type="text" 
+                        placeholder="#ffffff" 
+                        value={formButtonTextColor}
+                        onChange={(e) => setFormButtonTextColor(e.target.value)}
+                        className="flex-1"
+                      />
+                    </div>
+                    <Button 
+                      onClick={() => handleSaveSetting('form_button_text_color', formButtonTextColor, 'Cor do texto do botão salva!')}
+                      size="sm"
+                    >
+                      Salvar
+                    </Button>
+                  </div>
+
+                  {/* Cores de Estado */}
+                  <div className="space-y-2">
+                    <Label htmlFor="formErrorColor">Cor de Erro</Label>
+                    <div className="flex gap-2">
+                      <Input 
+                        type="color" 
+                        id="formErrorColor" 
+                        value={formErrorColor}
+                        onChange={(e) => setFormErrorColor(e.target.value)}
+                        className="w-16 h-10"
+                      />
+                      <Input 
+                        type="text" 
+                        placeholder="#ef4444" 
+                        value={formErrorColor}
+                        onChange={(e) => setFormErrorColor(e.target.value)}
+                        className="flex-1"
+                      />
+                    </div>
+                    <Button 
+                      onClick={() => handleSaveSetting('form_error_color', formErrorColor, 'Cor de erro salva!')}
+                      size="sm"
+                    >
+                      Salvar
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="formSuccessColor">Cor de Sucesso</Label>
+                    <div className="flex gap-2">
+                      <Input 
+                        type="color" 
+                        id="formSuccessColor" 
+                        value={formSuccessColor}
+                        onChange={(e) => setFormSuccessColor(e.target.value)}
+                        className="w-16 h-10"
+                      />
+                      <Input 
+                        type="text" 
+                        placeholder="#10b981" 
+                        value={formSuccessColor}
+                        onChange={(e) => setFormSuccessColor(e.target.value)}
+                        className="flex-1"
+                      />
+                    </div>
+                    <Button 
+                      onClick={() => handleSaveSetting('form_success_color', formSuccessColor, 'Cor de sucesso salva!')}
+                      size="sm"
+                    >
+                      Salvar
+                    </Button>
+                  </div>
+
+                  {/* Cores de Layout */}
+                  <div className="space-y-2">
+                    <Label htmlFor="formBorderColor">Cor das Bordas</Label>
+                    <div className="flex gap-2">
+                      <Input 
+                        type="color" 
+                        id="formBorderColor" 
+                        value={formBorderColor}
+                        onChange={(e) => setFormBorderColor(e.target.value)}
+                        className="w-16 h-10"
+                      />
+                      <Input 
+                        type="text" 
+                        placeholder="#e5e7eb" 
+                        value={formBorderColor}
+                        onChange={(e) => setFormBorderColor(e.target.value)}
+                        className="flex-1"
+                      />
+                    </div>
+                    <Button 
+                      onClick={() => handleSaveSetting('form_border_color', formBorderColor, 'Cor das bordas salva!')}
+                      size="sm"
+                    >
+                      Salvar
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="formShadowColor">Cor da Sombra</Label>
+                    <div className="flex gap-2">
+                      <Input 
+                        type="color" 
+                        id="formShadowColor" 
+                        value={formShadowColor}
+                        onChange={(e) => setFormShadowColor(e.target.value)}
+                        className="w-16 h-10"
+                      />
+                      <Input 
+                        type="text" 
+                        placeholder="#00000020" 
+                        value={formShadowColor}
+                        onChange={(e) => setFormShadowColor(e.target.value)}
+                        className="flex-1"
+                      />
+                    </div>
+                    <Button 
+                      onClick={() => handleSaveSetting('form_shadow_color', formShadowColor, 'Cor da sombra salva!')}
+                      size="sm"
+                    >
+                      Salvar
+                    </Button>
                   </div>
                 </div>
               </div>
