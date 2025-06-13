@@ -175,20 +175,20 @@ const Settings = () => {
         description: "Gerando arquivo de backup do banco de dados...",
       });
 
-      // Buscar todos os dados das tabelas principais
-      const tables = ['leads', 'courses', 'events', 'lead_statuses', 'qr_codes', 'whatsapp_validations', 'system_settings'];
+      // Define table names with proper typing
+      const tableNames = ['leads', 'courses', 'events', 'lead_statuses', 'qr_codes', 'whatsapp_validations', 'system_settings'] as const;
       const backupData: any = {
         timestamp: new Date().toISOString(),
         tables: {}
       };
 
-      for (const table of tables) {
-        const { data, error } = await supabase.from(table).select('*');
+      for (const tableName of tableNames) {
+        const { data, error } = await supabase.from(tableName).select('*');
         if (error) {
-          console.error(`Erro ao buscar dados da tabela ${table}:`, error);
+          console.error(`Erro ao buscar dados da tabela ${tableName}:`, error);
           continue;
         }
-        backupData.tables[table] = data;
+        backupData.tables[tableName] = data;
       }
 
       // Criar arquivo para download
