@@ -1,21 +1,24 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useSystemSettings, useUpdateSystemSetting } from '@/hooks/useSystemSettings';
+import { useFormSettings, useUpdateFormSetting } from '@/hooks/useFormSettings';
 import { useCourses, useCreateCourse } from '@/hooks/useCourses';
 import { useLeadStatuses, useCreateLeadStatus } from '@/hooks/useLeads';
 import EditableItemManager from '@/components/EditableItemManager';
-import { Copy, Code, Globe, Webhook, Database, User, MessageCircle, Palette, Image } from 'lucide-react';
+import { Copy, Code, Globe, Webhook, Database, User, MessageCircle, Palette, Image, FileText } from 'lucide-react';
 
 const Settings = () => {
   const { data: settings, isLoading, refetch } = useSystemSettings();
+  const { data: formSettings, refetch: refetchFormSettings } = useFormSettings();
   const { toast } = useToast();
   const updateSetting = useUpdateSystemSetting();
+  const updateFormSetting = useUpdateFormSetting();
   const { data: courses } = useCourses();
   const { mutate: createCourse } = useCreateCourse();
   const { data: leadStatuses } = useLeadStatuses();
@@ -27,6 +30,8 @@ const Settings = () => {
   const [webhookSms, setWebhookSms] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
   const [faviconUrl, setFaviconUrl] = useState('');
+  const [formThankYouTitle, setFormThankYouTitle] = useState('');
+  const [formThankYouMessage, setFormThankYouMessage] = useState('');
 
   useEffect(() => {
     if (settings) {
@@ -46,6 +51,16 @@ const Settings = () => {
     }
   }, [settings]);
 
+  useEffect(() => {
+    if (formSettings) {
+      const titleSetting = formSettings.find(s => s.key === 'form_thank_you_title');
+      const messageSetting = formSettings.find(s => s.key === 'form_thank_you_message');
+
+      setFormThankYouTitle(titleSetting?.value ? String(titleSetting.value) : '');
+      setFormThankYouMessage(messageSetting?.value ? String(messageSetting.value) : '');
+    }
+  }, [formSettings]);
+
   const handleSaveSetting = async (key: string, value: string, successMessage: string) => {
     try {
       await updateSetting.mutateAsync({ key, value });
@@ -54,6 +69,23 @@ const Settings = () => {
         description: successMessage,
       });
       refetch();
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao salvar configuração",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSaveFormSetting = async (key: string, value: string, successMessage: string) => {
+    try {
+      await updateFormSetting.mutateAsync({ key, value });
+      toast({
+        title: "Configuração salva",
+        description: successMessage,
+      });
+      refetchFormSettings();
     } catch (error: any) {
       toast({
         title: "Erro",
@@ -81,7 +113,7 @@ const Settings = () => {
       <h1 className="text-3xl font-bold text-foreground">Configurações do Sistema</h1>
       
       <Tabs defaultValue="api" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="api" className="flex items-center gap-2">
             <Code className="h-4 w-4" />
             API
@@ -93,6 +125,10 @@ const Settings = () => {
           <TabsTrigger value="visual" className="flex items-center gap-2">
             <Palette className="h-4 w-4" />
             Visual
+          </TabsTrigger>
+          <TabsTrigger value="form" className="flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            Formulário
           </TabsTrigger>
           <TabsTrigger value="courses" className="flex items-center gap-2">
             <Database className="h-4 w-4" />
@@ -454,6 +490,62 @@ const Settings = () => {
                       <img src={faviconUrl} alt="Favicon preview" className="h-8 w-8 mt-2 border rounded" />
                     </div>
                   )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="form">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <FileText className="h-5 w-5" />
+                <span>Configurações do Formulário</span>
+              </CardTitle>
+              <CardDescription>
+                Personalize as mensagens e configurações do formulário de captura de leads
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="formThankYouTitle">Título da Tela de Agradecimento</Label>
+                  <Input 
+                    id="formThankYouTitle" 
+                    placeholder="Obrigado!" 
+                    value={formThankYouTitle}
+                    onChange={(e) => setFormThankYouTitle(e.target.value)}
+                  />
+                  <Button 
+                    onClick={() => handleSaveFormSetting('form_thank_you_title', formThankYouTitle, 'Título salvo com sucesso!')}
+                    size="sm"
+                  >
+                    Salvar Título
+                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    Título exibido na tela de agradecimento após envio do formulário
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="formThankYouMessage">Mensagem da Tela de Agradecimento</Label>
+                  <Textarea 
+                    id="formThankYouMessage" 
+                    placeholder="Seus dados foram enviados com sucesso. Entraremos em contato em breve!" 
+                    value={formThankYouMessage}
+                    onChange={(e) => setFormThankYouMessage(e.target.value)}
+                    rows={4}
+                  />
+                  <Button 
+                    onClick={() => handleSaveFormSetting('form_thank_you_message', formThankYouMessage, 'Mensagem salva com sucesso!')}
+                    size="sm"
+                  >
+                    Salvar Mensagem
+                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    Mensagem completa exibida na tela de agradecimento após envio do formulário
+                  </p>
                 </div>
               </div>
             </CardContent>

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,18 +8,22 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useCourses } from '@/hooks/useCourses';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
+import { useFormSettings } from '@/hooks/useFormSettings';
 import { supabase } from '@/integrations/supabase/client';
 import { useWhatsAppValidation } from '@/hooks/useWhatsAppValidation';
 import { Loader2, CheckCircle, XCircle } from 'lucide-react';
+import ThankYouScreen from '@/components/ThankYouScreen';
 
 const LeadForm = () => {
   const { toast } = useToast();
   const { data: courses = [] } = useCourses();
   const { data: systemSettings = [] } = useSystemSettings();
+  const { data: formSettings = [] } = useFormSettings();
   const { validateWhatsApp, isValidating, validationResult, setValidationResult } = useWhatsAppValidation();
   
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showThankYou, setShowThankYou] = useState(false);
   const [eventName, setEventName] = useState('');
   const [trackingId, setTrackingId] = useState('');
   const [skipValidation, setSkipValidation] = useState(false);
@@ -39,6 +42,22 @@ const LeadForm = () => {
       logoSetting.value : 
       JSON.parse(String(logoSetting.value))
     ) : '/lovable-uploads/c7eb5d40-5d53-4b46-b5a9-d35d5a784ac7.png';
+
+  // Obter configurações do formulário
+  const thankYouTitleSetting = formSettings.find((s: any) => s.key === 'form_thank_you_title');
+  const thankYouMessageSetting = formSettings.find((s: any) => s.key === 'form_thank_you_message');
+  
+  const thankYouTitle = thankYouTitleSetting ? 
+    (typeof thankYouTitleSetting.value === 'string' ? 
+      thankYouTitleSetting.value : 
+      JSON.parse(String(thankYouTitleSetting.value))
+    ) : 'Obrigado!';
+    
+  const thankYouMessage = thankYouMessageSetting ? 
+    (typeof thankYouMessageSetting.value === 'string' ? 
+      thankYouMessageSetting.value : 
+      JSON.parse(String(thankYouMessageSetting.value))
+    ) : 'Seus dados foram enviados com sucesso. Entraremos em contato em breve!';
 
   // Extrair parâmetros da URL
   useEffect(() => {
@@ -327,24 +346,8 @@ const LeadForm = () => {
         }
       }
 
-      toast({
-        title: "Sucesso!",
-        description: "Seus dados foram enviados com sucesso. Entraremos em contato em breve!",
-      });
-
-      // Reset form
-      setFormData({
-        name: '',
-        email: '',
-        whatsapp: '',
-        course_id: ''
-      });
-      setCurrentStep(1);
-      setValidationResult(null);
-
-      sessionStorage.removeItem('form_tracking_id');
-      sessionStorage.removeItem('form_event_name');
-      sessionStorage.removeItem('scan_session_id');
+      // Em vez de mostrar toast e resetar form, mostrar tela de agradecimento
+      setShowThankYou(true);
 
     } catch (error: any) {
       console.error('Erro ao enviar dados:', error);
@@ -357,6 +360,34 @@ const LeadForm = () => {
       setIsSubmitting(false);
     }
   };
+
+  const handleBackToForm = () => {
+    setShowThankYou(false);
+    setFormData({
+      name: '',
+      email: '',
+      whatsapp: '',
+      course_id: ''
+    });
+    setCurrentStep(1);
+    setValidationResult(null);
+
+    sessionStorage.removeItem('form_tracking_id');
+    sessionStorage.removeItem('form_event_name');
+    sessionStorage.removeItem('scan_session_id');
+  };
+
+  // Se deve mostrar tela de agradecimento
+  if (showThankYou) {
+    return (
+      <ThankYouScreen
+        title={thankYouTitle}
+        message={thankYouMessage}
+        logoUrl={logoUrl}
+        onBackToForm={handleBackToForm}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900 flex items-center justify-center p-3 md:p-6">
