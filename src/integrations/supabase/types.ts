@@ -79,6 +79,7 @@ export type Database = {
           name: string
           scan_session_id: string | null
           shift: string | null
+          source: string | null
           status_id: string | null
           updated_at: string
           whatsapp: string
@@ -92,6 +93,7 @@ export type Database = {
           name: string
           scan_session_id?: string | null
           shift?: string | null
+          source?: string | null
           status_id?: string | null
           updated_at?: string
           whatsapp: string
@@ -105,6 +107,7 @@ export type Database = {
           name?: string
           scan_session_id?: string | null
           shift?: string | null
+          source?: string | null
           status_id?: string | null
           updated_at?: string
           whatsapp?: string
