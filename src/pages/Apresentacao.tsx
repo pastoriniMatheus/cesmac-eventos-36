@@ -212,9 +212,7 @@ const Apresentacao = () => {
             <img src={logoUrl} alt="CESMAC" className="h-8 w-auto" />
             <span className="text-lg font-semibold">Lead Sync - Automação Inteligente para eventos.</span>
           </div>
-          <p className="text-gray-400">
-            Desenvolvido especialmente para o concurso de ferramentas de projeto da faculdade
-          </p>
+          <p className="text-gray-400">Desenvolvido com base em feedbacks da necessidade das faculdades atendidas.</p>
         </div>
       </footer>
     </div>;
