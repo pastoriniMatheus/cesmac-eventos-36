@@ -1,120 +1,71 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useNavigate } from 'react-router-dom';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
-import { 
-  BarChart3, 
-  Users, 
-  QrCode, 
-  MessageSquare, 
-  FileText, 
-  Shield, 
-  Zap, 
-  Target,
-  CheckCircle,
-  ArrowRight,
-  GraduationCap,
-  Building2,
-  Database,
-  Webhook,
-  Mail,
-  Phone
-} from 'lucide-react';
-
+import { BarChart3, Users, QrCode, MessageSquare, FileText, Shield, Zap, Target, CheckCircle, ArrowRight, GraduationCap, Building2, Database, Webhook, Mail, Phone } from 'lucide-react';
 const Apresentacao = () => {
   const navigate = useNavigate();
-  const { data: systemSettings = [] } = useSystemSettings();
-
+  const {
+    data: systemSettings = []
+  } = useSystemSettings();
   const logoSetting = systemSettings.find((s: any) => s.key === 'logo');
-  const logoUrl = logoSetting ? 
-    (typeof logoSetting.value === 'string' ? 
-      logoSetting.value : 
-      JSON.parse(String(logoSetting.value))
-    ) : '/lovable-uploads/c7eb5d40-5d53-4b46-b5a9-d35d5a784ac7.png';
-
-  const problemas = [
-    "Perda de leads por preenchimento manual incorreto",
-    "Dados imprecisos e números de telefone errados",
-    "Falta de acompanhamento da conversão lead → matrícula",
-    "Dificuldade para gerenciar múltiplos eventos simultaneamente",
-    "Campanhas de remarketing genéricas e ineficazes",
-    "Falta de relatórios em tempo real"
-  ];
-
-  const solucoes = [
-    {
-      icon: Shield,
-      title: "Validação de Dados em Tempo Real",
-      desc: "Sistema impede cadastro de dados incorretos com verificação automática"
-    },
-    {
-      icon: Target,
-      title: "Acompanhamento Completo",
-      desc: "Rastreamento do lead desde o evento até a matrícula final"
-    },
-    {
-      icon: QrCode,
-      title: "QR Code Inteligente",
-      desc: "Geração instantânea com acompanhamento de scans e conversões"
-    },
-    {
-      icon: BarChart3,
-      title: "Relatórios em Tempo Real",
-      desc: "Dashboards dinâmicos e exportação de relatórios PDF por evento"
-    },
-    {
-      icon: MessageSquare,
-      title: "Automação WhatsApp",
-      desc: "Chatbot e IA para captura automática de leads via WhatsApp"
-    },
-    {
-      icon: Mail,
-      title: "Campanhas Personalizadas",
-      desc: "Disparos segmentados por evento/curso via WhatsApp, SMS e e-mail"
-    }
-  ];
-
-  const diferenciais = [
-    {
-      icon: Database,
-      title: "API Completa",
-      desc: "Integração total com CRM existente e sistemas terceiros"
-    },
-    {
-      icon: Webhook,
-      title: "Webhooks Personalizados",
-      desc: "Tratamento customizado de dados conforme necessidade da T.I."
-    },
-    {
-      icon: Zap,
-      title: "Backup 1-Click",
-      desc: "Importação e exportação de dados com um clique"
-    },
-    {
-      icon: Users,
-      title: "Multi-Segmento",
-      desc: "Desenvolvido para faculdades, mas adaptável a qualquer negócio"
-    }
-  ];
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50">
+  const logoUrl = logoSetting ? typeof logoSetting.value === 'string' ? logoSetting.value : JSON.parse(String(logoSetting.value)) : '/lovable-uploads/c7eb5d40-5d53-4b46-b5a9-d35d5a784ac7.png';
+  const problemas = ["Perda de leads por preenchimento manual incorreto", "Dados imprecisos e números de telefone errados", "Falta de acompanhamento da conversão lead → matrícula", "Dificuldade para gerenciar múltiplos eventos simultaneamente", "Campanhas de remarketing genéricas e ineficazes", "Falta de relatórios em tempo real"];
+  const solucoes = [{
+    icon: Shield,
+    title: "Validação de Dados em Tempo Real",
+    desc: "Sistema impede cadastro de dados incorretos com verificação automática"
+  }, {
+    icon: Target,
+    title: "Acompanhamento Completo",
+    desc: "Rastreamento do lead desde o evento até a matrícula final"
+  }, {
+    icon: QrCode,
+    title: "QR Code Inteligente",
+    desc: "Geração instantânea com acompanhamento de scans e conversões"
+  }, {
+    icon: BarChart3,
+    title: "Relatórios em Tempo Real",
+    desc: "Dashboards dinâmicos e exportação de relatórios PDF por evento"
+  }, {
+    icon: MessageSquare,
+    title: "Automação WhatsApp",
+    desc: "Chatbot e IA para captura automática de leads via WhatsApp"
+  }, {
+    icon: Mail,
+    title: "Campanhas Personalizadas",
+    desc: "Disparos segmentados por evento/curso via WhatsApp, SMS e e-mail"
+  }];
+  const diferenciais = [{
+    icon: Database,
+    title: "API Completa",
+    desc: "Integração total com CRM existente e sistemas terceiros"
+  }, {
+    icon: Webhook,
+    title: "Webhooks Personalizados",
+    desc: "Tratamento customizado de dados conforme necessidade da T.I."
+  }, {
+    icon: Zap,
+    title: "Backup 1-Click",
+    desc: "Importação e exportação de dados com um clique"
+  }, {
+    icon: Users,
+    title: "Multi-Segmento",
+    desc: "Desenvolvido para faculdades, mas adaptável a qualquer negócio"
+  }];
+  return <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-yellow-50">
       {/* Header */}
       <header className="bg-white/80 backdrop-blur-sm shadow-lg sticky top-0 z-50">
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <img src={logoUrl} alt="CESMAC" className="h-12 w-auto" />
             <div>
-              <h1 className="text-xl font-bold text-blue-800">Sistema CESMAC</h1>
-              <p className="text-sm text-gray-600">Lead Management System</p>
+              <h1 className="text-xl font-bold text-blue-800">LeadSync</h1>
+              <p className="text-sm text-gray-600">Lead Sync</p>
             </div>
           </div>
-          <Button 
-            onClick={() => navigate('/login')}
-            className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
-          >
+          <Button onClick={() => navigate('/login')} className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800">
             Acessar Sistema
           </Button>
         </div>
@@ -155,16 +106,14 @@ const Apresentacao = () => {
             Problemas que Você Enfrenta Diariamente
           </h2>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {problemas.map((problema, index) => (
-              <Card key={index} className="border-red-200 bg-white/80">
+            {problemas.map((problema, index) => <Card key={index} className="border-red-200 bg-white/80">
                 <CardContent className="p-6">
                   <div className="flex items-start space-x-3">
                     <div className="w-6 h-6 bg-red-500 rounded-full flex-shrink-0 mt-1"></div>
                     <p className="text-gray-700 font-medium">{problema}</p>
                   </div>
                 </CardContent>
-              </Card>
-            ))}
+              </Card>)}
           </div>
         </div>
       </section>
@@ -176,8 +125,7 @@ const Apresentacao = () => {
             Nossa Solução Completa
           </h2>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {solucoes.map((solucao, index) => (
-              <Card key={index} className="border-green-200 bg-white/90 hover:shadow-xl transition-all duration-300">
+            {solucoes.map((solucao, index) => <Card key={index} className="border-green-200 bg-white/90 hover:shadow-xl transition-all duration-300">
                 <CardHeader className="pb-4">
                   <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center mb-4">
                     <solucao.icon className="w-8 h-8 text-white" />
@@ -187,8 +135,7 @@ const Apresentacao = () => {
                 <CardContent>
                   <p className="text-gray-700">{solucao.desc}</p>
                 </CardContent>
-              </Card>
-            ))}
+              </Card>)}
           </div>
         </div>
       </section>
@@ -200,8 +147,7 @@ const Apresentacao = () => {
             Diferenciais Técnicos
           </h2>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {diferenciais.map((diferencial, index) => (
-              <Card key={index} className="border-blue-200 bg-white/90 hover:shadow-lg transition-all duration-300">
+            {diferenciais.map((diferencial, index) => <Card key={index} className="border-blue-200 bg-white/90 hover:shadow-lg transition-all duration-300">
                 <CardHeader className="text-center pb-4">
                   <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center mx-auto mb-3">
                     <diferencial.icon className="w-7 h-7 text-white" />
@@ -211,8 +157,7 @@ const Apresentacao = () => {
                 <CardContent className="text-center">
                   <p className="text-sm text-gray-600">{diferencial.desc}</p>
                 </CardContent>
-              </Card>
-            ))}
+              </Card>)}
           </div>
         </div>
       </section>
@@ -248,19 +193,11 @@ const Apresentacao = () => {
             Junte-se às instituições que já transformaram seus resultados
           </p>
           <div className="flex flex-wrap justify-center gap-4">
-            <Button 
-              size="lg" 
-              onClick={() => navigate('/login')}
-              className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold px-8 py-4"
-            >
+            <Button size="lg" onClick={() => navigate('/login')} className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold px-8 py-4">
               Acessar Sistema Agora
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
-            <Button 
-              size="lg" 
-              variant="outline" 
-              className="border-2 border-white text-white hover:bg-white hover:text-blue-800 px-8 py-4"
-            >
+            <Button size="lg" variant="outline" className="border-2 border-white text-white hover:bg-white hover:text-blue-800 px-8 py-4">
               <Phone className="mr-2 h-5 w-5" />
               Solicitar Demonstração
             </Button>
@@ -280,8 +217,6 @@ const Apresentacao = () => {
           </p>
         </div>
       </footer>
-    </div>
-  );
+    </div>;
 };
-
 export default Apresentacao;
