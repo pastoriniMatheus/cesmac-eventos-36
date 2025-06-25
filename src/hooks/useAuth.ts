@@ -54,7 +54,7 @@ export const useAuthProvider = () => {
       }
 
       if (data && data.length > 0 && data[0].success) {
-        const userData = data[0].user_data;
+        const userData = data[0].user_data as User;
         setUser(userData);
         localStorage.setItem('cesmac_user', JSON.stringify(userData));
         return { success: true };

@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useLeads } from '@/hooks/useLeads';
 import { useQRCodes } from '@/hooks/useQRCodes';
 import { useEvents } from '@/hooks/useEvents';
-import { useMetrics } from '@/hooks/useMetrics';
+import { useConversionMetrics } from '@/hooks/useMetrics';
 import ConversionMetrics from '@/components/ConversionMetrics';
 import SessionMetrics from '@/components/SessionMetrics';
 import EnrollmentMetrics from '@/components/EnrollmentMetrics';
@@ -23,7 +23,7 @@ const Dashboard = () => {
   const { data: leads = [] } = useLeads();
   const { data: qrCodes = [] } = useQRCodes();
   const { data: events = [] } = useEvents();
-  const { data: metrics } = useMetrics();
+  const { data: metrics } = useConversionMetrics();
 
   const totalScans = qrCodes.reduce((sum, qr) => sum + (qr.scans || 0), 0);
   const todayLeads = leads.filter(lead => {
@@ -125,7 +125,7 @@ const Dashboard = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
-              <ConversionMetrics />
+              <ConversionMetrics leads={leads} events={events} totalScans={totalScans} />
             </CardContent>
           </Card>
 
