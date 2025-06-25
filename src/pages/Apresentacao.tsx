@@ -210,7 +210,7 @@ const Apresentacao = () => {
         <div className="container mx-auto text-center">
           <div className="flex justify-center items-center space-x-4 mb-4">
             <img src={logoUrl} alt="CESMAC" className="h-8 w-auto" />
-            <span className="text-lg font-semibold">Sistema CESMAC - Lead Management</span>
+            <span className="text-lg font-semibold">Lead Sync - Automação Inteligente para eventos.</span>
           </div>
           <p className="text-gray-400">
             Desenvolvido especialmente para o concurso de ferramentas de projeto da faculdade
