@@ -1,14 +1,16 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { BarChart3, Users, MessageSquare, Settings, QrCode } from 'lucide-react';
+import { BarChart3, Users, MessageSquare, Settings, QrCode, LogOut } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
+import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 
 const Header = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const { data: systemSettings = [] } = useSystemSettings();
   
   const logoSetting = systemSettings.find((s: any) => s.key === 'logo');
@@ -46,6 +48,11 @@ const Header = () => {
     },
   ];
 
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
   return (
     <header className="sticky top-0 z-50 h-16 border-b bg-white shadow-sm px-6 flex items-center justify-between">
       <div className="flex items-center space-x-6">
@@ -78,6 +85,21 @@ const Header = () => {
             );
           })}
         </nav>
+      </div>
+
+      <div className="flex items-center space-x-4">
+        <span className="text-sm text-gray-600">
+          Olá, <strong className="text-blue-700">{user?.username}</strong>
+        </span>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleLogout}
+          className="flex items-center space-x-2 text-gray-600 hover:text-red-600 hover:border-red-300"
+        >
+          <LogOut className="h-4 w-4" />
+          <span>Sair</span>
+        </Button>
       </div>
     </header>
   );

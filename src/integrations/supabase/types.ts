@@ -9,6 +9,33 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      authorized_users: {
+        Row: {
+          created_at: string | null
+          email: string
+          id: string
+          password_hash: string
+          updated_at: string | null
+          username: string
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          id?: string
+          password_hash: string
+          updated_at?: string | null
+          username: string
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          id?: string
+          password_hash?: string
+          updated_at?: string | null
+          username?: string
+        }
+        Relationships: []
+      }
       courses: {
         Row: {
           created_at: string
@@ -371,6 +398,13 @@ export type Database = {
           qr_code: Json
           event: Json
           lead: Json
+        }[]
+      }
+      verify_login: {
+        Args: { p_username: string; p_password: string }
+        Returns: {
+          success: boolean
+          user_data: Json
         }[]
       }
     }
