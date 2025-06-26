@@ -127,16 +127,22 @@ const Messages = () => {
           name: lead.name,
           whatsapp: lead.whatsapp,
           email: lead.email
-        }))
+        })),
+        metadata: {
+          filter_type: currentMessage.filterType,
+          filter_description: filterDescription,
+          timestamp: new Date().toISOString()
+        }
       };
 
-      console.log('📋 Dados do webhook:', {
+      console.log('📋 Dados do webhook preparados:', {
         url: webhookUrl,
         recipientsCount: webhookData.recipients.length,
-        type: webhookData.type
+        type: webhookData.type,
+        filterType: webhookData.metadata.filter_type
       });
 
-      // Usar Supabase Edge Function para enviar webhook (evita problemas CORS)
+      // Usar Supabase Edge Function para enviar webhook
       console.log('🚀 Enviando via Supabase Edge Function...');
       
       const { data, error } = await supabase.functions.invoke('send-webhook', {
@@ -155,7 +161,7 @@ const Messages = () => {
 
       toast({
         title: "Mensagem enviada",
-        description: `Mensagem enviada para ${filteredLeads.length} destinatários via ${currentMessage.messageType}!`,
+        description: `Mensagem ${currentMessage.messageType} enviada para ${filteredLeads.length} destinatários!`,
       });
 
       setCurrentMessage({
@@ -173,7 +179,7 @@ const Messages = () => {
       
       toast({
         title: "Erro no envio",
-        description: error.message || "Erro ao enviar mensagem",
+        description: error.message || "Erro ao enviar mensagem. Verifique a configuração do webhook.",
         variant: "destructive",
       });
     }
