@@ -55,7 +55,7 @@ serve(async (req) => {
       });
     }
 
-    console.log('📤 Enviando webhook para:', webhook_url);
+    console.log('📤 ENVIANDO WEBHOOK PARA URL EXATA:', webhook_url);
     console.log('📋 Tipo de mensagem:', webhook_data.type);
     console.log('📋 Número de destinatários:', webhook_data.recipients?.length || 0);
 
@@ -63,7 +63,7 @@ serve(async (req) => {
     let validUrl;
     try {
       validUrl = new URL(webhook_url);
-      console.log('✅ URL válida:', validUrl.toString());
+      console.log('✅ URL válida confirmada:', validUrl.toString());
     } catch (urlError) {
       console.error('❌ URL inválida:', webhook_url, urlError);
       return new Response(JSON.stringify({
@@ -81,7 +81,7 @@ serve(async (req) => {
     const timeoutId = setTimeout(() => controller.abort(), 30000);
 
     try {
-      console.log('🚀 Fazendo requisição para:', webhook_url);
+      console.log('🚀 FAZENDO REQUISIÇÃO PARA URL:', webhook_url);
       console.log('📦 Dados sendo enviados:', JSON.stringify(webhook_data, null, 2));
 
       const response = await fetch(webhook_url, {
@@ -89,7 +89,8 @@ serve(async (req) => {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'User-Agent': 'Supabase-Edge-Function/1.0'
+          'User-Agent': 'Supabase-Edge-Function/1.0',
+          'X-Source': 'lead-messaging-system'
         },
         body: JSON.stringify(webhook_data),
         signal: controller.signal
@@ -105,7 +106,8 @@ serve(async (req) => {
         responseText = 'Erro ao ler resposta do webhook';
       }
       
-      console.log('📥 Resposta do webhook:', {
+      console.log('📥 RESPOSTA COMPLETA DO WEBHOOK:', {
+        url: webhook_url,
         status: response.status,
         statusText: response.statusText,
         headers: Object.fromEntries(response.headers.entries()),
@@ -113,7 +115,7 @@ serve(async (req) => {
       });
 
       if (!response.ok) {
-        console.error('❌ Webhook retornou erro:', {
+        console.error('❌ WEBHOOK RETORNOU ERRO:', {
           status: response.status,
           statusText: response.statusText,
           body: responseText,
@@ -147,7 +149,7 @@ serve(async (req) => {
         });
       }
 
-      console.log('✅ Webhook executado com sucesso');
+      console.log('✅ WEBHOOK EXECUTADO COM SUCESSO');
       
       return new Response(JSON.stringify({
         success: true,
@@ -182,7 +184,7 @@ serve(async (req) => {
         };
       }
       
-      console.error('❌ Erro detalhado no webhook:', {
+      console.error('❌ ERRO DETALHADO NO WEBHOOK:', {
         error: fetchError,
         message: errorMessage,
         details: errorDetails,
@@ -200,7 +202,7 @@ serve(async (req) => {
     }
 
   } catch (error: any) {
-    console.error('💥 Erro geral:', {
+    console.error('💥 ERRO GERAL NA EDGE FUNCTION:', {
       error: error,
       message: error.message,
       stack: error.stack

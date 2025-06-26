@@ -53,15 +53,27 @@ const Messages = () => {
     'Símbolos': ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔', '❣️', '💕', '💞', '💓', '💗', '💖', '💘', '💝', '💟', '☮️', '✝️', '☪️', '🕉️', '☸️', '✡️', '🔯', '🕎', '☯️', '☦️', '🛐', '⛎', '♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '♐', '♑', '♒', '♓', '🆔', '⚛️', '🉑', '☢️', '☣️', '📴', '📳', '🈶', '🈚', '🈸', '🈺', '🈷️', '✴️', '🆚', '💮', '🉐', '㊙️', '㊗️', '🈴', '🈵', '🈹', '🈲', '🅰️', '🅱️', '🆎', '🆑', '🅾️', '🆘', '❌', '⭕', '🛑', '⛔', '📛', '🚫', '💯', '💢', '♨️', '🚷', '🚯', '🚳', '🚱', '🔞', '📵', '🚭', '❗', '❕', '❓', '❔', '‼️', '⁉️', '🔅', '🔆', '〽️', '⚠️', '🚸', '🔱', '⚜️', '🔰', '♻️', '✅', '🈯', '💹', '❇️', '✳️', '❎', '🌐', '💠', 'Ⓜ️', '🌀', '💤', '🏧', '🚾', '♿', '🅿️', '🛗', '🈳', '🈂️', '🛂', '🛃', '🛄', '🛅', '🚹', '🚺', '🚼', '⚧', '🚻', '🚮', '🎦', '📶', '🈁', '🔣', 'ℹ️', '🔤', '🔡', '🔠', '🆖', '🆗', '🆙', '🆒', '🆕', '🆓', '0️⃣', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟', '🔢', '#️⃣', '*️⃣', '⏏️', '▶️', '⏸️', '⏯️', '⏹️', '⏺️', '⏭️', '⏮️', '⏩', '⏪', '⏫', '⏬', '◀️', '🔼', '🔽', '➡️', '⬅️', '⬆️', '⬇️', '↗️', '↘️', '↙️', '↖️', '↕️', '↔️', '↪️', '↩️', '⤴️', '⤵️', '🔀', '🔁', '🔂', '🔄', '🔃', '🎵', '🎶', '➕', '➖', '➗', '✖️', '♾️', '💲', '💱', '™️', '©️', '®️', '〰️', '➰', '➿', '🔚', '🔙', '🔛', '🔝', '🔜', '✔️', '☑️', '🔘', '🔴', '🟠', '🟡', '🟢', '🔵', '🟣', '⚫', '⚪', '🟤', '🔺', '🔻', '🔸', '🔹', '🔶', '🔷', '🔳', '🔲', '▪️', '▫️', '◾', '◽', '◼️', '◻️', '🟥', '🟧', '🟨', '🟩', '🟦', '🟪', '⬛', '⬜', '🟫', '🔈', '🔇', '🔉', '🔊', '🔔', '🔕', '📣', '📢', '👁️‍🗨️', '💬', '💭', '🗯️', '♠️', '♣️', '♥️', '♦️', '🃏', '🎴', '🀄', '🕐', '🕑', '🕒', '🕓', '🕔', '🕕', '🕖', '🕗', '🕘', '🕙', '🕚', '🕛', '🕜', '🕝', '🕞', '🕟', '🕠', '🕡', '🕢', '🕣', '🕤', '🕥', '🕦', '🕧']
   };
 
-  // Obter webhook configurado com verificação melhorada
+  // Obter webhook configurado com mapeamento correto
   const getWebhookUrl = (type: string) => {
     console.log('🔍 Buscando webhook para tipo:', type);
-    console.log('📊 Configurações disponíveis:', systemSettings);
+    console.log('📊 Todas as configurações disponíveis:', systemSettings);
     
-    const webhookKey = `webhook_${type}`;
+    // Mapear tipos de mensagem para chaves de configuração
+    const webhookKeyMap = {
+      'whatsapp': 'webhook_whatsapp',
+      'email': 'webhook_email', 
+      'sms': 'webhook_sms'
+    };
+    
+    const webhookKey = webhookKeyMap[type as keyof typeof webhookKeyMap];
+    console.log('🔑 Chave mapeada para busca:', webhookKey);
+    
+    if (!webhookKey) {
+      console.error('❌ Tipo de mensagem não reconhecido:', type);
+      return null;
+    }
+    
     const webhookSetting = systemSettings.find((s: any) => s.key === webhookKey);
-    
-    console.log('🔑 Chave buscada:', webhookKey);
     console.log('⚙️ Configuração encontrada:', webhookSetting);
     
     if (!webhookSetting) {
@@ -71,16 +83,28 @@ const Messages = () => {
     
     let webhookUrl;
     try {
-      // Tentar como string primeiro
-      webhookUrl = typeof webhookSetting.value === 'string' ? 
-        webhookSetting.value : 
-        JSON.parse(String(webhookSetting.value));
+      // Processar valor (pode estar como string ou JSON)
+      if (typeof webhookSetting.value === 'string') {
+        // Se for string, usar diretamente
+        webhookUrl = webhookSetting.value;
+      } else {
+        // Se for objeto, tentar parsear
+        webhookUrl = JSON.parse(String(webhookSetting.value));
+      }
     } catch (e) {
       console.error('❌ Erro ao processar valor do webhook:', e);
-      return null;
+      // Tentar usar valor direto como fallback
+      webhookUrl = webhookSetting.value;
     }
     
     console.log('🌐 URL do webhook processada:', webhookUrl);
+    
+    // Validar se é uma URL válida
+    if (!webhookUrl || typeof webhookUrl !== 'string' || !webhookUrl.startsWith('http')) {
+      console.error('❌ URL inválida:', webhookUrl);
+      return null;
+    }
+    
     return webhookUrl;
   };
 
@@ -96,14 +120,22 @@ const Messages = () => {
 
     // Verificar se webhook está configurado
     const webhookUrl = getWebhookUrl(currentMessage.messageType);
-    console.log('🔍 Webhook URL obtida:', webhookUrl);
-    console.log('📋 Tipo de mensagem:', currentMessage.messageType);
+    console.log('🔍 Webhook URL obtida para', currentMessage.messageType, ':', webhookUrl);
     
     if (!webhookUrl) {
       console.error('❌ Webhook não configurado para tipo:', currentMessage.messageType);
+      
+      // Mostrar quais webhooks estão disponíveis para debug
+      const availableWebhooks = systemSettings
+        .filter((s: any) => s.key.startsWith('webhook_'))
+        .map((s: any) => `${s.key}: ${s.value}`)
+        .join(', ');
+      
+      console.log('📋 Webhooks disponíveis:', availableWebhooks);
+      
       toast({
         title: "Webhook não configurado",
-        description: `Por favor, configure o webhook para ${currentMessage.messageType} nas configurações antes de enviar mensagens.`,
+        description: `Configure o webhook para ${currentMessage.messageType} nas configurações. Webhooks disponíveis: ${availableWebhooks}`,
         variant: "destructive",
       });
       return;
@@ -182,7 +214,7 @@ const Messages = () => {
       });
 
       // Usar Supabase Edge Function para enviar webhook
-      console.log('🚀 Enviando via Supabase Edge Function...');
+      console.log('🚀 Enviando via Supabase Edge Function para URL:', webhookUrl);
       
       const { data, error } = await supabase.functions.invoke('send-webhook', {
         body: {
@@ -200,7 +232,7 @@ const Messages = () => {
 
       toast({
         title: "Mensagem enviada",
-        description: `Mensagem ${currentMessage.messageType} enviada para ${filteredLeads.length} destinatários!`,
+        description: `Mensagem ${currentMessage.messageType} enviada para ${filteredLeads.length} destinatários via ${webhookUrl}!`,
       });
 
       setCurrentMessage({
@@ -417,13 +449,29 @@ const Messages = () => {
                 <p className="text-sm text-muted-foreground mb-2">
                   <strong>Destinatários:</strong> {getRecipientCount()} leads serão incluídos neste envio
                 </p>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground mb-2">
                   <strong>Webhook {currentMessage.messageType}:</strong> {
                     getWebhookUrl(currentMessage.messageType) ? 
-                    `✅ Configurado (${getWebhookUrl(currentMessage.messageType)})` : 
+                    `✅ Configurado` : 
                     '❌ Não configurado'
                   }
                 </p>
+                {getWebhookUrl(currentMessage.messageType) && (
+                  <p className="text-xs text-muted-foreground font-mono bg-gray-100 p-2 rounded">
+                    <strong>URL:</strong> {getWebhookUrl(currentMessage.messageType)}
+                  </p>
+                )}
+                <div className="mt-2 text-xs text-muted-foreground">
+                  <strong>Debug - Todas as configurações:</strong>
+                  <div className="font-mono bg-gray-100 p-2 rounded mt-1 max-h-20 overflow-y-auto">
+                    {systemSettings
+                      .filter((s: any) => s.key.startsWith('webhook_'))
+                      .map((s: any) => (
+                        <div key={s.key}>{s.key}: {s.value}</div>
+                      ))
+                    }
+                  </div>
+                </div>
               </div>
 
               <div className="space-y-2">
