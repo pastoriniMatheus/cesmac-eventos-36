@@ -7,8 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { MessageSquare, Mail, Smartphone, Save, Send, Trash2, Smile } from 'lucide-react';
+import { MessageSquare, Mail, Smartphone, Save, Send, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useCourses } from '@/hooks/useCourses';
 import { useEvents } from '@/hooks/useEvents';
@@ -41,18 +40,10 @@ const Messages = () => {
 
   const [templateDialog, setTemplateDialog] = useState({
     open: false,
-    name: ''
+    name: '',
+    content: '',
+    type: 'whatsapp' as 'whatsapp' | 'email' | 'sms'
   });
-
-  // Lista completa de emojis organizados por categoria
-  const emojiCategories = {
-    'Rostos e Pessoas': ['😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', '😙', '😚', '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', '😎', '🤩', '🥳', '😏', '😒', '😞', '😔', '😟', '😕', '🙁', '☹️', '😣', '😖', '😫', '😩', '🥺', '😢', '😭', '😤', '😠', '😡', '🤬', '🤯', '😳', '🥵', '🥶', '😱', '😨', '😰', '😥', '😓', '🤗', '🤔', '🤭', '🤫', '🤥', '😶', '😐', '😑', '😬', '🙄', '😯', '😦', '😧', '😮', '😲', '🥱', '😴', '🤤', '😪', '😵', '🤐', '🥴', '🤢', '🤮', '🤧', '😷', '🤒', '🤕'],
-    'Animais e Natureza': ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐽', '🐸', '🐵', '🙈', '🙉', '🙊', '🐒', '🐔', '🐧', '🐦', '🐤', '🐣', '🦆', '🦅', '🦉', '🦇', '🐺', '🐗', '🐴', '🦄', '🐝', '🐛', '🦋', '🐌', '🐞', '🐜', '🦟', '🦗', '🕷️', '🦂', '🐢', '🐍', '🦎', '🦖', '🦕', '🐙', '🦑', '🦐', '🦞', '🦀', '🐡', '🐠', '🐟', '🐬', '🐳', '🐋', '🦈', '🐊', '🐅', '🐆', '🦓', '🦍', '🦧', '🐘', '🦏', '🦛', '🐪', '🐫', '🦒', '🦘', '🐃', '🐂', '🐄', '🐎', '🐖', '🐏', '🐑', '🦙', '🐐', '🦌', '🐕', '🐩', '🦮', '🐕‍🦺', '🐈', '🐓', '🦃', '🦚', '🦜', '🦢', '🦩', '🕊️', '🐇', '🦝', '🦨', '🦡', '🦫'],
-    'Comida e Bebida': ['🍎', '🍊', '🍋', '🍌', '🍉', '🍇', '🍓', '🫐', '🍈', '🍒', '🍑', '🥭', '🍍', '🥥', '🥝', '🍅', '🍆', '🥑', '🥦', '🥬', '🥒', '🌶️', '🫒', '🌽', '🥕', '🫒', '🧄', '🧅', '🥔', '🍠', '🥐', '🥯', '🍞', '🥖', '🥨', '🧀', '🥚', '🍳', '🧈', '🥞', '🧇', '🥓', '🥩', '🍗', '🍖', '🦴', '🌭', '🍔', '🍟', '🍕', '🫓', '🥪', '🥙', '🧆', '🌮', '🌯', '🫔', '🥗', '🥘', '🫕', '🍝', '🍜', '🍲', '🍛', '🍣', '🍱', '🥟', '🦪', '🍤', '🍙', '🍚', '🍘', '🍥', '🥠', '🥮', '🍢', '🍡', '🍧', '🍨', '🍦', '🥧', '🧁', '🍰', '🎂', '🍮', '🍭', '🍬', '🍫', '🍿', '🍩', '🍪', '🌰', '🥜', '🍯'],
-    'Atividades': ['⚽', '🏀', '🏈', '⚾', '🥎', '🎾', '🏐', '🏉', '🥏', '🎱', '🪀', '🏓', '🏸', '🏒', '🏑', '🥍', '🏏', '🪃', '🥅', '⛳', '🪁', '🏹', '🎣', '🤿', '🥊', '🥋', '🎽', '🛹', '🛼', '🛷', '⛸️', '🥌', '🎿', '⛷️', '🏂', '🪂', '🏋️‍♀️', '🏋️', '🏋️‍♂️', '🤼‍♀️', '🤼', '🤼‍♂️', '🤸‍♀️', '🤸', '🤸‍♂️', '⛹️‍♀️', '⛹️', '⛹️‍♂️', '🤺', '🤾‍♀️', '🤾', '🤾‍♂️', '🏌️‍♀️', '🏌️', '🏌️‍♂️', '🏇', '🧘‍♀️', '🧘', '🧘‍♂️', '🏄‍♀️', '🏄', '🏄‍♂️', '🏊‍♀️', '🏊', '🏊‍♂️', '🤽‍♀️', '🤽', '🤽‍♂️', '🚣‍♀️', '🚣', '🚣‍♂️', '🧗‍♀️', '🧗', '🧗‍♂️', '🚵‍♀️', '🚵', '🚵‍♂️', '🚴‍♀️', '🚴', '🚴‍♂️'],
-    'Objetos': ['⌚', '📱', '📲', '💻', '⌨️', '🖥️', '🖨️', '🖱️', '🖲️', '🕹️', '🗜️', '💽', '💾', '💿', '📀', '📼', '📷', '📸', '📹', '🎥', '📽️', '🎞️', '📞', '☎️', '📟', '📠', '📺', '📻', '🎙️', '🎚️', '🎛️', '🧭', '⏱️', '⏲️', '⏰', '🕰️', '⌛', '⏳', '📡', '🔋', '🔌', '💡', '🔦', '🕯️', '🪔', '🧯', '🛢️', '💸', '💵', '💴', '💶', '💷', '🪙', '💰', '💳', '💎', '⚖️', '🪜', '🧰', '🔧', '🔨', '⚒️', '🛠️', '⛏️', '🪚', '🔩', '⚙️', '🪤', '🧱', '⛓️', '🧲', '🔫', '💣', '🧨', '🪓', '🔪', '🗡️', '⚔️', '🛡️', '🚬', '⚰️', '🪦', '⚱️', '🏺', '🔮', '📿', '🧿', '💈', '⚗️', '🔭', '🔬', '🕳️', '🩹', '🩺', '💊', '💉', '🩸', '🧬', '🦠', '🧫', '🧪', '🌡️', '🧹', '🪣', '🧽', '🧴', '🛎️', '🔑', '🗝️', '🚪', '🪑', '🛋️', '🛏️', '🛌', '🧸', '🪆', '🖼️', '🪞', '🪟', '🛍️', '🛒', '🎁', '🎈', '🎏', '🎀', '🪄', '🪅', '🎊', '🎉', '🎎', '🏮', '🎐', '🧧', '✉️', '📩', '📨', '📧', '💌', '📥', '📤', '📦', '🏷️', '🪧', '📪', '📫', '📬', '📭', '📮', '📯', '📜', '📃', '📄', '📑', '🧾', '📊', '📈', '📉', '🗒️', '🗓️', '📅', '📆', '🗑️', '📇', '🗃️', '🗳️', '🗄️', '📋', '📁', '📂', '🗂️', '🗞️', '📰', '📓', '📔', '📒', '📕', '📗', '📘', '📙', '📚', '📖', '🔖', '🧷', '🔗', '📎', '🖇️', '📐', '📏', '🧮', '📌', '📍', '✂️', '🖊️', '🖋️', '✒️', '🖌️', '🖍️', '📝', '✏️', '🔍', '🔎', '🔏', '🔐', '🔒', '🔓'],
-    'Símbolos': ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔', '❣️', '💕', '💞', '💓', '💗', '💖', '💘', '💝', '💟', '☮️', '✝️', '☪️', '🕉️', '☸️', '✡️', '🔯', '🕎', '☯️', '☦️', '🛐', '⛎', '♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '♐', '♑', '♒', '♓', '🆔', '⚛️', '🉑', '☢️', '☣️', '📴', '📳', '🈶', '🈚', '🈸', '🈺', '🈷️', '✴️', '🆚', '💮', '🉐', '㊙️', '㊗️', '🈴', '🈵', '🈹', '🈲', '🅰️', '🅱️', '🆎', '🆑', '🅾️', '🆘', '❌', '⭕', '🛑', '⛔', '📛', '🚫', '💯', '💢', '♨️', '🚷', '🚯', '🚳', '🚱', '🔞', '📵', '🚭', '❗', '❕', '❓', '❔', '‼️', '⁉️', '🔅', '🔆', '〽️', '⚠️', '🚸', '🔱', '⚜️', '🔰', '♻️', '✅', '🈯', '💹', '❇️', '✳️', '❎', '🌐', '💠', 'Ⓜ️', '🌀', '💤', '🏧', '🚾', '♿', '🅿️', '🛗', '🈳', '🈂️', '🛂', '🛃', '🛄', '🛅', '🚹', '🚺', '🚼', '⚧', '🚻', '🚮', '🎦', '📶', '🈁', '🔣', 'ℹ️', '🔤', '🔡', '🔠', '🆖', '🆗', '🆙', '🆒', '🆕', '🆓', '0️⃣', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟', '🔢', '#️⃣', '*️⃣', '⏏️', '▶️', '⏸️', '⏯️', '⏹️', '⏺️', '⏭️', '⏮️', '⏩', '⏪', '⏫', '⏬', '◀️', '🔼', '🔽', '➡️', '⬅️', '⬆️', '⬇️', '↗️', '↘️', '↙️', '↖️', '↕️', '↔️', '↪️', '↩️', '⤴️', '⤵️', '🔀', '🔁', '🔂', '🔄', '🔃', '🎵', '🎶', '➕', '➖', '➗', '✖️', '♾️', '💲', '💱', '™️', '©️', '®️', '〰️', '➰', '➿', '🔚', '🔙', '🔛', '🔝', '🔜', '✔️', '☑️', '🔘', '🔴', '🟠', '🟡', '🟢', '🔵', '🟣', '⚫', '⚪', '🟤', '🔺', '🔻', '🔸', '🔹', '🔶', '🔷', '🔳', '🔲', '▪️', '▫️', '◾', '◽', '◼️', '◻️', '🟥', '🟧', '🟨', '🟩', '🟦', '🟪', '⬛', '⬜', '🟫', '🔈', '🔇', '🔉', '🔊', '🔔', '🔕', '📣', '📢', '👁️‍🗨️', '💬', '💭', '🗯️', '♠️', '♣️', '♥️', '♦️', '🃏', '🎴', '🀄', '🕐', '🕑', '🕒', '🕓', '🕔', '🕕', '🕖', '🕗', '🕘', '🕙', '🕚', '🕛', '🕜', '🕝', '🕞', '🕟', '🕠', '🕡', '🕢', '🕣', '🕤', '🕥', '🕦', '🕧']
-  };
 
   // Obter webhook configurado
   const getWebhookUrl = (type: string) => {
@@ -159,19 +150,10 @@ const Messages = () => {
   };
 
   const handleSaveTemplate = () => {
-    if (!templateDialog.name.trim()) {
+    if (!templateDialog.name || !templateDialog.content) {
       toast({
         title: "Erro",
-        description: "Por favor, preencha o nome do template.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!currentMessage.content.trim()) {
-      toast({
-        title: "Erro",
-        description: "Por favor, digite o conteúdo da mensagem antes de salvar o template.",
+        description: "Por favor, preencha nome e conteúdo do template.",
         variant: "destructive",
       });
       return;
@@ -179,13 +161,15 @@ const Messages = () => {
 
     createTemplate.mutate({
       name: templateDialog.name,
-      content: currentMessage.content,
-      type: currentMessage.messageType
+      content: templateDialog.content,
+      type: templateDialog.type
     });
 
     setTemplateDialog({
       open: false,
-      name: ''
+      name: '',
+      content: '',
+      type: 'whatsapp'
     });
   };
 
@@ -218,13 +202,6 @@ const Messages = () => {
     });
   };
 
-  const insertEmoji = (emoji: string) => {
-    setCurrentMessage({
-      ...currentMessage,
-      content: currentMessage.content + emoji
-    });
-  };
-
   const getRecipientCount = () => {
     if (currentMessage.filterType === 'all') {
       return leads.length;
@@ -237,37 +214,37 @@ const Messages = () => {
   };
 
   return (
-    <div className="p-2 sm:p-6 space-y-4 sm:space-y-6">
+    <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Mensagens</h1>
+        <h1 className="text-3xl font-bold text-foreground">Mensagens</h1>
       </div>
 
       <Tabs defaultValue="send" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="send" className="text-xs sm:text-sm">Enviar</TabsTrigger>
-          <TabsTrigger value="templates" className="text-xs sm:text-sm">Templates</TabsTrigger>
-          <TabsTrigger value="history" className="text-xs sm:text-sm">Histórico</TabsTrigger>
+          <TabsTrigger value="send">Enviar Mensagem</TabsTrigger>
+          <TabsTrigger value="templates">Templates</TabsTrigger>
+          <TabsTrigger value="history">Histórico</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="send" className="space-y-4 sm:space-y-6">
+        <TabsContent value="send" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg sm:text-xl">Nova Mensagem</CardTitle>
-              <CardDescription className="text-sm">
+              <CardTitle>Nova Mensagem</CardTitle>
+              <CardDescription>
                 Envie mensagens para leads. Se nenhum filtro for selecionado, será enviado para todos.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-sm">Tipo de Mensagem</Label>
+                  <Label>Tipo de Mensagem</Label>
                   <Select 
                     value={currentMessage.messageType} 
                     onValueChange={(value: 'whatsapp' | 'email' | 'sms') => 
                       setCurrentMessage({...currentMessage, messageType: value})
                     }
                   >
-                    <SelectTrigger className="h-9">
+                    <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -294,14 +271,14 @@ const Messages = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-sm">Filtrar por</Label>
+                  <Label>Filtrar por</Label>
                   <Select 
                     value={currentMessage.filterType} 
                     onValueChange={(value: 'course' | 'event' | 'all') => 
                       setCurrentMessage({...currentMessage, filterType: value, filterValue: ''})
                     }
                   >
-                    <SelectTrigger className="h-9">
+                    <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -314,7 +291,7 @@ const Messages = () => {
 
                 {currentMessage.filterType !== 'all' && (
                   <div className="space-y-2">
-                    <Label className="text-sm">
+                    <Label>
                       {currentMessage.filterType === 'course' ? 'Curso' : 'Evento'}
                     </Label>
                     <Select 
@@ -323,7 +300,7 @@ const Messages = () => {
                         setCurrentMessage({...currentMessage, filterValue: value})
                       }
                     >
-                      <SelectTrigger className="h-9">
+                      <SelectTrigger>
                         <SelectValue placeholder="Selecione..." />
                       </SelectTrigger>
                       <SelectContent>
@@ -343,49 +320,17 @@ const Messages = () => {
               </div>
 
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="message-content" className="text-sm">Conteúdo da Mensagem</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" size="sm" className="h-8 px-2">
-                        <Smile className="h-4 w-4" />
-                        <span className="ml-1 hidden sm:inline">Emojis</span>
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-80 max-h-96 overflow-auto" align="end">
-                      <div className="space-y-4">
-                        {Object.entries(emojiCategories).map(([category, emojis]) => (
-                          <div key={category}>
-                            <h4 className="text-sm font-semibold mb-2">{category}</h4>
-                            <div className="grid grid-cols-8 gap-1">
-                              {emojis.map((emoji) => (
-                                <button
-                                  key={emoji}
-                                  onClick={() => insertEmoji(emoji)}
-                                  className="text-lg hover:bg-muted p-1 rounded transition-colors"
-                                  type="button"
-                                >
-                                  {emoji}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                </div>
+                <Label htmlFor="message-content">Conteúdo da Mensagem</Label>
                 <Textarea
                   id="message-content"
                   placeholder="Digite sua mensagem aqui... Use {nome} para personalizar com o nome do lead."
                   value={currentMessage.content}
                   onChange={(e) => setCurrentMessage({...currentMessage, content: e.target.value})}
                   rows={6}
-                  className="resize-none"
                 />
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-2">
+              <div className="flex space-x-2">
                 <Button onClick={handleSendMessage} className="flex-1">
                   <Send className="h-4 w-4 mr-2" />
                   Enviar Mensagem
@@ -393,13 +338,12 @@ const Messages = () => {
                 
                 <Dialog open={templateDialog.open} onOpenChange={(open) => setTemplateDialog({...templateDialog, open})}>
                   <DialogTrigger asChild>
-                    <Button variant="outline" className="flex-1 sm:flex-none">
+                    <Button variant="outline">
                       <Save className="h-4 w-4 mr-2" />
-                      <span className="hidden sm:inline">Salvar como Template</span>
-                      <span className="sm:hidden">Template</span>
+                      Salvar como Template
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-md">
+                  <DialogContent>
                     <DialogHeader>
                       <DialogTitle>Salvar Template</DialogTitle>
                       <DialogDescription>
@@ -416,13 +360,32 @@ const Messages = () => {
                           placeholder="Ex: Boas-vindas Medicina"
                         />
                       </div>
-                      <div className="bg-muted p-3 rounded-lg">
-                        <p className="text-sm text-muted-foreground">
-                          <strong>Conteúdo:</strong> Será salvo o conteúdo atual da mensagem
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          <strong>Tipo:</strong> {currentMessage.messageType}
-                        </p>
+                      <div>
+                        <Label htmlFor="template-content">Conteúdo</Label>
+                        <Textarea
+                          id="template-content"
+                          value={templateDialog.content || currentMessage.content}
+                          onChange={(e) => setTemplateDialog({...templateDialog, content: e.target.value})}
+                          rows={4}
+                        />
+                      </div>
+                      <div>
+                        <Label>Tipo</Label>
+                        <Select 
+                          value={templateDialog.type} 
+                          onValueChange={(value: 'whatsapp' | 'email' | 'sms') => 
+                            setTemplateDialog({...templateDialog, type: value})
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                            <SelectItem value="email">E-mail</SelectItem>
+                            <SelectItem value="sms">SMS</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
                     <div className="flex justify-end space-x-2">
@@ -455,17 +418,16 @@ const Messages = () => {
                     <div key={template.id} className="border rounded-lg p-4">
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center space-x-2">
-                          <h3 className="font-medium text-sm sm:text-base">{template.name}</h3>
-                          <Badge variant="outline" className="text-xs">{template.type}</Badge>
+                          <h3 className="font-medium">{template.name}</h3>
+                          <Badge variant="outline">{template.type}</Badge>
                         </div>
                         <div className="flex space-x-2">
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => useTemplate(template)}
-                            className="text-xs"
                           >
-                            Usar
+                            Usar Template
                           </Button>
                           <Button
                             variant="ghost"
@@ -476,7 +438,7 @@ const Messages = () => {
                           </Button>
                         </div>
                       </div>
-                      <p className="text-sm text-muted-foreground line-clamp-3">{template.content}</p>
+                      <p className="text-sm text-muted-foreground">{template.content}</p>
                     </div>
                   ))}
                 </div>
@@ -499,47 +461,42 @@ const Messages = () => {
             </CardHeader>
             <CardContent>
               {messageHistory.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="text-xs">Data</TableHead>
-                        <TableHead className="text-xs">Tipo</TableHead>
-                        <TableHead className="text-xs hidden sm:table-cell">Filtro</TableHead>
-                        <TableHead className="text-xs">Dest.</TableHead>
-                        <TableHead className="text-xs">Status</TableHead>
-                        <TableHead className="text-xs hidden md:table-cell">Conteúdo</TableHead>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Data</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>Filtro</TableHead>
+                      <TableHead>Destinatários</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Conteúdo</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {messageHistory.map((message: any) => (
+                      <TableRow key={message.id}>
+                        <TableCell>
+                          {new Date(message.sent_at).toLocaleString('pt-BR')}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{message.type}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          {message.filter_type === 'all' ? 'Todos' : message.filter_type}
+                        </TableCell>
+                        <TableCell>{message.recipients_count}</TableCell>
+                        <TableCell>
+                          <Badge variant={message.status === 'sent' ? 'default' : 'secondary'}>
+                            {message.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="max-w-xs truncate">
+                          {message.content}
+                        </TableCell>
                       </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {messageHistory.map((message: any) => (
-                        <TableRow key={message.id}>
-                          <TableCell className="text-xs">
-                            {new Date(message.sent_at).toLocaleDateString('pt-BR')}
-                            <div className="sm:hidden text-xs text-muted-foreground">
-                              {new Date(message.sent_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className="text-xs">{message.type}</Badge>
-                          </TableCell>
-                          <TableCell className="text-xs hidden sm:table-cell">
-                            {message.filter_type === 'all' ? 'Todos' : message.filter_type}
-                          </TableCell>
-                          <TableCell className="text-xs">{message.recipients_count}</TableCell>
-                          <TableCell>
-                            <Badge variant={message.status === 'sent' ? 'default' : 'secondary'} className="text-xs">
-                              {message.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="max-w-xs truncate text-xs hidden md:table-cell">
-                            {message.content}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                    ))}
+                  </TableBody>
+                </Table>
               ) : (
                 <p className="text-center text-muted-foreground py-8">
                   Nenhum histórico de mensagens ainda
