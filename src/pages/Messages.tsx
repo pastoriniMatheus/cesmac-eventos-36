@@ -59,7 +59,6 @@ const Messages = () => {
     console.log('📊 Todas as configurações disponíveis:', systemSettings);
     
     // Mapear tipos de mensagem para chaves de configuração corretas
-    // Essas chaves devem corresponder às que são salvas nas configurações
     const webhookKeyMap = {
       'whatsapp': 'webhook_messages', // Webhook Envio de Mensagens (WhatsApp)
       'email': 'webhook_email',       // Webhook de Email
@@ -88,9 +87,10 @@ const Messages = () => {
       if (typeof webhookSetting.value === 'string') {
         // Se for string, usar diretamente
         webhookUrl = webhookSetting.value;
-      } else if (webhookSetting.value && typeof webhookSetting.value === 'object') {
-        // Se for objeto, tentar extrair URL
-        webhookUrl = webhookSetting.value.url || webhookSetting.value;
+      } else if (webhookSetting.value && typeof webhookSetting.value === 'object' && !Array.isArray(webhookSetting.value)) {
+        // Se for objeto (não array), tentar extrair URL
+        const valueObj = webhookSetting.value as { [key: string]: any };
+        webhookUrl = valueObj.url || String(webhookSetting.value);
       } else {
         // Tentar converter para string
         webhookUrl = String(webhookSetting.value);
