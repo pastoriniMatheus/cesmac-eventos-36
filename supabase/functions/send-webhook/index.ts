@@ -20,7 +20,7 @@ serve(async (req) => {
       details: 'Only POST method is allowed'
     }), { 
       status: 405,
-      headers: corsHeaders 
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   }
 
@@ -58,7 +58,12 @@ serve(async (req) => {
     console.log('📤 Enviando webhook para:', webhook_url);
     console.log('📋 Tipo de mensagem:', webhook_data.type);
     console.log('📋 Número de destinatários:', webhook_data.recipients?.length || 0);
-    console.log('📋 Dados completos:', JSON.stringify(webhook_data, null, 2));
+    console.log('📋 URL verificada no banco:', webhook_url);
+
+    // Verificar se a URL é a correta do banco
+    if (!webhook_url.includes('https://n8n.intrategica.com.br/webhook-test/disparos')) {
+      console.log('⚠️ URL parece diferente da esperada. URL recebida:', webhook_url);
+    }
 
     // Enviar webhook com timeout
     const controller = new AbortController();

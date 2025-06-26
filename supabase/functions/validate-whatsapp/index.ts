@@ -109,7 +109,7 @@ serve(async (req) => {
 
     console.log('✅ Validação criada:', validation);
 
-    // Enviar para webhook externo sem headers de autorização
+    // Enviar para webhook externo sem headers de autorização - COMPLETAMENTE PÚBLICO
     try {
       console.log('📤 Enviando para webhook externo...');
       
@@ -120,6 +120,7 @@ serve(async (req) => {
       };
 
       console.log('📋 Payload do webhook:', JSON.stringify(webhookPayload, null, 2));
+      console.log('🌐 URL do callback configurada:', webhookPayload.callback_url);
 
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000);
@@ -127,7 +128,8 @@ serve(async (req) => {
       const webhookResponse = await fetch(settings.value, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
         },
         body: JSON.stringify(webhookPayload),
         signal: controller.signal,
@@ -165,7 +167,8 @@ serve(async (req) => {
         validation_id,
         message: 'Validation request sent successfully',
         webhook_status: webhookResponse.status,
-        webhook_response: responseText
+        webhook_response: responseText,
+        callback_url: webhookPayload.callback_url
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
