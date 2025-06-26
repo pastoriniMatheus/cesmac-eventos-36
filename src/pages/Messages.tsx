@@ -53,10 +53,35 @@ const Messages = () => {
     'Símbolos': ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔', '❣️', '💕', '💞', '💓', '💗', '💖', '💘', '💝', '💟', '☮️', '✝️', '☪️', '🕉️', '☸️', '✡️', '🔯', '🕎', '☯️', '☦️', '🛐', '⛎', '♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '♐', '♑', '♒', '♓', '🆔', '⚛️', '🉑', '☢️', '☣️', '📴', '📳', '🈶', '🈚', '🈸', '🈺', '🈷️', '✴️', '🆚', '💮', '🉐', '㊙️', '㊗️', '🈴', '🈵', '🈹', '🈲', '🅰️', '🅱️', '🆎', '🆑', '🅾️', '🆘', '❌', '⭕', '🛑', '⛔', '📛', '🚫', '💯', '💢', '♨️', '🚷', '🚯', '🚳', '🚱', '🔞', '📵', '🚭', '❗', '❕', '❓', '❔', '‼️', '⁉️', '🔅', '🔆', '〽️', '⚠️', '🚸', '🔱', '⚜️', '🔰', '♻️', '✅', '🈯', '💹', '❇️', '✳️', '❎', '🌐', '💠', 'Ⓜ️', '🌀', '💤', '🏧', '🚾', '♿', '🅿️', '🛗', '🈳', '🈂️', '🛂', '🛃', '🛄', '🛅', '🚹', '🚺', '🚼', '⚧', '🚻', '🚮', '🎦', '📶', '🈁', '🔣', 'ℹ️', '🔤', '🔡', '🔠', '🆖', '🆗', '🆙', '🆒', '🆕', '🆓', '0️⃣', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟', '🔢', '#️⃣', '*️⃣', '⏏️', '▶️', '⏸️', '⏯️', '⏹️', '⏺️', '⏭️', '⏮️', '⏩', '⏪', '⏫', '⏬', '◀️', '🔼', '🔽', '➡️', '⬅️', '⬆️', '⬇️', '↗️', '↘️', '↙️', '↖️', '↕️', '↔️', '↪️', '↩️', '⤴️', '⤵️', '🔀', '🔁', '🔂', '🔄', '🔃', '🎵', '🎶', '➕', '➖', '➗', '✖️', '♾️', '💲', '💱', '™️', '©️', '®️', '〰️', '➰', '➿', '🔚', '🔙', '🔛', '🔝', '🔜', '✔️', '☑️', '🔘', '🔴', '🟠', '🟡', '🟢', '🔵', '🟣', '⚫', '⚪', '🟤', '🔺', '🔻', '🔸', '🔹', '🔶', '🔷', '🔳', '🔲', '▪️', '▫️', '◾', '◽', '◼️', '◻️', '🟥', '🟧', '🟨', '🟩', '🟦', '🟪', '⬛', '⬜', '🟫', '🔈', '🔇', '🔉', '🔊', '🔔', '🔕', '📣', '📢', '👁️‍🗨️', '💬', '💭', '🗯️', '♠️', '♣️', '♥️', '♦️', '🃏', '🎴', '🀄', '🕐', '🕑', '🕒', '🕓', '🕔', '🕕', '🕖', '🕗', '🕘', '🕙', '🕚', '🕛', '🕜', '🕝', '🕞', '🕟', '🕠', '🕡', '🕢', '🕣', '🕤', '🕥', '🕦', '🕧']
   };
 
-  // Obter webhook configurado
+  // Obter webhook configurado com verificação melhorada
   const getWebhookUrl = (type: string) => {
-    const webhookSetting = systemSettings.find((s: any) => s.key === `webhook_${type}`);
-    return webhookSetting ? (typeof webhookSetting.value === 'string' ? webhookSetting.value : JSON.parse(String(webhookSetting.value))) : null;
+    console.log('🔍 Buscando webhook para tipo:', type);
+    console.log('📊 Configurações disponíveis:', systemSettings);
+    
+    const webhookKey = `webhook_${type}`;
+    const webhookSetting = systemSettings.find((s: any) => s.key === webhookKey);
+    
+    console.log('🔑 Chave buscada:', webhookKey);
+    console.log('⚙️ Configuração encontrada:', webhookSetting);
+    
+    if (!webhookSetting) {
+      console.log('❌ Webhook não encontrado para chave:', webhookKey);
+      return null;
+    }
+    
+    let webhookUrl;
+    try {
+      // Tentar como string primeiro
+      webhookUrl = typeof webhookSetting.value === 'string' ? 
+        webhookSetting.value : 
+        JSON.parse(String(webhookSetting.value));
+    } catch (e) {
+      console.error('❌ Erro ao processar valor do webhook:', e);
+      return null;
+    }
+    
+    console.log('🌐 URL do webhook processada:', webhookUrl);
+    return webhookUrl;
   };
 
   const handleSendMessage = async () => {
@@ -71,7 +96,11 @@ const Messages = () => {
 
     // Verificar se webhook está configurado
     const webhookUrl = getWebhookUrl(currentMessage.messageType);
+    console.log('🔍 Webhook URL obtida:', webhookUrl);
+    console.log('📋 Tipo de mensagem:', currentMessage.messageType);
+    
     if (!webhookUrl) {
+      console.error('❌ Webhook não configurado para tipo:', currentMessage.messageType);
       toast({
         title: "Webhook não configurado",
         description: `Por favor, configure o webhook para ${currentMessage.messageType} nas configurações antes de enviar mensagens.`,
@@ -92,6 +121,15 @@ const Messages = () => {
       filteredLeads = leads.filter((lead: any) => lead.event_id === currentMessage.filterValue);
       const eventName = events.find((e: any) => e.id === currentMessage.filterValue)?.name;
       filterDescription = `Evento: ${eventName}`;
+    }
+
+    if (filteredLeads.length === 0) {
+      toast({
+        title: "Nenhum destinatário",
+        description: "Não há leads para enviar mensagens com os filtros selecionados.",
+        variant: "destructive",
+      });
+      return;
     }
 
     try {
@@ -131,7 +169,8 @@ const Messages = () => {
         metadata: {
           filter_type: currentMessage.filterType,
           filter_description: filterDescription,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          total_recipients: filteredLeads.length
         }
       };
 
@@ -177,9 +216,20 @@ const Messages = () => {
     } catch (error: any) {
       console.error('💥 Erro no envio da mensagem:', error);
       
+      let errorMessage = error.message || "Erro ao enviar mensagem";
+      
+      // Melhorar mensagens de erro baseadas no tipo
+      if (errorMessage.includes('non-2xx status code')) {
+        errorMessage = `Erro no webhook: Verifique se a URL ${webhookUrl} está configurada corretamente no n8n e se o workflow está ativo.`;
+      } else if (errorMessage.includes('404')) {
+        errorMessage = `Webhook não encontrado: A URL ${webhookUrl} retornou 404. Verifique se o endpoint existe no n8n.`;
+      } else if (errorMessage.includes('timeout')) {
+        errorMessage = 'Timeout na requisição: O webhook demorou mais de 30 segundos para responder.';
+      }
+      
       toast({
         title: "Erro no envio",
-        description: error.message || "Erro ao enviar mensagem. Verifique a configuração do webhook.",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -364,8 +414,15 @@ const Messages = () => {
               </div>
 
               <div className="bg-muted p-3 rounded-lg">
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground mb-2">
                   <strong>Destinatários:</strong> {getRecipientCount()} leads serão incluídos neste envio
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  <strong>Webhook {currentMessage.messageType}:</strong> {
+                    getWebhookUrl(currentMessage.messageType) ? 
+                    `✅ Configurado (${getWebhookUrl(currentMessage.messageType)})` : 
+                    '❌ Não configurado'
+                  }
                 </p>
               </div>
 

@@ -58,23 +58,38 @@ serve(async (req) => {
     console.log('📤 Enviando webhook para:', webhook_url);
     console.log('📋 Tipo de mensagem:', webhook_data.type);
     console.log('📋 Número de destinatários:', webhook_data.recipients?.length || 0);
-    console.log('📋 URL verificada no banco:', webhook_url);
 
-    // Verificar se a URL é a correta do banco
-    if (!webhook_url.includes('https://n8n.intrategica.com.br/webhook-test/disparos')) {
-      console.log('⚠️ URL parece diferente da esperada. URL recebida:', webhook_url);
+    // Validar se a URL é válida
+    let validUrl;
+    try {
+      validUrl = new URL(webhook_url);
+      console.log('✅ URL válida:', validUrl.toString());
+    } catch (urlError) {
+      console.error('❌ URL inválida:', webhook_url, urlError);
+      return new Response(JSON.stringify({
+        error: 'Invalid webhook URL',
+        details: 'The provided webhook URL is not valid',
+        webhook_url: webhook_url
+      }), { 
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
-    // Enviar webhook com timeout
+    // Enviar webhook com timeout e headers adequados
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000);
 
     try {
+      console.log('🚀 Fazendo requisição para:', webhook_url);
+      console.log('📦 Dados sendo enviados:', JSON.stringify(webhook_data, null, 2));
+
       const response = await fetch(webhook_url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json'
+          'Accept': 'application/json',
+          'User-Agent': 'Supabase-Edge-Function/1.0'
         },
         body: JSON.stringify(webhook_data),
         signal: controller.signal
@@ -105,7 +120,31 @@ serve(async (req) => {
           url: webhook_url
         });
         
-        throw new Error(`Webhook returned ${response.status} (${response.statusText}): ${responseText}`);
+        // Mensagens de erro mais específicas
+        let errorMessage = `Webhook retornou ${response.status} (${response.statusText})`;
+        let errorDetails = responseText;
+        
+        if (response.status === 404) {
+          errorMessage = 'Webhook não encontrado (404)';
+          errorDetails = 'Verifique se a URL está correta e se o endpoint existe no n8n';
+        } else if (response.status === 401) {
+          errorMessage = 'Erro de autorização (401)';
+          errorDetails = 'Verifique as credenciais de acesso ao webhook';
+        } else if (response.status === 500) {
+          errorMessage = 'Erro interno do servidor (500)';
+          errorDetails = 'Problema no n8n ou no workflow';
+        }
+        
+        return new Response(JSON.stringify({
+          error: errorMessage,
+          details: errorDetails,
+          webhook_response: responseText,
+          status_code: response.status,
+          webhook_url: webhook_url
+        }), { 
+          status: response.status,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
       }
 
       console.log('✅ Webhook executado com sucesso');
@@ -116,7 +155,8 @@ serve(async (req) => {
         statusText: response.statusText,
         response: responseText,
         webhook_url: webhook_url,
-        message: 'Webhook sent successfully'
+        message: 'Webhook sent successfully',
+        recipients_count: webhook_data.recipients?.length || 0
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200
@@ -149,7 +189,14 @@ serve(async (req) => {
         webhook_url: webhook_url
       });
       
-      throw new Error(errorMessage);
+      return new Response(JSON.stringify({
+        error: errorMessage,
+        details: errorDetails,
+        webhook_url: webhook_url
+      }), { 
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
   } catch (error: any) {
