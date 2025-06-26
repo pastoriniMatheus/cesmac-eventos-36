@@ -1,688 +1,383 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { MessageSquare, Mail, Smartphone, Save, Send, Trash2, Smile } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { useCourses } from '@/hooks/useCourses';
-import { useEvents } from '@/hooks/useEvents';
-import { useLeads } from '@/hooks/useLeads';
-import { useCreateMessageTemplate, useMessageTemplates, useMessageHistory } from '@/hooks/useMessages';
-import { useSystemSettings } from '@/hooks/useSystemSettings';
-import { supabase } from '@/integrations/supabase/client';
-import { useQueryClient } from '@tanstack/react-query';
-import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useToast } from '@/hooks/use-toast';
+import { useMessageTemplates, useMessageHistory } from '@/hooks/useMessages';
+import { useSystemSettings } from '@/hooks/useSystemSettings';
+import { Send, Copy, MessageSquare, History } from 'lucide-react';
+
+interface MessageTemplate {
+  id: string;
+  name: string;
+  content: string;
+  type: string;
+  created_at: string;
+}
+
+interface MessageHistoryItem {
+  id: string;
+  template_name: string;
+  recipients: string[];
+  sent_at: string;
+  status: string;
+  type: string;
+  response: string;
+}
 
 const Messages = () => {
   const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const { data: courses = [] } = useCourses();
-  const { data: events = [] } = useEvents();
-  const { data: leads = [] } = useLeads();
-  const { data: templates = [] } = useMessageTemplates();
-  const { data: messageHistory = [] } = useMessageHistory();
-  const { data: systemSettings = [] } = useSystemSettings();
-  const createTemplate = useCreateMessageTemplate();
+  const { data: templates, isLoading: isLoadingTemplates } = useMessageTemplates();
+  const { data: history, isLoading: isLoadingHistory } = useMessageHistory();
+  const { data: settings, isLoading: isLoadingSettings } = useSystemSettings();
 
-  const [currentMessage, setCurrentMessage] = useState({
-    content: '',
-    filterType: 'all' as 'course' | 'event' | 'all',
-    filterValue: '',
-    messageType: 'whatsapp' as 'whatsapp' | 'email' | 'sms'
-  });
+  const [messageType, setMessageType] = useState<'whatsapp' | 'email' | 'sms'>('whatsapp');
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('');
+  const [messageContent, setMessageContent] = useState<string>('');
+  const [recipients, setRecipients] = useState<string>('');
+  const [isSending, setIsSending] = useState<boolean>(false);
 
-  const [templateDialog, setTemplateDialog] = useState({
-    open: false,
-    name: ''
-  });
+  useEffect(() => {
+    if (templates && selectedTemplate) {
+      const template = templates.find(t => t.id === selectedTemplate);
+      if (template) {
+        setMessageContent(template.content);
+      }
+    }
+  }, [selectedTemplate, templates]);
 
-  // Lista completa de emojis organizados por categoria
-  const emojiCategories = {
-    'Rostos e Pessoas': ['😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', '😙', '😚', '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', '😎', '🤩', '🥳', '😏', '😒', '😞', '😔', '😟', '😕', '🙁', '☹️', '😣', '😖', '😫', '😩', '🥺', '😢', '😭', '😤', '😠', '😡', '🤬', '🤯', '😳', '🥵', '🥶', '😱', '😨', '😰', '😥', '😓', '🤗', '🤔', '🤭', '🤫', '🤥', '😶', '😐', '😑', '😬', '🙄', '😯', '😦', '😧', '😮', '😲', '🥱', '😴', '🤤', '😪', '😵', '🤐', '🥴', '🤢', '🤮', '🤧', '😷', '🤒', '🤕'],
-    'Animais e Natureza': ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐽', '🐸', '🐵', '🙈', '🙉', '🙊', '🐒', '🐔', '🐧', '🐦', '🐤', '🐣', '🦆', '🦅', '🦉', '🦇', '🐺', '🐗', '🐴', '🦄', '🐝', '🐛', '🦋', '🐌', '🐞', '🐜', '🦟', '🦗', '🕷️', '🦂', '🐢', '🐍', '🦎', '🦖', '🦕', '🐙', '🦑', '🦐', '🦞', '🦀', '🐡', '🐠', '🐟', '🐬', '🐳', '🐋', '🦈', '🐊', '🐅', '🐆', '🦓', '🦍', '🦧', '🐘', '🦏', '🦛', '🐪', '🐫', '🦒', '🦘', '🐃', '🐂', '🐄', '🐎', '🐖', '🐏', '🐑', '🦙', '🐐', '🦌', '🐕', '🐩', '🦮', '🐕‍🦺', '🐈', '🐓', '🦃', '🦚', '🦜', '🦢', '🦩', '🕊️', '🐇', '🦝', '🦨', '🦡', '🦫'],
-    'Comida e Bebida': ['🍎', '🍊', '🍋', '🍌', '🍉', '🍇', '🍓', '🫐', '🍈', '🍒', '🍑', '🥭', '🍍', '🥥', '🥝', '🍅', '🍆', '🥑', '🥦', '🥬', '🥒', '🌶️', '🫒', '🌽', '🥕', '🫒', '🧄', '🧅', '🥔', '🍠', '🥐', '🥯', '🍞', '🥖', '🥨', '🧀', '🥚', '🍳', '🧈', '🥞', '🧇', '🥓', '🥩', '🍗', '🍖', '🦴', '🌭', '🍔', '🍟', '🍕', '🫓', '🥪', '🥙', '🧆', '🌮', '🌯', '🫔', '🥗', '🥘', '🫕', '🍝', '🍜', '🍲', '🍛', '🍣', '🍱', '🥟', '🦪', '🍤', '🍙', '🍚', '🍘', '🍥', '🥠', '🥮', '🍢', '🍡', '🍧', '🍨', '🍦', '🥧', '🧁', '🍰', '🎂', '🍮', '🍭', '🍬', '🍫', '🍿', '🍩', '🍪', '🌰', '🥜', '🍯'],
-    'Atividades': ['⚽', '🏀', '🏈', '⚾', '🥎', '🎾', '🏐', '🏉', '🥏', '🎱', '🪀', '🏓', '🏸', '🏒', '🏑', '🥍', '🏏', '🪃', '🥅', '⛳', '🪁', '🏹', '🎣', '🤿', '🥊', '🥋', '🎽', '🛹', '🛼', '🛷', '⛸️', '🥌', '🎿', '⛷️', '🏂', '🪂', '🏋️‍♀️', '🏋️', '🏋️‍♂️', '🤼‍♀️', '🤼', '🤼‍♂️', '🤸‍♀️', '🤸', '🤸‍♂️', '⛹️‍♀️', '⛹️', '⛹️‍♂️', '🤺', '🤾‍♀️', '🤾', '🤾‍♂️', '🏌️‍♀️', '🏌️', '🏌️‍♂️', '🏇', '🧘‍♀️', '🧘', '🧘‍♂️', '🏄‍♀️', '🏄', '🏄‍♂️', '🏊‍♀️', '🏊', '🏊‍♂️', '🤽‍♀️', '🤽', '🤽‍♂️', '🚣‍♀️', '🚣', '🚣‍♂️', '🧗‍♀️', '🧗', '🧗‍♂️', '🚵‍♀️', '🚵', '🚵‍♂️', '🚴‍♀️', '🚴', '🚴‍♂️'],
-    'Objetos': ['⌚', '📱', '📲', '💻', '⌨️', '🖥️', '🖨️', '🖱️', '🖲️', '🕹️', '🗜️', '💽', '💾', '💿', '📀', '📼', '📷', '📸', '📹', '🎥', '📽️', '🎞️', '📞', '☎️', '📟', '📠', '📺', '📻', '🎙️', '🎚️', '🎛️', '🧭', '⏱️', '⏲️', '⏰', '🕰️', '⌛', '⏳', '📡', '🔋', '🔌', '💡', '🔦', '🕯️', '🪔', '🧯', '🛢️', '💸', '💵', '💴', '💶', '💷', '🪙', '💰', '💳', '💎', '⚖️', '🪜', '🧰', '🔧', '🔨', '⚒️', '🛠️', '⛏️', '🪚', '🔩', '⚙️', '🪤', '🧱', '⛓️', '🧲', '🔫', '💣', '🧨', '🪓', '🔪', '🗡️', '⚔️', '🛡️', '🚬', '⚰️', '🪦', '⚱️', '🏺', '🔮', '📿', '🧿', '💈', '⚗️', '🔭', '🔬', '🕳️', '🩹', '🩺', '💊', '💉', '🩸', '🧬', '🦠', '🧫', '🧪', '🌡️', '🧹', '🪣', '🧽', '🧴', '🛎️', '🔑', '🗝️', '🚪', '🪑', '🛋️', '🛏️', '🛌', '🧸', '🪆', '🖼️', '🪞', '🪟', '🛍️', '🛒', '🎁', '🎈', '🎏', '🎀', '🪄', '🪅', '🎊', '🎉', '🎎', '🏮', '🎐', '🧧', '✉️', '📩', '📨', '📧', '💌', '📥', '📤', '📦', '🏷️', '🪧', '📪', '📫', '📬', '📭', '📮', '📯', '📜', '📃', '📄', '📑', '🧾', '📊', '📈', '📉', '🗒️', '🗓️', '📅', '📆', '🗑️', '📇', '🗃️', '🗳️', '🗄️', '📋', '📁', '📂', '🗂️', '🗞️', '📰', '📓', '📔', '📒', '📕', '📗', '📘', '📙', '📚', '📖', '🔖', '🧷', '🔗', '📎', '🖇️', '📐', '📏', '🧮', '📌', '📍', '✂️', '🖊️', '🖋️', '✒️', '🖌️', '🖍️', '📝', '✏️', '🔍', '🔎', '🔏', '🔐', '🔒', '🔓'],
-    'Símbolos': ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔', '❣️', '💕', '💞', '💓', '💗', '💖', '💘', '💝', '💟', '☮️', '✝️', '☪️', '🕉️', '☸️', '✡️', '🔯', '🕎', '☯️', '☦️', '🛐', '⛎', '♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '♐', '♑', '♒', '♓', '🆔', '⚛️', '🉑', '☢️', '☣️', '📴', '📳', '🈶', '🈚', '🈸', '🈺', '🈷️', '✴️', '🆚', '💮', '🉐', '保密', '㊗️', '🈴', '🈵', '🈹', '🈲', '🅰️', '🅱️', '🆎', '🆑', '🅾️', '🆘', '❌', '⭕', '🛑', '⛔', '📛', '🚫', '💯', '💢', '♨️', '🚷', '🚯', '🚳', '🚱', '🔞', '📵', '🚭', '❗', '❕', '❓', '❔', '‼️', '⁉️', '🔅', '🔆', '〽️', '⚠️', '🚸', '🔱', '⚜️', '🔰', '♻️', '✅', '🈯', '💹', '❇️', '✳️', '❎', '🌐', '💠', 'Ⓜ️', '🌀', '💤', '🏧', '🚾', '♿', '🅿️', '🛗', '🈳', '🈂️', '🛂', '🛃', '🛄', '🛅', '🚹', '🚺', '🚼', '⚧', '🚻', '🚮', '🎦', '📶', '🈁', '🔣', 'ℹ️', '🔤', '🔡', '🔠', '🆖', '🆗', '🆙', '🆒', '🆕', '🆓', '0️⃣', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟', '🔢', '#️⃣', '*️⃣', '⏏️', '▶️', '⏸️', '⏯️', '⏹️', '⏺️', '⏭️', '⏮️', '⏩', '⏪', '⏫', '⏬', '◀️', '🔼', '🔽', '➡️', '⬅️', '⬆️', '⬇️', '↗️', '↘️', '↙️', '↖️', '↕️', '↔️', '↪️', '↩️', '⤴️', '⤵️', '🔀', '🔁', '🔂', '🔄', '🔃', '🎵', '🎶', '➕', '➖', '➗', '✖️', '♾️', '💲', '💱', '™️', '©️', '®️', '〰️', '➰', '➿', '🔚', '🔙', '🔛', '🔝', '🔜', '✔️', '☑️', '🔘', '🔴', '🟠', '🟡', '🟢', '🔵', '🟣', '⚫', '⚪', '🟤', '🔺', '🔻', '🔸', '🔹', '🔶', '🔷', '🔳', '🔲', '▪️', '▫️', '◾', '◽', '◼️', '◻️', '🟥', '🟧', '🟨', '🟩', '🟦', '🟪', '⬛', '⬜', '🟫', '🔈', '🔇', '🔉', '🔊', '🔔', '🔕', '📣', '📢', '👁️‍🗨️', '💬', '💭', '🗯️', '♠️', '♣️', '♥️', '♦️', '🃏', '🎴', '🀄', '🕐', '🕑', '🕒', '🕓', '🕔', '🕕', '🕖', '🕗', '🕘', '🕙', '🕚', '🕛', '🕜', '🕝', '🕞', '🕟', '🕠', '🕡', '🕢', '🕣', '🕤', '🕥', '🕦', '🕧']
-  };
-
-  // Obter webhook configurado com mapeamento correto para as chaves que são realmente salvas
-  const getWebhookUrl = (type: string) => {
-    console.log('🔍 Buscando webhook para tipo:', type);
-    console.log('📊 Todas as configurações disponíveis:', systemSettings);
+  const getWebhookUrl = (messageType: 'whatsapp' | 'email' | 'sms'): string => {
+    console.log('🔑 Buscando webhook para tipo:', messageType);
     
-    // Mapear tipos de mensagem para as chaves REAIS que são salvas no banco
+    if (!settings) {
+      console.log('⚠️ Settings não carregadas ainda');
+      return '';
+    }
+    
+    // Mapeamento correto das chaves no banco de dados
     const webhookKeyMap = {
-      'whatsapp': 'webhook_whatsapp',     // Webhook Envio de Mensagens (WhatsApp)
-      'email': 'webhook_email',           // Webhook de Email  
-      'sms': 'webhook_sms'               // Webhook de SMS
+      'whatsapp': 'webhook_whatsapp',
+      'email': 'webhook_email', 
+      'sms': 'webhook_sms'
     };
     
-    const webhookKey = webhookKeyMap[type as keyof typeof webhookKeyMap];
+    const webhookKey = webhookKeyMap[messageType];
     console.log('🔑 Chave mapeada para busca:', webhookKey);
     
-    if (!webhookKey) {
-      console.error('❌ Tipo de mensagem não reconhecido:', type);
-      return null;
-    }
+    const webhookSetting = settings.find(setting => setting.key === webhookKey);
     
-    const webhookSetting = systemSettings.find((s: any) => s.key === webhookKey);
-    console.log('⚙️ Configuração encontrada:', webhookSetting);
-    
-    if (!webhookSetting) {
-      console.log('❌ Webhook não encontrado para chave:', webhookKey);
-      return null;
-    }
-    
-    let webhookUrl;
-    try {
-      // Processar valor (pode estar como string ou JSON)
+    if (webhookSetting) {
+      console.log('⚙️ Configuração encontrada:', webhookSetting);
+      
+      let webhookUrl = '';
+      
+      // Verificar se o valor é string ou objeto
       if (typeof webhookSetting.value === 'string') {
-        // Se for string, usar diretamente
         webhookUrl = webhookSetting.value;
       } else if (webhookSetting.value && typeof webhookSetting.value === 'object' && !Array.isArray(webhookSetting.value)) {
-        // Se for objeto (não array), tentar extrair URL
+        // Se for objeto, verificar se tem propriedade 'url'
         const valueObj = webhookSetting.value as { [key: string]: any };
-        webhookUrl = valueObj.url || String(webhookSetting.value);
-      } else {
-        // Tentar converter para string
-        webhookUrl = String(webhookSetting.value);
+        if ('url' in valueObj) {
+          webhookUrl = valueObj.url as string;
+        }
       }
-    } catch (e) {
-      console.error('❌ Erro ao processar valor do webhook:', e);
-      // Tentar usar valor direto como fallback
-      webhookUrl = String(webhookSetting.value);
+      
+      console.log('🌐 URL do webhook processada:', webhookUrl);
+      return webhookUrl || '';
     }
     
-    console.log('🌐 URL do webhook processada:', webhookUrl);
-    
-    // Validar se é uma URL válida
-    if (!webhookUrl || typeof webhookUrl !== 'string' || !webhookUrl.startsWith('http')) {
-      console.error('❌ URL inválida:', webhookUrl);
-      return null;
-    }
-    
-    return webhookUrl;
+    console.log('❌ Webhook não encontrado para tipo:', messageType);
+    return '';
   };
 
   const handleSendMessage = async () => {
-    if (!currentMessage.content.trim()) {
+    if (!messageContent.trim() || !recipients.trim()) {
       toast({
-        title: "Erro",
-        description: "Por favor, digite o conteúdo da mensagem.",
+        title: "Campos obrigatórios",
+        description: "Preencha o conteúdo da mensagem e os destinatários.",
         variant: "destructive",
       });
       return;
     }
 
-    // Verificar se webhook está configurado
-    const webhookUrl = getWebhookUrl(currentMessage.messageType);
-    console.log('🔍 Webhook URL obtida para', currentMessage.messageType, ':', webhookUrl);
-    
+    const webhookUrl = getWebhookUrl(messageType);
     if (!webhookUrl) {
-      console.error('❌ Webhook não configurado para tipo:', currentMessage.messageType);
-      
-      // Mostrar quais webhooks estão disponíveis para debug
-      const availableWebhooks = systemSettings
-        .filter((s: any) => s.key.startsWith('webhook_'))
-        .map((s: any) => `${s.key}: ${JSON.stringify(s.value)}`)
-        .join(', ');
-      
-      console.log('📋 Webhooks disponíveis:', availableWebhooks);
-      
       toast({
         title: "Webhook não configurado",
-        description: `Configure o webhook para ${currentMessage.messageType} nas configurações. Chaves disponíveis: ${systemSettings.filter((s: any) => s.key.startsWith('webhook_')).map((s: any) => s.key).join(', ')}`,
+        description: `URL do webhook para ${messageType} não está configurada.`,
         variant: "destructive",
       });
       return;
     }
 
-    // Determinar destinatários baseado nos filtros
-    let filteredLeads = leads;
-    let filterDescription = 'Todos os leads';
+    const recipientsArray = recipients.split(',').map(r => r.trim());
 
-    if (currentMessage.filterType === 'course' && currentMessage.filterValue) {
-      filteredLeads = leads.filter((lead: any) => lead.course_id === currentMessage.filterValue);
-      const courseName = courses.find((c: any) => c.id === currentMessage.filterValue)?.name;
-      filterDescription = `Curso: ${courseName}`;
-    } else if (currentMessage.filterType === 'event' && currentMessage.filterValue) {
-      filteredLeads = leads.filter((lead: any) => lead.event_id === currentMessage.filterValue);
-      const eventName = events.find((e: any) => e.id === currentMessage.filterValue)?.name;
-      filterDescription = `Evento: ${eventName}`;
-    }
-
-    if (filteredLeads.length === 0) {
-      toast({
-        title: "Nenhum destinatário",
-        description: "Não há leads para enviar mensagens com os filtros selecionados.",
-        variant: "destructive",
-      });
-      return;
-    }
+    setIsSending(true);
 
     try {
-      console.log('📤 Iniciando envio de mensagem:', {
-        type: currentMessage.messageType,
-        recipients: filteredLeads.length,
-        webhookUrl,
-        content: currentMessage.content.substring(0, 50) + '...'
-      });
-
-      // Salvar no histórico de mensagens
-      const { error: historyError } = await supabase
-        .from('message_history')
-        .insert([{
-          type: currentMessage.messageType,
-          filter_type: currentMessage.filterType,
-          filter_value: currentMessage.filterValue || null,
-          recipients_count: filteredLeads.length,
-          content: currentMessage.content,
-          status: 'sending'
-        }]);
-
-      if (historyError) {
-        console.error('❌ Erro ao salvar histórico:', historyError);
-        throw new Error('Erro ao salvar no histórico: ' + historyError.message);
+      let response;
+      switch (messageType) {
+        case 'whatsapp':
+          response = await handleSendWhatsApp(webhookUrl, recipientsArray, messageContent);
+          break;
+        case 'email':
+          response = await handleSendEmail(webhookUrl, recipientsArray, messageContent);
+          break;
+        case 'sms':
+          response = await handleSendSMS(webhookUrl, recipientsArray, messageContent);
+          break;
+        default:
+          throw new Error("Tipo de mensagem inválido");
       }
 
-      // Preparar dados para webhook
-      const webhookData = {
-        type: currentMessage.messageType,
-        content: currentMessage.content,
-        recipients: filteredLeads.map((lead: any) => ({
-          name: lead.name,
-          whatsapp: lead.whatsapp,
-          email: lead.email
-        })),
-        metadata: {
-          filter_type: currentMessage.filterType,
-          filter_description: filterDescription,
-          timestamp: new Date().toISOString(),
-          total_recipients: filteredLeads.length
-        }
+      if (response?.error) {
+        toast({
+          title: "Erro ao enviar",
+          description: response.error,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Mensagem enviada",
+          description: `Mensagem enviada com sucesso para ${recipientsArray.length} destinatários!`,
+        });
+      }
+
+    } catch (error: any) {
+      console.error("Erro ao enviar mensagem:", error);
+      toast({
+        title: "Erro ao enviar",
+        description: error.message || "Erro desconhecido ao enviar mensagem",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const handleSendWhatsApp = async (webhookUrl: string, recipients: string[], message: string) => {
+    try {
+      const webhook_data = {
+        type: "whatsapp",
+        recipients: recipients,
+        message: message
       };
 
-      console.log('📋 Dados do webhook preparados:', {
-        url: webhookUrl,
-        recipientsCount: webhookData.recipients.length,
-        type: webhookData.type,
-        filterType: webhookData.metadata.filter_type
+      const response = await fetch('/api/send-webhook', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ webhook_url: webhookUrl, webhook_data: webhook_data }),
       });
 
-      // Usar Supabase Edge Function para enviar webhook
-      console.log('🚀 Enviando via Supabase Edge Function para URL:', webhookUrl);
-      
-      const { data, error } = await supabase.functions.invoke('send-webhook', {
-        body: {
-          webhook_url: webhookUrl,
-          webhook_data: webhookData
-        }
-      });
-
-      if (error) {
-        console.error('❌ Erro na edge function:', error);
-        throw new Error(error.message || 'Erro na função de envio');
-      }
-
-      console.log('✅ Webhook executado com sucesso via Edge Function:', data);
-
-      toast({
-        title: "Mensagem enviada",
-        description: `Mensagem ${currentMessage.messageType} enviada para ${filteredLeads.length} destinatários via ${webhookUrl}!`,
-      });
-
-      setCurrentMessage({
-        content: '',
-        filterType: 'all',
-        filterValue: '',
-        messageType: 'whatsapp'
-      });
-
-      // Recarregar histórico
-      queryClient.invalidateQueries({ queryKey: ['message_history'] });
+      const data = await response.json();
+      return data;
 
     } catch (error: any) {
-      console.error('💥 Erro no envio da mensagem:', error);
-      
-      let errorMessage = error.message || "Erro ao enviar mensagem";
-      
-      // Melhorar mensagens de erro baseadas no tipo
-      if (errorMessage.includes('non-2xx status code')) {
-        errorMessage = `Erro no webhook: Verifique se a URL ${webhookUrl} está configurada corretamente no n8n e se o workflow está ativo.`;
-      } else if (errorMessage.includes('404')) {
-        errorMessage = `Webhook não encontrado: A URL ${webhookUrl} retornou 404. Verifique se o endpoint existe no n8n.`;
-      } else if (errorMessage.includes('timeout')) {
-        errorMessage = 'Timeout na requisição: O webhook demorou mais de 30 segundos para responder.';
-      }
-      
-      toast({
-        title: "Erro no envio",
-        description: errorMessage,
-        variant: "destructive",
-      });
+      console.error("Erro ao enviar WhatsApp:", error);
+      return { error: error.message || "Erro ao enviar WhatsApp" };
     }
   };
 
-  const handleSaveTemplate = () => {
-    if (!templateDialog.name.trim()) {
-      toast({
-        title: "Erro",
-        description: "Por favor, preencha o nome do template.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!currentMessage.content.trim()) {
-      toast({
-        title: "Erro",
-        description: "Por favor, digite o conteúdo da mensagem antes de salvar o template.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    createTemplate.mutate({
-      name: templateDialog.name,
-      content: currentMessage.content,
-      type: currentMessage.messageType
-    });
-
-    setTemplateDialog({
-      open: false,
-      name: ''
-    });
-  };
-
-  const handleDeleteTemplate = async (templateId: string) => {
+  const handleSendEmail = async (webhookUrl: string, recipients: string[], message: string) => {
     try {
-      await supabase.from('message_templates').delete().eq('id', templateId);
-      queryClient.invalidateQueries({ queryKey: ['message_templates'] });
-      toast({
-        title: "Template removido",
-        description: "Template removido com sucesso!",
+      const webhook_data = {
+        type: "email",
+        recipients: recipients,
+        message: message
+      };
+
+      const response = await fetch('/api/send-webhook', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ webhook_url: webhookUrl, webhook_data: webhook_data }),
       });
+
+      const data = await response.json();
+      return data;
+
     } catch (error: any) {
-      toast({
-        title: "Erro",
-        description: "Erro ao remover template",
-        variant: "destructive",
+      console.error("Erro ao enviar email:", error);
+      return { error: error.message || "Erro ao enviar email" };
+    }
+  };
+
+  const handleSendSMS = async (webhookUrl: string, recipients: string[], message: string) => {
+    try {
+      const webhook_data = {
+        type: "sms",
+        recipients: recipients,
+        message: message
+      };
+
+      const response = await fetch('/api/send-webhook', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ webhook_url: webhookUrl, webhook_data: webhook_data }),
       });
+
+      const data = await response.json();
+      return data;
+
+    } catch (error: any) {
+      console.error("Erro ao enviar SMS:", error);
+      return { error: error.message || "Erro ao enviar SMS" };
     }
   };
 
-  const useTemplate = (template: any) => {
-    setCurrentMessage({
-      ...currentMessage,
-      content: template.content,
-      messageType: template.type
-    });
-    toast({
-      title: "Template aplicado",
-      description: "Conteúdo do template foi aplicado à mensagem.",
-    });
+  const handleCopyToClipboard = () => {
+    navigator.clipboard.writeText(messageContent)
+      .then(() => {
+        toast({
+          title: "Copiado!",
+          description: "Conteúdo da mensagem copiado para a área de transferência.",
+        });
+      })
+      .catch(err => {
+        console.error("Erro ao copiar:", err);
+        toast({
+          title: "Erro",
+          description: "Falha ao copiar o conteúdo para a área de transferência.",
+          variant: "destructive",
+        });
+      });
   };
 
-  const insertEmoji = (emoji: string) => {
-    setCurrentMessage({
-      ...currentMessage,
-      content: currentMessage.content + emoji
-    });
-  };
-
-  const getRecipientCount = () => {
-    if (currentMessage.filterType === 'all') {
-      return leads.length;
-    } else if (currentMessage.filterType === 'course' && currentMessage.filterValue) {
-      return leads.filter((lead: any) => lead.course_id === currentMessage.filterValue).length;
-    } else if (currentMessage.filterType === 'event' && currentMessage.filterValue) {
-      return leads.filter((lead: any) => lead.event_id === currentMessage.filterValue).length;
-    }
-    return 0;
-  };
+  if (isLoadingTemplates || isLoadingHistory || isLoadingSettings) {
+    return <div className="p-6">Carregando...</div>;
+  }
 
   return (
-    <div className="p-2 sm:p-6 space-y-4 sm:space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Mensagens</h1>
-      </div>
+    <div className="p-6 max-w-4xl mx-auto space-y-6">
+      <Card>
+        <CardHeader>
+          <div className="flex items-center space-x-2">
+            <MessageSquare className="h-5 w-5" />
+            <CardTitle>Enviar Mensagem</CardTitle>
+          </div>
+          <CardDescription>
+            Envie mensagens personalizadas para seus contatos
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
 
-      <Tabs defaultValue="send" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="send" className="text-xs sm:text-sm">Enviar</TabsTrigger>
-          <TabsTrigger value="templates" className="text-xs sm:text-sm">Templates</TabsTrigger>
-          <TabsTrigger value="history" className="text-xs sm:text-sm">Histórico</TabsTrigger>
-        </TabsList>
+          <div className="space-y-2">
+            <Label htmlFor="messageType">Tipo de Mensagem</Label>
+            <Select onValueChange={(value) => setMessageType(value as 'whatsapp' | 'email' | 'sms')}>
+              <SelectTrigger id="messageType">
+                <SelectValue placeholder="Selecione o tipo" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                <SelectItem value="email">Email</SelectItem>
+                <SelectItem value="sms">SMS</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-        <TabsContent value="send" className="space-y-4 sm:space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg sm:text-xl">Nova Mensagem</CardTitle>
-              <CardDescription className="text-sm">
-                Envie mensagens para leads. Se nenhum filtro for selecionado, será enviado para todos.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-sm">Tipo de Mensagem</Label>
-                  <Select 
-                    value={currentMessage.messageType} 
-                    onValueChange={(value: 'whatsapp' | 'email' | 'sms') => 
-                      setCurrentMessage({...currentMessage, messageType: value})
-                    }
-                  >
-                    <SelectTrigger className="h-9">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="whatsapp">
-                        <div className="flex items-center space-x-2">
-                          <MessageSquare className="h-4 w-4" />
-                          <span>WhatsApp</span>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="email">
-                        <div className="flex items-center space-x-2">
-                          <Mail className="h-4 w-4" />
-                          <span>E-mail</span>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="sms">
-                        <div className="flex items-center space-x-2">
-                          <Smartphone className="h-4 w-4" />
-                          <span>SMS</span>
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+          <div className="space-y-2">
+            <Label htmlFor="template">Usar Template</Label>
+            <Select onValueChange={setSelectedTemplate}>
+              <SelectTrigger id="template">
+                <SelectValue placeholder="Selecione um template" />
+              </SelectTrigger>
+              <SelectContent>
+                {templates?.map(template => (
+                  <SelectItem key={template.id} value={template.id}>{template.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-                <div className="space-y-2">
-                  <Label className="text-sm">Filtrar por</Label>
-                  <Select 
-                    value={currentMessage.filterType} 
-                    onValueChange={(value: 'course' | 'event' | 'all') => 
-                      setCurrentMessage({...currentMessage, filterType: value, filterValue: ''})
-                    }
-                  >
-                    <SelectTrigger className="h-9">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todos os leads</SelectItem>
-                      <SelectItem value="course">Curso</SelectItem>
-                      <SelectItem value="event">Evento</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+          <div className="space-y-2">
+            <Label htmlFor="content">Conteúdo da Mensagem</Label>
+            <Textarea
+              id="content"
+              placeholder="Digite sua mensagem aqui..."
+              value={messageContent}
+              onChange={(e) => setMessageContent(e.target.value)}
+            />
+            <Button variant="ghost" size="sm" onClick={handleCopyToClipboard}>
+              <Copy className="h-4 w-4 mr-2" />
+              Copiar
+            </Button>
+          </div>
 
-                {currentMessage.filterType !== 'all' && (
-                  <div className="space-y-2">
-                    <Label className="text-sm">
-                      {currentMessage.filterType === 'course' ? 'Curso' : 'Evento'}
-                    </Label>
-                    <Select 
-                      value={currentMessage.filterValue} 
-                      onValueChange={(value) => 
-                        setCurrentMessage({...currentMessage, filterValue: value})
-                      }
-                    >
-                      <SelectTrigger className="h-9">
-                        <SelectValue placeholder="Selecione..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {(currentMessage.filterType === 'course' ? courses : events).map((item: any) => (
-                          <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-              </div>
+          <div className="space-y-2">
+            <Label htmlFor="recipients">Destinatários (separados por vírgula)</Label>
+            <Input
+              id="recipients"
+              placeholder="Ex: +5511999999999, email@example.com"
+              value={recipients}
+              onChange={(e) => setRecipients(e.target.value)}
+            />
+          </div>
 
-              <div className="bg-muted p-3 rounded-lg">
-                <p className="text-sm text-muted-foreground mb-2">
-                  <strong>Destinatários:</strong> {getRecipientCount()} leads serão incluídos neste envio
-                </p>
-                <p className="text-sm text-muted-foreground mb-2">
-                  <strong>Webhook {currentMessage.messageType}:</strong> {
-                    getWebhookUrl(currentMessage.messageType) ? 
-                    `✅ Configurado` : 
-                    '❌ Não configurado'
-                  }
-                </p>
-                {getWebhookUrl(currentMessage.messageType) && (
-                  <p className="text-xs text-muted-foreground font-mono bg-gray-100 p-2 rounded">
-                    <strong>URL:</strong> {getWebhookUrl(currentMessage.messageType)}
-                  </p>
-                )}
-                <div className="mt-2 text-xs text-muted-foreground">
-                  <strong>Debug - Chaves esperadas vs encontradas:</strong>
-                  <div className="font-mono bg-gray-100 p-2 rounded mt-1 max-h-20 overflow-y-auto">
-                    <div>WhatsApp: buscando 'webhook_whatsapp' - {systemSettings.find(s => s.key === 'webhook_whatsapp') ? '✅ Encontrado' : '❌ Não encontrado'}</div>
-                    <div>Email: buscando 'webhook_email' - {systemSettings.find(s => s.key === 'webhook_email') ? '✅ Encontrado' : '❌ Não encontrado'}</div>
-                    <div>SMS: buscando 'webhook_sms' - {systemSettings.find(s => s.key === 'webhook_sms') ? '✅ Encontrado' : '❌ Não encontrado'}</div>
-                    <div className="mt-1 text-xs">Chaves disponíveis: {systemSettings.filter(s => s.key.startsWith('webhook_')).map(s => s.key).join(', ')}</div>
-                  </div>
-                </div>
-              </div>
+          <Button onClick={handleSendMessage} disabled={isSending} className="w-full">
+            <Send className="h-4 w-4 mr-2" />
+            {isSending ? 'Enviando...' : 'Enviar Mensagem'}
+          </Button>
+        </CardContent>
+      </Card>
 
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="message-content" className="text-sm">Conteúdo da Mensagem</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" size="sm" className="h-8 px-2">
-                        <Smile className="h-4 w-4" />
-                        <span className="ml-1 hidden sm:inline">Emojis</span>
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-80 max-h-96 overflow-auto" align="end">
-                      <div className="space-y-4">
-                        {Object.entries(emojiCategories).map(([category, emojis]) => (
-                          <div key={category}>
-                            <h4 className="text-sm font-semibold mb-2">{category}</h4>
-                            <div className="grid grid-cols-8 gap-1">
-                              {emojis.map((emoji) => (
-                                <button
-                                  key={emoji}
-                                  onClick={() => insertEmoji(emoji)}
-                                  className="text-lg hover:bg-muted p-1 rounded transition-colors"
-                                  type="button"
-                                >
-                                  {emoji}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                </div>
-                <Textarea
-                  id="message-content"
-                  placeholder="Digite sua mensagem aqui... Use {nome} para personalizar com o nome do lead."
-                  value={currentMessage.content}
-                  onChange={(e) => setCurrentMessage({...currentMessage, content: e.target.value})}
-                  rows={6}
-                  className="resize-none"
-                />
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-2">
-                <Button onClick={handleSendMessage} className="flex-1">
-                  <Send className="h-4 w-4 mr-2" />
-                  Enviar Mensagem
-                </Button>
-                
-                <Dialog open={templateDialog.open} onOpenChange={(open) => setTemplateDialog({...templateDialog, open})}>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" className="flex-1 sm:flex-none">
-                      <Save className="h-4 w-4 mr-2" />
-                      <span className="hidden sm:inline">Salvar como Template</span>
-                      <span className="sm:hidden">Template</span>
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                      <DialogTitle>Salvar Template</DialogTitle>
-                      <DialogDescription>
-                        Salve esta mensagem como template para usar posteriormente
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="template-name">Nome do Template</Label>
-                        <Input
-                          id="template-name"
-                          value={templateDialog.name}
-                          onChange={(e) => setTemplateDialog({...templateDialog, name: e.target.value})}
-                          placeholder="Ex: Boas-vindas Medicina"
-                        />
-                      </div>
-                      <div className="bg-muted p-3 rounded-lg">
-                        <p className="text-sm text-muted-foreground">
-                          <strong>Conteúdo:</strong> Será salvo o conteúdo atual da mensagem
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          <strong>Tipo:</strong> {currentMessage.messageType}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex justify-end space-x-2">
-                      <Button variant="outline" onClick={() => setTemplateDialog({...templateDialog, open: false})}>
-                        Cancelar
-                      </Button>
-                      <Button onClick={handleSaveTemplate}>
-                        Salvar Template
-                      </Button>
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="templates">
-          <Card>
-            <CardHeader>
-              <CardTitle>Templates Salvos</CardTitle>
-              <CardDescription>
-                Gerencie seus templates de mensagem
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {templates.length > 0 ? (
-                <div className="space-y-4">
-                  {templates.map((template: any) => (
-                    <div key={template.id} className="border rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center space-x-2">
-                          <h3 className="font-medium text-sm sm:text-base">{template.name}</h3>
-                          <Badge variant="outline" className="text-xs">{template.type}</Badge>
-                        </div>
-                        <div className="flex space-x-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => useTemplate(template)}
-                            className="text-xs"
-                          >
-                            Usar
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteTemplate(template.id)}
-                          >
-                            <Trash2 className="h-4 w-4 text-red-500" />
-                          </Button>
-                        </div>
-                      </div>
-                      <p className="text-sm text-muted-foreground line-clamp-3">{template.content}</p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-center text-muted-foreground py-8">
-                  Nenhum template salvo ainda
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="history">
-          <Card>
-            <CardHeader>
-              <CardTitle>Histórico de Envios</CardTitle>
-              <CardDescription>
-                Acompanhe o histórico de todas as mensagens enviadas
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {messageHistory.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="text-xs">Data</TableHead>
-                        <TableHead className="text-xs">Tipo</TableHead>
-                        <TableHead className="text-xs hidden sm:table-cell">Filtro</TableHead>
-                        <TableHead className="text-xs">Dest.</TableHead>
-                        <TableHead className="text-xs">Status</TableHead>
-                        <TableHead className="text-xs hidden md:table-cell">Conteúdo</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {messageHistory.map((message: any) => (
-                        <TableRow key={message.id}>
-                          <TableCell className="text-xs">
-                            {new Date(message.sent_at).toLocaleDateString('pt-BR')}
-                            <div className="sm:hidden text-xs text-muted-foreground">
-                              {new Date(message.sent_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className="text-xs">{message.type}</Badge>
-                          </TableCell>
-                          <TableCell className="text-xs hidden sm:table-cell">
-                            {message.filter_type === 'all' ? 'Todos' : message.filter_type}
-                          </TableCell>
-                          <TableCell className="text-xs">{message.recipients_count}</TableCell>
-                          <TableCell>
-                            <Badge variant={message.status === 'sent' ? 'default' : 'secondary'} className="text-xs">
-                              {message.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="max-w-xs truncate text-xs hidden md:table-cell">
-                            {message.content}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              ) : (
-                <p className="text-center text-muted-foreground py-8">
-                  Nenhum histórico de mensagens ainda
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+      <Card>
+        <CardHeader>
+          <div className="flex items-center space-x-2">
+            <History className="h-5 w-5" />
+            <CardTitle>Histórico de Mensagens</CardTitle>
+          </div>
+          <CardDescription>
+            Veja o histórico das mensagens enviadas
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead>
+                <tr>
+                  <th className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
+                    Template
+                  </th>
+                  <th className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
+                    Destinatários
+                  </th>
+                  <th className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
+                    Enviado em
+                  </th>
+                  <th className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
+                    Tipo
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {history?.map(item => (
+                  <tr key={item.id}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.template_name}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.recipients.join(', ')}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(item.sent_at).toLocaleString()}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.status}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.type}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {history && history.length === 0 && (
+              <div className="text-center py-4">Nenhuma mensagem enviada ainda.</div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
