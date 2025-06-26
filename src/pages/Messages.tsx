@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -137,71 +136,37 @@ const Messages = () => {
         type: webhookData.type
       });
 
-      // Enviar para webhook com timeout e tratamento de erro melhorado
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 segundos
-
-      try {
-        const response = await fetch(webhookUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'User-Agent': 'Lovable-App/1.0',
-          },
-          body: JSON.stringify(webhookData),
-          signal: controller.signal
-        });
-
-        clearTimeout(timeoutId);
-
-        console.log('📥 Resposta do webhook:', {
-          status: response.status,
-          statusText: response.statusText,
-          headers: Object.fromEntries(response.headers.entries())
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('❌ Webhook retornou erro:', response.status, errorText);
-          throw new Error(`Webhook retornou erro ${response.status}: ${errorText || response.statusText}`);
+      // Usar Supabase Edge Function para enviar webhook (evita problemas CORS)
+      console.log('🚀 Enviando via Supabase Edge Function...');
+      
+      const { data, error } = await supabase.functions.invoke('send-webhook', {
+        body: {
+          webhook_url: webhookUrl,
+          webhook_data: webhookData
         }
+      });
 
-        const responseData = await response.text();
-        console.log('✅ Webhook executado com sucesso:', responseData);
-
-        toast({
-          title: "Mensagem enviada",
-          description: `Mensagem enviada para ${filteredLeads.length} destinatários via ${currentMessage.messageType}!`,
-        });
-
-        setCurrentMessage({
-          content: '',
-          filterType: 'all',
-          filterValue: '',
-          messageType: 'whatsapp'
-        });
-
-        // Recarregar histórico
-        queryClient.invalidateQueries({ queryKey: ['message_history'] });
-
-      } catch (fetchError: any) {
-        clearTimeout(timeoutId);
-        
-        let errorMessage = 'Erro desconhecido no webhook';
-        
-        if (fetchError.name === 'AbortError') {
-          errorMessage = 'Timeout: O webhook demorou mais de 30 segundos para responder';
-        } else if (fetchError.message?.includes('Failed to fetch')) {
-          errorMessage = 'Não foi possível conectar ao webhook. Verifique se a URL está correta e acessível';
-        } else if (fetchError.message?.includes('NetworkError')) {
-          errorMessage = 'Erro de rede ao conectar com o webhook';
-        } else {
-          errorMessage = fetchError.message || 'Erro na comunicação com o webhook';
-        }
-        
-        console.error('❌ Erro no fetch do webhook:', fetchError);
-        throw new Error(errorMessage);
+      if (error) {
+        console.error('❌ Erro na edge function:', error);
+        throw new Error(error.message || 'Erro na função de envio');
       }
+
+      console.log('✅ Webhook executado com sucesso via Edge Function:', data);
+
+      toast({
+        title: "Mensagem enviada",
+        description: `Mensagem enviada para ${filteredLeads.length} destinatários via ${currentMessage.messageType}!`,
+      });
+
+      setCurrentMessage({
+        content: '',
+        filterType: 'all',
+        filterValue: '',
+        messageType: 'whatsapp'
+      });
+
+      // Recarregar histórico
+      queryClient.invalidateQueries({ queryKey: ['message_history'] });
 
     } catch (error: any) {
       console.error('💥 Erro no envio da mensagem:', error);

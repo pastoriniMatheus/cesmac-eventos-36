@@ -19,11 +19,11 @@ serve(async (req) => {
     console.log('📞 URL completa:', req.url);
     console.log('📋 Headers recebidos:', Object.fromEntries(req.headers.entries()));
     
-    // Criar cliente Supabase - usando ANON_KEY para funcionar sem auth
+    // Criar cliente Supabase - usando SERVICE_ROLE_KEY para ter permissões totais
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     
-    if (!supabaseUrl || !supabaseAnonKey) {
+    if (!supabaseUrl || !supabaseServiceKey) {
       console.error('❌ Variáveis de ambiente não configuradas');
       return new Response(JSON.stringify({
         error: 'Server configuration error',
@@ -34,7 +34,7 @@ serve(async (req) => {
       });
     }
 
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     if (req.method !== 'POST') {
       console.log('❌ Método não permitido:', req.method);
