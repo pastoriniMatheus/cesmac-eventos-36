@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Trash2, Plus, Save, Palette, MessageSquare, Database, Webhook, Users, GraduationCap, Settings2, Globe } from 'lucide-react';
+import { Trash2, Plus, Save, Palette, MessageSquare, Database, Webhook, Users, GraduationCap, Settings2, Globe, Info } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useSystemSettings, useUpdateSystemSetting } from '@/hooks/useSystemSettings';
 import StatusManager from '@/components/StatusManager';
@@ -30,9 +30,11 @@ const Settings = () => {
     presentation_image: '',
     presentation_logo: '',
     presentation_favicon: '',
-    primary_color: '#0066cc',
-    secondary_color: '#f8f9fa',
-    highlight_color: '#ff6b35',
+    primary_color: '#3b82f6',
+    secondary_color: '#f59e0b',
+    accent_color: '#6b7280',
+    background_color: '#ffffff',
+    text_color: '#1f2937',
     form_title: '',
     form_subtitle: '',
     form_description: '',
@@ -40,14 +42,11 @@ const Settings = () => {
     form_thank_you_description: '',
     form_fields: [] as string[],
     form_success_redirect: '',
-    form_primary_color: '#0066cc',
-    form_secondary_color: '#f8f9fa',
-    form_button_color: '#ff6b35',
-    api_base_url: '',
-    webhook_lead_created: '',
-    webhook_lead_updated: '',
-    webhook_scan_session: '',
-    api_token: '',
+    form_primary_color: '#3b82f6',
+    form_secondary_color: '#f59e0b',
+    form_button_color: '#10b981',
+    form_background_color: '#ffffff',
+    form_text_color: '#1f2937',
   });
 
   React.useEffect(() => {
@@ -87,7 +86,7 @@ const Settings = () => {
     }
   };
 
-  const handleSavePresentation = async () => {
+  const handleSaveVisual = async () => {
     try {
       await Promise.all([
         updateSetting.mutateAsync({ key: 'presentation_title', value: formData.presentation_title }),
@@ -98,17 +97,19 @@ const Settings = () => {
         updateSetting.mutateAsync({ key: 'presentation_favicon', value: formData.presentation_favicon }),
         updateSetting.mutateAsync({ key: 'primary_color', value: formData.primary_color }),
         updateSetting.mutateAsync({ key: 'secondary_color', value: formData.secondary_color }),
-        updateSetting.mutateAsync({ key: 'highlight_color', value: formData.highlight_color })
+        updateSetting.mutateAsync({ key: 'accent_color', value: formData.accent_color }),
+        updateSetting.mutateAsync({ key: 'background_color', value: formData.background_color }),
+        updateSetting.mutateAsync({ key: 'text_color', value: formData.text_color })
       ]);
 
       toast({
-        title: "Apresentação salva",
-        description: "Configurações da apresentação atualizadas com sucesso!",
+        title: "Visual salvo",
+        description: "Configurações visuais atualizadas com sucesso!",
       });
     } catch (error) {
       toast({
         title: "Erro",
-        description: "Erro ao salvar apresentação",
+        description: "Erro ao salvar configurações visuais",
         variant: "destructive",
       });
     }
@@ -126,7 +127,9 @@ const Settings = () => {
         updateSetting.mutateAsync({ key: 'form_success_redirect', value: formData.form_success_redirect }),
         updateSetting.mutateAsync({ key: 'form_primary_color', value: formData.form_primary_color }),
         updateSetting.mutateAsync({ key: 'form_secondary_color', value: formData.form_secondary_color }),
-        updateSetting.mutateAsync({ key: 'form_button_color', value: formData.form_button_color })
+        updateSetting.mutateAsync({ key: 'form_button_color', value: formData.form_button_color }),
+        updateSetting.mutateAsync({ key: 'form_background_color', value: formData.form_background_color }),
+        updateSetting.mutateAsync({ key: 'form_text_color', value: formData.form_text_color })
       ]);
 
       toast({
@@ -137,29 +140,6 @@ const Settings = () => {
       toast({
         title: "Erro",
         description: "Erro ao salvar formulário",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleSaveAPI = async () => {
-    try {
-      await Promise.all([
-        updateSetting.mutateAsync({ key: 'api_base_url', value: formData.api_base_url }),
-        updateSetting.mutateAsync({ key: 'webhook_lead_created', value: formData.webhook_lead_created }),
-        updateSetting.mutateAsync({ key: 'webhook_lead_updated', value: formData.webhook_lead_updated }),
-        updateSetting.mutateAsync({ key: 'webhook_scan_session', value: formData.webhook_scan_session }),
-        updateSetting.mutateAsync({ key: 'api_token', value: formData.api_token })
-      ]);
-
-      toast({
-        title: "API salva",
-        description: "Configurações da API atualizadas com sucesso!",
-      });
-    } catch (error) {
-      toast({
-        title: "Erro",
-        description: "Erro ao salvar API",
         variant: "destructive",
       });
     }
@@ -198,7 +178,7 @@ const Settings = () => {
       </div>
 
       <Tabs defaultValue="webhooks" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-8">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="webhooks" className="flex items-center gap-2">
             <Webhook className="h-4 w-4" />
             Webhooks
@@ -297,76 +277,81 @@ const Settings = () => {
                 Personalize a aparência e identidade visual do sistema
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="presentation_title">Título Principal</Label>
-                  <Input
-                    id="presentation_title"
-                    placeholder="Título da apresentação"
-                    value={formData.presentation_title}
-                    onChange={(e) => setFormData(prev => ({ ...prev, presentation_title: e.target.value }))}
-                  />
+            <CardContent className="space-y-6">
+              <div className="space-y-4">
+                <h4 className="text-lg font-semibold">Identidade Visual</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="presentation_title">Título Principal</Label>
+                    <Input
+                      id="presentation_title"
+                      placeholder="Título da apresentação"
+                      value={formData.presentation_title}
+                      onChange={(e) => setFormData(prev => ({ ...prev, presentation_title: e.target.value }))}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="presentation_subtitle">Subtítulo</Label>
+                    <Input
+                      id="presentation_subtitle"
+                      placeholder="Subtítulo da apresentação"
+                      value={formData.presentation_subtitle}
+                      onChange={(e) => setFormData(prev => ({ ...prev, presentation_subtitle: e.target.value }))}
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="presentation_subtitle">Subtítulo</Label>
-                  <Input
-                    id="presentation_subtitle"
-                    placeholder="Subtítulo da apresentação"
-                    value={formData.presentation_subtitle}
-                    onChange={(e) => setFormData(prev => ({ ...prev, presentation_subtitle: e.target.value }))}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="presentation_description">Descrição</Label>
-                <Textarea
-                  id="presentation_description"
-                  placeholder="Descrição da apresentação"
-                  value={formData.presentation_description}
-                  onChange={(e) => setFormData(prev => ({ ...prev, presentation_description: e.target.value }))}
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="presentation_logo">URL do Logotipo</Label>
-                  <Input
-                    id="presentation_logo"
-                    placeholder="https://exemplo.com/logo.png"
-                    value={formData.presentation_logo}
-                    onChange={(e) => setFormData(prev => ({ ...prev, presentation_logo: e.target.value }))}
+                  <Label htmlFor="presentation_description">Descrição</Label>
+                  <Textarea
+                    id="presentation_description"
+                    placeholder="Descrição da apresentação"
+                    value={formData.presentation_description}
+                    onChange={(e) => setFormData(prev => ({ ...prev, presentation_description: e.target.value }))}
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="presentation_favicon">URL do Favicon</Label>
-                  <Input
-                    id="presentation_favicon"
-                    placeholder="https://exemplo.com/favicon.ico"
-                    value={formData.presentation_favicon}
-                    onChange={(e) => setFormData(prev => ({ ...prev, presentation_favicon: e.target.value }))}
-                  />
-                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="presentation_logo">URL do Logotipo</Label>
+                    <Input
+                      id="presentation_logo"
+                      placeholder="https://exemplo.com/logo.png"
+                      value={formData.presentation_logo}
+                      onChange={(e) => setFormData(prev => ({ ...prev, presentation_logo: e.target.value }))}
+                    />
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="presentation_image">URL da Imagem</Label>
-                  <Input
-                    id="presentation_image"
-                    placeholder="https://exemplo.com/imagem.jpg"
-                    value={formData.presentation_image}
-                    onChange={(e) => setFormData(prev => ({ ...prev, presentation_image: e.target.value }))}
-                  />
+                  <div className="space-y-2">
+                    <Label htmlFor="presentation_favicon">URL do Favicon</Label>
+                    <Input
+                      id="presentation_favicon"
+                      placeholder="https://exemplo.com/favicon.ico"
+                      value={formData.presentation_favicon}
+                      onChange={(e) => setFormData(prev => ({ ...prev, presentation_favicon: e.target.value }))}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="presentation_image">URL da Imagem</Label>
+                    <Input
+                      id="presentation_image"
+                      placeholder="https://exemplo.com/imagem.jpg"
+                      value={formData.presentation_image}
+                      onChange={(e) => setFormData(prev => ({ ...prev, presentation_image: e.target.value }))}
+                    />
+                  </div>
                 </div>
               </div>
 
               <div className="space-y-4">
-                <h4 className="text-lg font-semibold">Personalização de Cores</h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <h4 className="text-lg font-semibold">Cores do Sistema</h4>
+                <p className="text-sm text-gray-600">Configure as cores principais do sistema</p>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="primary_color">Cor Primária</Label>
+                    <Label htmlFor="primary_color">Cor Primária (Azul)</Label>
                     <div className="flex gap-2">
                       <Input
                         id="primary_color"
@@ -378,13 +363,13 @@ const Settings = () => {
                       <Input
                         value={formData.primary_color}
                         onChange={(e) => setFormData(prev => ({ ...prev, primary_color: e.target.value }))}
-                        placeholder="#0066cc"
+                        placeholder="#3b82f6"
                       />
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="secondary_color">Cor Secundária</Label>
+                    <Label htmlFor="secondary_color">Cor Secundária (Amarelo)</Label>
                     <div className="flex gap-2">
                       <Input
                         id="secondary_color"
@@ -396,32 +381,68 @@ const Settings = () => {
                       <Input
                         value={formData.secondary_color}
                         onChange={(e) => setFormData(prev => ({ ...prev, secondary_color: e.target.value }))}
-                        placeholder="#f8f9fa"
+                        placeholder="#f59e0b"
                       />
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="highlight_color">Cor de Destaque</Label>
+                    <Label htmlFor="accent_color">Cor de Destaque (Cinza)</Label>
                     <div className="flex gap-2">
                       <Input
-                        id="highlight_color"
+                        id="accent_color"
                         type="color"
-                        value={formData.highlight_color}
-                        onChange={(e) => setFormData(prev => ({ ...prev, highlight_color: e.target.value }))}
+                        value={formData.accent_color}
+                        onChange={(e) => setFormData(prev => ({ ...prev, accent_color: e.target.value }))}
                         className="w-16 h-10 p-1"
                       />
                       <Input
-                        value={formData.highlight_color}
-                        onChange={(e) => setFormData(prev => ({ ...prev, highlight_color: e.target.value }))}
-                        placeholder="#ff6b35"
+                        value={formData.accent_color}
+                        onChange={(e) => setFormData(prev => ({ ...prev, accent_color: e.target.value }))}
+                        placeholder="#6b7280"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="background_color">Cor de Fundo (Branco)</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="background_color"
+                        type="color"
+                        value={formData.background_color}
+                        onChange={(e) => setFormData(prev => ({ ...prev, background_color: e.target.value }))}
+                        className="w-16 h-10 p-1"
+                      />
+                      <Input
+                        value={formData.background_color}
+                        onChange={(e) => setFormData(prev => ({ ...prev, background_color: e.target.value }))}
+                        placeholder="#ffffff"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="text_color">Cor do Texto</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="text_color"
+                        type="color"
+                        value={formData.text_color}
+                        onChange={(e) => setFormData(prev => ({ ...prev, text_color: e.target.value }))}
+                        className="w-16 h-10 p-1"
+                      />
+                      <Input
+                        value={formData.text_color}
+                        onChange={(e) => setFormData(prev => ({ ...prev, text_color: e.target.value }))}
+                        placeholder="#1f2937"
                       />
                     </div>
                   </div>
                 </div>
               </div>
 
-              <Button onClick={handleSavePresentation} className="w-full">
+              <Button onClick={handleSaveVisual} className="w-full">
                 <Save className="h-4 w-4 mr-2" />
                 Salvar Configurações Visuais
               </Button>
@@ -437,74 +458,77 @@ const Settings = () => {
                 Personalize o formulário de captura de leads
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="form_title">Título do Formulário</Label>
-                  <Input
-                    id="form_title"
-                    placeholder="Título do formulário"
-                    value={formData.form_title}
-                    onChange={(e) => setFormData(prev => ({ ...prev, form_title: e.target.value }))}
-                  />
+            <CardContent className="space-y-6">
+              <div className="space-y-4">
+                <h4 className="text-lg font-semibold">Textos do Formulário</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="form_title">Título do Formulário</Label>
+                    <Input
+                      id="form_title"
+                      placeholder="Título do formulário"
+                      value={formData.form_title}
+                      onChange={(e) => setFormData(prev => ({ ...prev, form_title: e.target.value }))}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="form_subtitle">Subtítulo do Formulário</Label>
+                    <Input
+                      id="form_subtitle"
+                      placeholder="Subtítulo do formulário"
+                      value={formData.form_subtitle}
+                      onChange={(e) => setFormData(prev => ({ ...prev, form_subtitle: e.target.value }))}
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="form_subtitle">Subtítulo do Formulário</Label>
-                  <Input
-                    id="form_subtitle"
-                    placeholder="Subtítulo do formulário"
-                    value={formData.form_subtitle}
-                    onChange={(e) => setFormData(prev => ({ ...prev, form_subtitle: e.target.value }))}
+                  <Label htmlFor="form_description">Descrição do Formulário</Label>
+                  <Textarea
+                    id="form_description"
+                    placeholder="Descrição do formulário"
+                    value={formData.form_description}
+                    onChange={(e) => setFormData(prev => ({ ...prev, form_description: e.target.value }))}
                   />
                 </div>
-              </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="form_description">Descrição do Formulário</Label>
-                <Textarea
-                  id="form_description"
-                  placeholder="Descrição do formulário"
-                  value={formData.form_description}
-                  onChange={(e) => setFormData(prev => ({ ...prev, form_description: e.target.value }))}
-                />
-              </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="form_thank_you_title">Título da Página de Agradecimento</Label>
+                    <Input
+                      id="form_thank_you_title"
+                      placeholder="Obrigado!"
+                      value={formData.form_thank_you_title}
+                      onChange={(e) => setFormData(prev => ({ ...prev, form_thank_you_title: e.target.value }))}
+                    />
+                  </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="form_success_redirect">URL de Redirecionamento</Label>
+                    <Input
+                      id="form_success_redirect"
+                      placeholder="https://exemplo.com/obrigado"
+                      value={formData.form_success_redirect}
+                      onChange={(e) => setFormData(prev => ({ ...prev, form_success_redirect: e.target.value }))}
+                    />
+                  </div>
+                </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="form_thank_you_title">Título da Página de Agradecimento</Label>
-                  <Input
-                    id="form_thank_you_title"
-                    placeholder="Obrigado!"
-                    value={formData.form_thank_you_title}
-                    onChange={(e) => setFormData(prev => ({ ...prev, form_thank_you_title: e.target.value }))}
+                  <Label htmlFor="form_thank_you_description">Descrição da Página de Agradecimento</Label>
+                  <Textarea
+                    id="form_thank_you_description"
+                    placeholder="Sua inscrição foi realizada com sucesso!"
+                    value={formData.form_thank_you_description}
+                    onChange={(e) => setFormData(prev => ({ ...prev, form_thank_you_description: e.target.value }))}
                   />
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="form_success_redirect">URL de Redirecionamento</Label>
-                  <Input
-                    id="form_success_redirect"
-                    placeholder="https://exemplo.com/obrigado"
-                    value={formData.form_success_redirect}
-                    onChange={(e) => setFormData(prev => ({ ...prev, form_success_redirect: e.target.value }))}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="form_thank_you_description">Descrição da Página de Agradecimento</Label>
-                <Textarea
-                  id="form_thank_you_description"
-                  placeholder="Sua inscrição foi realizada com sucesso!"
-                  value={formData.form_thank_you_description}
-                  onChange={(e) => setFormData(prev => ({ ...prev, form_thank_you_description: e.target.value }))}
-                />
               </div>
 
               <div className="space-y-4">
                 <h4 className="text-lg font-semibold">Cores do Formulário</h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="form_primary_color">Cor Primária</Label>
                     <div className="flex gap-2">
@@ -518,7 +542,7 @@ const Settings = () => {
                       <Input
                         value={formData.form_primary_color}
                         onChange={(e) => setFormData(prev => ({ ...prev, form_primary_color: e.target.value }))}
-                        placeholder="#0066cc"
+                        placeholder="#3b82f6"
                       />
                     </div>
                   </div>
@@ -536,7 +560,7 @@ const Settings = () => {
                       <Input
                         value={formData.form_secondary_color}
                         onChange={(e) => setFormData(prev => ({ ...prev, form_secondary_color: e.target.value }))}
-                        placeholder="#f8f9fa"
+                        placeholder="#f59e0b"
                       />
                     </div>
                   </div>
@@ -554,41 +578,79 @@ const Settings = () => {
                       <Input
                         value={formData.form_button_color}
                         onChange={(e) => setFormData(prev => ({ ...prev, form_button_color: e.target.value }))}
-                        placeholder="#ff6b35"
+                        placeholder="#10b981"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="form_background_color">Cor de Fundo</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="form_background_color"
+                        type="color"
+                        value={formData.form_background_color}
+                        onChange={(e) => setFormData(prev => ({ ...prev, form_background_color: e.target.value }))}
+                        className="w-16 h-10 p-1"
+                      />
+                      <Input
+                        value={formData.form_background_color}
+                        onChange={(e) => setFormData(prev => ({ ...prev, form_background_color: e.target.value }))}
+                        placeholder="#ffffff"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="form_text_color">Cor do Texto</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="form_text_color"
+                        type="color"
+                        value={formData.form_text_color}
+                        onChange={(e) => setFormData(prev => ({ ...prev, form_text_color: e.target.value }))}
+                        className="w-16 h-10 p-1"
+                      />
+                      <Input
+                        value={formData.form_text_color}
+                        onChange={(e) => setFormData(prev => ({ ...prev, form_text_color: e.target.value }))}
+                        placeholder="#1f2937"
                       />
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label>Campos Personalizados</Label>
-                {formData.form_fields.map((field, index) => (
-                  <div key={index} className="flex gap-2">
-                    <Input
-                      placeholder="Nome do campo"
-                      value={field}
-                      onChange={(e) => updateFormField(index, e.target.value)}
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      onClick={() => removeFormField(index)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={addFormField}
-                  className="w-full"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Adicionar Campo
-                </Button>
+              <div className="space-y-4">
+                <h4 className="text-lg font-semibold">Campos Personalizados</h4>
+                <div className="space-y-2">
+                  {formData.form_fields.map((field, index) => (
+                    <div key={index} className="flex gap-2">
+                      <Input
+                        placeholder="Nome do campo"
+                        value={field}
+                        onChange={(e) => updateFormField(index, e.target.value)}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => removeFormField(index)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={addFormField}
+                    className="w-full"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Adicionar Campo
+                  </Button>
+                </div>
               </div>
 
               <Button onClick={handleSaveForm} className="w-full">
@@ -610,82 +672,125 @@ const Settings = () => {
         <TabsContent value="api" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Configurações da API</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Info className="h-5 w-5" />
+                Documentação da API
+              </CardTitle>
               <CardDescription>
-                Configure endpoints e webhooks de callback do sistema
+                Instruções detalhadas para uso da API do sistema
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="api_base_url">URL Base da API</Label>
-                  <Input
-                    id="api_base_url"
-                    placeholder="https://api.exemplo.com"
-                    value={formData.api_base_url}
-                    onChange={(e) => setFormData(prev => ({ ...prev, api_base_url: e.target.value }))}
-                  />
-                </div>
+            <CardContent className="space-y-6">
+              <div className="space-y-4">
+                <h4 className="text-lg font-semibold">Endpoints Disponíveis</h4>
+                
+                <div className="space-y-4">
+                  <div className="border rounded-lg p-4">
+                    <h5 className="font-semibold text-green-700">POST /api/leads</h5>
+                    <p className="text-sm text-gray-600 mt-1">Criar um novo lead</p>
+                    <div className="mt-2">
+                      <Label>Parâmetros:</Label>
+                      <code className="block bg-gray-100 p-2 rounded text-sm mt-1">
+                        {`{
+  "name": "string",
+  "email": "string", 
+  "whatsapp": "string",
+  "course_id": "uuid",
+  "event_id": "uuid",
+  "source": "string"
+}`}
+                      </code>
+                    </div>
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="api_token">Token da API</Label>
-                  <Input
-                    id="api_token"
-                    type="password"
-                    placeholder="Token de autenticação"
-                    value={formData.api_token}
-                    onChange={(e) => setFormData(prev => ({ ...prev, api_token: e.target.value }))}
-                  />
+                  <div className="border rounded-lg p-4">
+                    <h5 className="font-semibold text-blue-700">GET /api/leads</h5>
+                    <p className="text-sm text-gray-600 mt-1">Listar todos os leads</p>
+                    <div className="mt-2">
+                      <Label>Parâmetros opcionais:</Label>
+                      <code className="block bg-gray-100 p-2 rounded text-sm mt-1">
+                        ?course_id=uuid&event_id=uuid&status_id=uuid
+                      </code>
+                    </div>
+                  </div>
+
+                  <div className="border rounded-lg p-4">
+                    <h5 className="font-semibold text-purple-700">POST /api/whatsapp/validate</h5>
+                    <p className="text-sm text-gray-600 mt-1">Validar número de WhatsApp</p>
+                    <div className="mt-2">
+                      <Label>Parâmetros:</Label>
+                      <code className="block bg-gray-100 p-2 rounded text-sm mt-1">
+                        {`{
+  "whatsapp": "string"
+}`}
+                      </code>
+                    </div>
+                  </div>
+
+                  <div className="border rounded-lg p-4">
+                    <h5 className="font-semibold text-orange-700">POST /api/messages/send</h5>
+                    <p className="text-sm text-gray-600 mt-1">Enviar mensagem</p>
+                    <div className="mt-2">
+                      <Label>Parâmetros:</Label>
+                      <code className="block bg-gray-100 p-2 rounded text-sm mt-1">
+                        {`{
+  "type": "whatsapp|email|sms",
+  "recipients": ["string"],
+  "message": "string"
+}`}
+                      </code>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h4 className="text-lg font-semibold">Autenticação</h4>
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <p className="text-sm">
+                    <strong>Cabeçalho necessário:</strong><br />
+                    <code>Authorization: Bearer SEU_TOKEN_AQUI</code>
+                  </p>
                 </div>
               </div>
 
               <div className="space-y-4">
                 <h4 className="text-lg font-semibold">Webhooks de Callback</h4>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="webhook_lead_created">Webhook - Lead Criado</Label>
-                  <Input
-                    id="webhook_lead_created"
-                    placeholder="https://exemplo.com/webhook/lead-created"
-                    value={formData.webhook_lead_created}
-                    onChange={(e) => setFormData(prev => ({ ...prev, webhook_lead_created: e.target.value }))}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Webhook chamado quando um novo lead é criado
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="webhook_lead_updated">Webhook - Lead Atualizado</Label>
-                  <Input
-                    id="webhook_lead_updated"
-                    placeholder="https://exemplo.com/webhook/lead-updated"
-                    value={formData.webhook_lead_updated}
-                    onChange={(e) => setFormData(prev => ({ ...prev, webhook_lead_updated: e.target.value }))}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Webhook chamado quando um lead é atualizado
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="webhook_scan_session">Webhook - Sessão de Scan</Label>
-                  <Input
-                    id="webhook_scan_session"
-                    placeholder="https://exemplo.com/webhook/scan-session"
-                    value={formData.webhook_scan_session}
-                    onChange={(e) => setFormData(prev => ({ ...prev, webhook_scan_session: e.target.value }))}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Webhook chamado quando um QR Code é escaneado
-                  </p>
-                </div>
+                <p className="text-sm text-gray-600">
+                  O sistema enviará callbacks para os seguintes eventos:
+                </p>
+                <ul className="list-disc list-inside space-y-1 text-sm">
+                  <li>Novo lead criado</li>
+                  <li>Lead atualizado</li>
+                  <li>QR Code escaneado</li>
+                  <li>Mensagem enviada</li>
+                  <li>WhatsApp validado</li>
+                </ul>
               </div>
 
-              <Button onClick={handleSaveAPI} className="w-full">
-                <Save className="h-4 w-4 mr-2" />
-                Salvar Configurações da API
-              </Button>
+              <div className="space-y-4">
+                <h4 className="text-lg font-semibold">Códigos de Resposta</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-green-600 font-semibold">200</span> - Sucesso
+                  </div>
+                  <div>
+                    <span className="text-blue-600 font-semibold">201</span> - Criado
+                  </div>
+                  <div>
+                    <span className="text-red-600 font-semibold">400</span> - Erro de validação
+                  </div>
+                  <div>
+                    <span className="text-red-600 font-semibold">401</span> - Não autorizado
+                  </div>
+                  <div>
+                    <span className="text-red-600 font-semibold">404</span> - Não encontrado
+                  </div>
+                  <div>
+                    <span className="text-red-600 font-semibold">500</span> - Erro interno
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
