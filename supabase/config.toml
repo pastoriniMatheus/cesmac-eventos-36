@@ -9,3 +9,6 @@ verify_jwt = false
 
 [functions.send-webhook]
 verify_jwt = false
+
+[functions.database-export]
+verify_jwt = false

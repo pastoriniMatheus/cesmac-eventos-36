@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -14,6 +13,7 @@ import { useLeadStatuses, useCreateLeadStatus } from '@/hooks/useLeads';
 import EditableItemManager from '@/components/EditableItemManager';
 import { Copy, Code, Globe, Webhook, Database, User, MessageCircle, Palette, Image, FileText, Download, Upload } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import DatabaseExport from '@/components/DatabaseExport';
 
 const Settings = () => {
   const { data: settings, isLoading, refetch } = useSystemSettings();
@@ -339,42 +339,20 @@ const Settings = () => {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <h1 className="text-3xl font-bold text-foreground">Configurações do Sistema</h1>
+    <div className="p-2 sm:p-6 space-y-4 sm:space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Configurações</h1>
+      </div>
       
-      <Tabs defaultValue="api" className="w-full">
-        <TabsList className="grid w-full grid-cols-7">
-          <TabsTrigger value="api" className="flex items-center gap-2">
-            <Code className="h-4 w-4" />
-            API
-          </TabsTrigger>
-          <TabsTrigger value="database" className="flex items-center gap-2">
-            <Database className="h-4 w-4" />
-            Banco
-          </TabsTrigger>
-          <TabsTrigger value="webhooks" className="flex items-center gap-2">
-            <Webhook className="h-4 w-4" />
-            Webhooks
-          </TabsTrigger>
-          <TabsTrigger value="visual" className="flex items-center gap-2">
-            <Palette className="h-4 w-4" />
-            Visual
-          </TabsTrigger>
-          <TabsTrigger value="form" className="flex items-center gap-2">
-            <FileText className="h-4 w-4" />
-            Formulário
-          </TabsTrigger>
-          <TabsTrigger value="courses" className="flex items-center gap-2">
-            <Database className="h-4 w-4" />
-            Cursos
-          </TabsTrigger>
-          <TabsTrigger value="statuses" className="flex items-center gap-2">
-            <User className="h-4 w-4" />
-            Status
-          </TabsTrigger>
+      <Tabs defaultValue="general" className="w-full">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="general" className="text-xs sm:text-sm">Geral</TabsTrigger>
+          <TabsTrigger value="webhooks" className="text-xs sm:text-sm">Webhooks</TabsTrigger>
+          <TabsTrigger value="form" className="text-xs sm:text-sm">Formulário</TabsTrigger>
+          <TabsTrigger value="database" className="text-xs sm:text-sm">Banco</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="api">
+        <TabsContent value="general">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
@@ -562,98 +540,6 @@ const Settings = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="database">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Database className="h-5 w-5" />
-                <span>Configuração do Banco de Dados</span>
-              </CardTitle>
-              <CardDescription>
-                Configure a conexão com o banco de dados Supabase e gerencie backups
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="supabaseUrl">URL do Supabase</Label>
-                  <Input 
-                    type="url" 
-                    id="supabaseUrl" 
-                    placeholder="https://seuproject.supabase.co" 
-                    value={supabaseUrl}
-                    onChange={(e) => setSupabaseUrl(e.target.value)}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    URL completa do seu projeto Supabase
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="supabaseKey">Chave Pública do Supabase</Label>
-                  <Input 
-                    type="password" 
-                    id="supabaseKey" 
-                    placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." 
-                    value={supabaseKey}
-                    onChange={(e) => setSupabaseKey(e.target.value)}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Chave pública (anon) do seu projeto Supabase
-                  </p>
-                </div>
-
-                <div className="flex gap-4">
-                  <Button 
-                    onClick={() => {
-                      handleSaveSetting('supabase_url', supabaseUrl, 'URL do Supabase salva!');
-                      handleSaveSetting('supabase_key', supabaseKey, 'Chave do Supabase salva!');
-                    }}
-                    className="flex-1"
-                  >
-                    Salvar Configurações
-                  </Button>
-                </div>
-
-                <div className="border-t pt-6">
-                  <h3 className="text-lg font-semibold mb-4">Gerenciamento de Dados</h3>
-                  <div className="flex gap-4">
-                    <Button 
-                      onClick={handleDatabaseBackup}
-                      variant="outline"
-                      className="flex items-center gap-2"
-                    >
-                      <Download className="h-4 w-4" />
-                      Baixar Banco de Dados
-                    </Button>
-                    
-                    <div className="relative">
-                      <Button 
-                        variant="outline"
-                        className="flex items-center gap-2"
-                        onClick={() => document.getElementById('database-upload')?.click()}
-                      >
-                        <Upload className="h-4 w-4" />
-                        Enviar Banco de Dados
-                      </Button>
-                      <input
-                        id="database-upload"
-                        type="file"
-                        accept=".json"
-                        className="absolute inset-0 opacity-0 cursor-pointer"
-                        onChange={handleDatabaseRestore}
-                      />
-                    </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Faça backup regularmente e use arquivos .json para restauração
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
         <TabsContent value="webhooks">
           <Card>
             <CardHeader>
@@ -745,233 +631,6 @@ const Settings = () => {
                   <p className="text-xs text-muted-foreground">
                     Para envio de SMS em massa
                   </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="visual">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Palette className="h-5 w-5" />
-                <span>Configuração Visual</span>
-              </CardTitle>
-              <CardDescription>
-                Configure a identidade visual e cores do sistema
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="logoUrl">URL do Logo</Label>
-                  <Input 
-                    type="url" 
-                    id="logoUrl" 
-                    placeholder="https://exemplo.com/logo.png" 
-                    value={logoUrl}
-                    onChange={(e) => setLogoUrl(e.target.value)}
-                  />
-                  <Button 
-                    onClick={() => handleSaveSetting('logo', logoUrl, 'Logo salvo com sucesso!')}
-                    size="sm"
-                  >
-                    Salvar Logo
-                  </Button>
-                  {logoUrl && (
-                    <div className="mt-4">
-                      <Label>Preview do Logo:</Label>
-                      <img src={logoUrl} alt="Logo preview" className="h-16 w-auto mt-2 border rounded" />
-                    </div>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="faviconUrl">URL do Favicon</Label>
-                  <Input 
-                    type="url" 
-                    id="faviconUrl" 
-                    placeholder="https://exemplo.com/favicon.png" 
-                    value={faviconUrl}
-                    onChange={(e) => setFaviconUrl(e.target.value)}
-                  />
-                  <Button 
-                    onClick={() => handleSaveSetting('favicon', faviconUrl, 'Favicon salvo com sucesso!')}
-                    size="sm"
-                  >
-                    Salvar Favicon
-                  </Button>
-                  <p className="text-xs text-muted-foreground">
-                    Use formato PNG ou JPG. Tamanho recomendado: 32x32px
-                  </p>
-                  {faviconUrl && (
-                    <div className="mt-4">
-                      <Label>Preview do Favicon:</Label>
-                      <img src={faviconUrl} alt="Favicon preview" className="h-8 w-8 mt-2 border rounded" />
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="border-t pt-6">
-                <h3 className="text-lg font-semibold mb-4">Cores do Sistema</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="systemPrimaryColor">Cor Primária do Sistema</Label>
-                    <div className="flex gap-2">
-                      <Input 
-                        type="color" 
-                        id="systemPrimaryColor" 
-                        value={systemPrimaryColor}
-                        onChange={(e) => setSystemPrimaryColor(e.target.value)}
-                        className="w-16 h-10"
-                      />
-                      <Input 
-                        type="text" 
-                        placeholder="#2563eb" 
-                        value={systemPrimaryColor}
-                        onChange={(e) => setSystemPrimaryColor(e.target.value)}
-                        className="flex-1"
-                      />
-                    </div>
-                    <Button 
-                      onClick={() => handleSaveSetting('system_primary_color', systemPrimaryColor, 'Cor primária do sistema salva!')}
-                      size="sm"
-                    >
-                      Salvar
-                    </Button>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="systemSecondaryColor">Cor Secundária do Sistema</Label>
-                    <div className="flex gap-2">
-                      <Input 
-                        type="color" 
-                        id="systemSecondaryColor" 
-                        value={systemSecondaryColor}
-                        onChange={(e) => setSystemSecondaryColor(e.target.value)}
-                        className="w-16 h-10"
-                      />
-                      <Input 
-                        type="text" 
-                        placeholder="#fbbf24" 
-                        value={systemSecondaryColor}
-                        onChange={(e) => setSystemSecondaryColor(e.target.value)}
-                        className="flex-1"
-                      />
-                    </div>
-                    <Button 
-                      onClick={() => handleSaveSetting('system_secondary_color', systemSecondaryColor, 'Cor secundária do sistema salva!')}
-                      size="sm"
-                    >
-                      Salvar
-                    </Button>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="systemAccentColor">Cor de Destaque</Label>
-                    <div className="flex gap-2">
-                      <Input 
-                        type="color" 
-                        id="systemAccentColor" 
-                        value={systemAccentColor}
-                        onChange={(e) => setSystemAccentColor(e.target.value)}
-                        className="w-16 h-10"
-                      />
-                      <Input 
-                        type="text" 
-                        placeholder="#fbbf24" 
-                        value={systemAccentColor}
-                        onChange={(e) => setSystemAccentColor(e.target.value)}
-                        className="flex-1"
-                      />
-                    </div>
-                    <Button 
-                      onClick={() => handleSaveSetting('system_accent_color', systemAccentColor, 'Cor de destaque salva!')}
-                      size="sm"
-                    >
-                      Salvar
-                    </Button>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="systemBackgroundColor">Cor de Fundo</Label>
-                    <div className="flex gap-2">
-                      <Input 
-                        type="color" 
-                        id="systemBackgroundColor" 
-                        value={systemBackgroundColor}
-                        onChange={(e) => setSystemBackgroundColor(e.target.value)}
-                        className="w-16 h-10"
-                      />
-                      <Input 
-                        type="text" 
-                        placeholder="#ffffff" 
-                        value={systemBackgroundColor}
-                        onChange={(e) => setSystemBackgroundColor(e.target.value)}
-                        className="flex-1"
-                      />
-                    </div>
-                    <Button 
-                      onClick={() => handleSaveSetting('system_background_color', systemBackgroundColor, 'Cor de fundo salva!')}
-                      size="sm"
-                    >
-                      Salvar
-                    </Button>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="systemForegroundColor">Cor do Texto Principal</Label>
-                    <div className="flex gap-2">
-                      <Input 
-                        type="color" 
-                        id="systemForegroundColor" 
-                        value={systemForegroundColor}
-                        onChange={(e) => setSystemForegroundColor(e.target.value)}
-                        className="w-16 h-10"
-                      />
-                      <Input 
-                        type="text" 
-                        placeholder="#0f172a" 
-                        value={systemForegroundColor}
-                        onChange={(e) => setSystemForegroundColor(e.target.value)}
-                        className="flex-1"
-                      />
-                    </div>
-                    <Button 
-                      onClick={() => handleSaveSetting('system_foreground_color', systemForegroundColor, 'Cor do texto principal salva!')}
-                      size="sm"
-                    >
-                      Salvar
-                    </Button>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="systemMutedColor">Cor do Texto Secundário</Label>
-                    <div className="flex gap-2">
-                      <Input 
-                        type="color" 
-                        id="systemMutedColor" 
-                        value={systemMutedColor}
-                        onChange={(e) => setSystemMutedColor(e.target.value)}
-                        className="w-16 h-10"
-                      />
-                      <Input 
-                        type="text" 
-                        placeholder="#f1f5f9" 
-                        value={systemMutedColor}
-                        onChange={(e) => setSystemMutedColor(e.target.value)}
-                        className="flex-1"
-                      />
-                    </div>
-                    <Button 
-                      onClick={() => handleSaveSetting('system_muted_color', systemMutedColor, 'Cor do texto secundário salva!')}
-                      size="sm"
-                    >
-                      Salvar
-                    </Button>
-                  </div>
                 </div>
               </div>
             </CardContent>
@@ -1790,55 +1449,8 @@ const Settings = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="courses">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Database className="h-5 w-5" />
-                <span>Gerenciamento de Cursos</span>
-              </CardTitle>
-              <CardDescription>
-                Adicione, edite e remova os cursos oferecidos
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <EditableItemManager 
-                title="Novo Curso"
-                description="Adicione um novo curso à lista"
-                items={courses || []}
-                onCreate={createCourse}
-                itemName="curso"
-                tableName="courses"
-                queryKey={['courses']}
-              />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="statuses">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <User className="h-5 w-5" />
-                <span>Gerenciamento de Status de Lead</span>
-              </CardTitle>
-              <CardDescription>
-                Adicione, edite e remova os status dos leads
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <EditableItemManager 
-                title="Novo Status"
-                description="Adicione um novo status à lista"
-                items={leadStatuses || []}
-                onCreate={createLeadStatus}
-                itemName="status"
-                withColor
-                tableName="lead_statuses"
-                queryKey={['lead_statuses']}
-              />
-            </CardContent>
-          </Card>
+        <TabsContent value="database" className="space-y-4 sm:space-y-6">
+          <DatabaseExport />
         </TabsContent>
       </Tabs>
     </div>

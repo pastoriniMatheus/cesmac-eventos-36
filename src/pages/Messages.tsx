@@ -53,16 +53,16 @@ const Messages = () => {
     'Símbolos': ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔', '❣️', '💕', '💞', '💓', '💗', '💖', '💘', '💝', '💟', '☮️', '✝️', '☪️', '🕉️', '☸️', '✡️', '🔯', '🕎', '☯️', '☦️', '🛐', '⛎', '♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '♐', '♑', '♒', '♓', '🆔', '⚛️', '🉑', '☢️', '☣️', '📴', '📳', '🈶', '🈚', '🈸', '🈺', '🈷️', '✴️', '🆚', '💮', '🉐', '保密', '㊗️', '🈴', '🈵', '🈹', '🈲', '🅰️', '🅱️', '🆎', '🆑', '🅾️', '🆘', '❌', '⭕', '🛑', '⛔', '📛', '🚫', '💯', '💢', '♨️', '🚷', '🚯', '🚳', '🚱', '🔞', '📵', '🚭', '❗', '❕', '❓', '❔', '‼️', '⁉️', '🔅', '🔆', '〽️', '⚠️', '🚸', '🔱', '⚜️', '🔰', '♻️', '✅', '🈯', '💹', '❇️', '✳️', '❎', '🌐', '💠', 'Ⓜ️', '🌀', '💤', '🏧', '🚾', '♿', '🅿️', '🛗', '🈳', '🈂️', '🛂', '🛃', '🛄', '🛅', '🚹', '🚺', '🚼', '⚧', '🚻', '🚮', '🎦', '📶', '🈁', '🔣', 'ℹ️', '🔤', '🔡', '🔠', '🆖', '🆗', '🆙', '🆒', '🆕', '🆓', '0️⃣', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟', '🔢', '#️⃣', '*️⃣', '⏏️', '▶️', '⏸️', '⏯️', '⏹️', '⏺️', '⏭️', '⏮️', '⏩', '⏪', '⏫', '⏬', '◀️', '🔼', '🔽', '➡️', '⬅️', '⬆️', '⬇️', '↗️', '↘️', '↙️', '↖️', '↕️', '↔️', '↪️', '↩️', '⤴️', '⤵️', '🔀', '🔁', '🔂', '🔄', '🔃', '🎵', '🎶', '➕', '➖', '➗', '✖️', '♾️', '💲', '💱', '™️', '©️', '®️', '〰️', '➰', '➿', '🔚', '🔙', '🔛', '🔝', '🔜', '✔️', '☑️', '🔘', '🔴', '🟠', '🟡', '🟢', '🔵', '🟣', '⚫', '⚪', '🟤', '🔺', '🔻', '🔸', '🔹', '🔶', '🔷', '🔳', '🔲', '▪️', '▫️', '◾', '◽', '◼️', '◻️', '🟥', '🟧', '🟨', '🟩', '🟦', '🟪', '⬛', '⬜', '🟫', '🔈', '🔇', '🔉', '🔊', '🔔', '🔕', '📣', '📢', '👁️‍🗨️', '💬', '💭', '🗯️', '♠️', '♣️', '♥️', '♦️', '🃏', '🎴', '🀄', '🕐', '🕑', '🕒', '🕓', '🕔', '🕕', '🕖', '🕗', '🕘', '🕙', '🕚', '🕛', '🕜', '🕝', '🕞', '🕟', '🕠', '🕡', '🕢', '🕣', '🕤', '🕥', '🕦', '🕧']
   };
 
-  // Obter webhook configurado com mapeamento correto
+  // Obter webhook configurado com mapeamento correto para as chaves que são realmente salvas
   const getWebhookUrl = (type: string) => {
     console.log('🔍 Buscando webhook para tipo:', type);
     console.log('📊 Todas as configurações disponíveis:', systemSettings);
     
-    // Mapear tipos de mensagem para chaves de configuração corretas
+    // Mapear tipos de mensagem para as chaves REAIS que são salvas no banco
     const webhookKeyMap = {
-      'whatsapp': 'webhook_messages', // Webhook Envio de Mensagens (WhatsApp)
-      'email': 'webhook_email',       // Webhook de Email
-      'sms': 'webhook_sms'           // Webhook de SMS
+      'whatsapp': 'webhook_whatsapp',     // Webhook Envio de Mensagens (WhatsApp)
+      'email': 'webhook_email',           // Webhook de Email  
+      'sms': 'webhook_sms'               // Webhook de SMS
     };
     
     const webhookKey = webhookKeyMap[type as keyof typeof webhookKeyMap];
@@ -468,7 +468,7 @@ const Messages = () => {
                 <div className="mt-2 text-xs text-muted-foreground">
                   <strong>Debug - Chaves esperadas vs encontradas:</strong>
                   <div className="font-mono bg-gray-100 p-2 rounded mt-1 max-h-20 overflow-y-auto">
-                    <div>WhatsApp: buscando 'webhook_messages' - {systemSettings.find(s => s.key === 'webhook_messages') ? '✅ Encontrado' : '❌ Não encontrado'}</div>
+                    <div>WhatsApp: buscando 'webhook_whatsapp' - {systemSettings.find(s => s.key === 'webhook_whatsapp') ? '✅ Encontrado' : '❌ Não encontrado'}</div>
                     <div>Email: buscando 'webhook_email' - {systemSettings.find(s => s.key === 'webhook_email') ? '✅ Encontrado' : '❌ Não encontrado'}</div>
                     <div>SMS: buscando 'webhook_sms' - {systemSettings.find(s => s.key === 'webhook_sms') ? '✅ Encontrado' : '❌ Não encontrado'}</div>
                     <div className="mt-1 text-xs">Chaves disponíveis: {systemSettings.filter(s => s.key.startsWith('webhook_')).map(s => s.key).join(', ')}</div>
