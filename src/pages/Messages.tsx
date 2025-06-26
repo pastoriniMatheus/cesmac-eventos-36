@@ -96,8 +96,15 @@ const Messages = () => {
     }
 
     try {
+      console.log('📤 Iniciando envio de mensagem:', {
+        type: currentMessage.messageType,
+        recipients: filteredLeads.length,
+        webhookUrl,
+        content: currentMessage.content.substring(0, 50) + '...'
+      });
+
       // Salvar no histórico de mensagens
-      const { error } = await supabase
+      const { error: historyError } = await supabase
         .from('message_history')
         .insert([{
           type: currentMessage.messageType,
@@ -108,7 +115,10 @@ const Messages = () => {
           status: 'sending'
         }]);
 
-      if (error) throw error;
+      if (historyError) {
+        console.error('❌ Erro ao salvar histórico:', historyError);
+        throw new Error('Erro ao salvar no histórico: ' + historyError.message);
+      }
 
       // Preparar dados para webhook
       const webhookData = {
@@ -121,35 +131,81 @@ const Messages = () => {
         }))
       };
 
-      // Enviar para webhook
-      const response = await fetch(webhookUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(webhookData)
+      console.log('📋 Dados do webhook:', {
+        url: webhookUrl,
+        recipientsCount: webhookData.recipients.length,
+        type: webhookData.type
       });
 
-      if (!response.ok) {
-        throw new Error(`Erro no webhook: ${response.status} ${response.statusText}`);
+      // Enviar para webhook com timeout e tratamento de erro melhorado
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 segundos
+
+      try {
+        const response = await fetch(webhookUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'User-Agent': 'Lovable-App/1.0',
+          },
+          body: JSON.stringify(webhookData),
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        console.log('📥 Resposta do webhook:', {
+          status: response.status,
+          statusText: response.statusText,
+          headers: Object.fromEntries(response.headers.entries())
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('❌ Webhook retornou erro:', response.status, errorText);
+          throw new Error(`Webhook retornou erro ${response.status}: ${errorText || response.statusText}`);
+        }
+
+        const responseData = await response.text();
+        console.log('✅ Webhook executado com sucesso:', responseData);
+
+        toast({
+          title: "Mensagem enviada",
+          description: `Mensagem enviada para ${filteredLeads.length} destinatários via ${currentMessage.messageType}!`,
+        });
+
+        setCurrentMessage({
+          content: '',
+          filterType: 'all',
+          filterValue: '',
+          messageType: 'whatsapp'
+        });
+
+        // Recarregar histórico
+        queryClient.invalidateQueries({ queryKey: ['message_history'] });
+
+      } catch (fetchError: any) {
+        clearTimeout(timeoutId);
+        
+        let errorMessage = 'Erro desconhecido no webhook';
+        
+        if (fetchError.name === 'AbortError') {
+          errorMessage = 'Timeout: O webhook demorou mais de 30 segundos para responder';
+        } else if (fetchError.message?.includes('Failed to fetch')) {
+          errorMessage = 'Não foi possível conectar ao webhook. Verifique se a URL está correta e acessível';
+        } else if (fetchError.message?.includes('NetworkError')) {
+          errorMessage = 'Erro de rede ao conectar com o webhook';
+        } else {
+          errorMessage = fetchError.message || 'Erro na comunicação com o webhook';
+        }
+        
+        console.error('❌ Erro no fetch do webhook:', fetchError);
+        throw new Error(errorMessage);
       }
 
-      toast({
-        title: "Mensagem enviada",
-        description: `Mensagem enviada para ${filteredLeads.length} destinatários via ${currentMessage.messageType}!`,
-      });
-
-      setCurrentMessage({
-        content: '',
-        filterType: 'all',
-        filterValue: '',
-        messageType: 'whatsapp'
-      });
-
-      // Recarregar histórico
-      queryClient.invalidateQueries({ queryKey: ['message_history'] });
-
     } catch (error: any) {
+      console.error('💥 Erro no envio da mensagem:', error);
+      
       toast({
         title: "Erro no envio",
         description: error.message || "Erro ao enviar mensagem",
