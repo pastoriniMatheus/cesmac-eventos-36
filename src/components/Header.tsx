@@ -1,17 +1,25 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { BarChart3, Users, MessageSquare, Settings, QrCode, LogOut } from 'lucide-react';
+import { BarChart3, Users, MessageSquare, Settings, QrCode, LogOut, Menu } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { useAuth } from '@/hooks/useAuth';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 const Header = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { data: systemSettings = [] } = useSystemSettings();
+  const isMobile = useIsMobile();
   
   const logoSetting = systemSettings.find((s: any) => s.key === 'logo');
   const logoUrl = logoSetting ? 
@@ -52,6 +60,61 @@ const Header = () => {
     logout();
     navigate('/login');
   };
+
+  if (isMobile) {
+    return (
+      <header className="sticky top-0 z-50 h-14 border-b bg-white shadow-sm px-4 flex items-center justify-between">
+        <div className="flex items-center space-x-3">
+          <img
+            src={logoUrl}
+            alt="CESMAC"
+            className="h-8 w-auto object-contain"
+          />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="p-2">
+                <Menu className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-48">
+              {menuItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = location.pathname === item.path;
+                return (
+                  <DropdownMenuItem
+                    key={item.path}
+                    onClick={() => navigate(item.path)}
+                    className={cn(
+                      'flex items-center space-x-2 cursor-pointer',
+                      isActive && 'bg-blue-50 text-blue-600'
+                    )}
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span>{item.title}</span>
+                  </DropdownMenuItem>
+                );
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <span className="text-xs text-gray-600 hidden sm:block">
+            <strong className="text-blue-700">{user?.username}</strong>
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleLogout}
+            className="flex items-center space-x-1 text-gray-600 hover:text-red-600 hover:border-red-300 p-2"
+          >
+            <LogOut className="h-3 w-3" />
+            <span className="hidden sm:inline">Sair</span>
+          </Button>
+        </div>
+      </header>
+    );
+  }
 
   return (
     <header className="sticky top-0 z-50 h-16 border-b bg-white shadow-sm px-6 flex items-center justify-between">
