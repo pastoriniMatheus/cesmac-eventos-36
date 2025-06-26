@@ -10,9 +10,9 @@ import { Badge } from '@/components/ui/badge';
 import { Trash2, Plus, Save, Palette, MessageSquare, Database, Webhook, Users, GraduationCap } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useSystemSettings, useUpdateSystemSetting } from '@/hooks/useSystemSettings';
-import StatusEditor from '@/components/StatusEditor';
+import StatusManager from '@/components/StatusManager';
+import CourseManager from '@/components/CourseManager';
 import EventManager from '@/components/EventManager';
-import EditableItemManager from '@/components/EditableItemManager';
 import DatabaseExport from '@/components/DatabaseExport';
 
 const Settings = () => {
@@ -189,7 +189,7 @@ const Settings = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="webhook_whatsapp">Webhook Envio de Mensagens (WhatsApp)</Label>
+                <Label htmlFor="webhook_whatsapp">Webhook WhatsApp</Label>
                 <Input
                   id="webhook_whatsapp"
                   placeholder="https://exemplo.com/webhook/whatsapp"
@@ -199,7 +199,7 @@ const Settings = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="webhook_email">Webhook de Email</Label>
+                <Label htmlFor="webhook_email">Webhook Email</Label>
                 <Input
                   id="webhook_email"
                   placeholder="https://exemplo.com/webhook/email"
@@ -209,7 +209,7 @@ const Settings = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="webhook_sms">Webhook de SMS</Label>
+                <Label htmlFor="webhook_sms">Webhook SMS</Label>
                 <Input
                   id="webhook_sms"
                   placeholder="https://exemplo.com/webhook/sms"
@@ -389,15 +389,11 @@ const Settings = () => {
         </TabsContent>
 
         <TabsContent value="status">
-          <StatusEditor />
+          <StatusManager />
         </TabsContent>
 
         <TabsContent value="cursos">
-          <EditableItemManager 
-            title="Gerenciar Cursos"
-            description="Adicione, edite ou remova cursos do sistema"
-            type="courses"
-          />
+          <CourseManager />
         </TabsContent>
 
         <TabsContent value="eventos">

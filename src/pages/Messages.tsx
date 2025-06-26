@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,12 +21,14 @@ interface MessageTemplate {
 
 interface MessageHistoryItem {
   id: string;
-  template_name: string;
-  recipients: string[];
+  content: string;
+  recipients_count: number;
   sent_at: string;
   status: string;
   type: string;
-  response: string;
+  filter_type: string;
+  filter_value: string;
+  webhook_response: string;
 }
 
 const Messages = () => {
@@ -80,8 +83,11 @@ const Messages = () => {
       } else if (webhookSetting.value && typeof webhookSetting.value === 'object' && !Array.isArray(webhookSetting.value)) {
         // Se for objeto, verificar se tem propriedade 'url'
         const valueObj = webhookSetting.value as { [key: string]: any };
-        if ('url' in valueObj) {
-          webhookUrl = valueObj.url as string;
+        if ('url' in valueObj && typeof valueObj.url === 'string') {
+          webhookUrl = valueObj.url;
+        } else {
+          // Se não tem 'url', tentar converter o objeto para string JSON
+          webhookUrl = JSON.stringify(webhookSetting.value).replace(/["{},]/g, '');
         }
       }
       
@@ -344,7 +350,7 @@ const Messages = () => {
               <thead>
                 <tr>
                   <th className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
-                    Template
+                    Conteúdo
                   </th>
                   <th className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
                     Destinatários
@@ -363,8 +369,10 @@ const Messages = () => {
               <tbody className="bg-white divide-y divide-gray-200">
                 {history?.map(item => (
                   <tr key={item.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.template_name}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.recipients.join(', ')}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {item.content.length > 50 ? `${item.content.substring(0, 50)}...` : item.content}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.recipients_count}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(item.sent_at).toLocaleString()}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.status}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.type}</td>
