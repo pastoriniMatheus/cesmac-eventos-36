@@ -8,7 +8,7 @@ const CourseManager = () => {
   const createCourse = useCreateCourse();
 
   const handleCreateCourse = async (name: string) => {
-    await createCourse.mutateAsync({ name });
+    await createCourse.mutateAsync(name);
   };
 
   if (isLoading) {
