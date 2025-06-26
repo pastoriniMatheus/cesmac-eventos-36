@@ -5,47 +5,86 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
 };
 
 serve(async (req) => {
+  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
     console.log('📞 Callback recebido - Método:', req.method);
+    console.log('📞 URL completa:', req.url);
     console.log('📋 Headers recebidos:', Object.fromEntries(req.headers.entries()));
     
-    // Usar SERVICE_ROLE_KEY para operações administrativas sem autenticação do usuário
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
-    );
-
-    if (req.method !== 'POST') {
-      console.log('❌ Método não permitido:', req.method);
-      return new Response('Method not allowed', { 
-        status: 405,
-        headers: corsHeaders 
+    // Criar cliente Supabase com SERVICE_ROLE_KEY (sem autenticação de usuário)
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('❌ Variáveis de ambiente não configuradas');
+      return new Response(JSON.stringify({
+        error: 'Server configuration error',
+        details: 'Missing environment variables'
+      }), { 
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
-    const body = await req.json();
-    console.log('📋 Corpo da requisição recebido:', JSON.stringify(body, null, 2));
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+        detectSessionInUrl: false
+      },
+      global: {
+        headers: {
+          'Authorization': `Bearer ${supabaseServiceKey}`
+        }
+      }
+    });
+
+    if (req.method !== 'POST') {
+      console.log('❌ Método não permitido:', req.method);
+      return new Response(JSON.stringify({
+        error: 'Method not allowed',
+        details: 'Only POST method is allowed'
+      }), { 
+        status: 405,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Parse body
+    let body;
+    try {
+      const bodyText = await req.text();
+      console.log('📋 Corpo bruto recebido:', bodyText);
+      body = JSON.parse(bodyText);
+      console.log('📋 Corpo parseado:', body);
+    } catch (parseError) {
+      console.error('❌ Erro ao parsear JSON:', parseError);
+      return new Response(JSON.stringify({
+        error: 'Invalid JSON',
+        details: 'Request body must be valid JSON'
+      }), { 
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
     
     const { validation_id, is_valid, message } = body;
+    console.log('📋 Dados extraídos:', { validation_id, is_valid, message });
 
     if (!validation_id || is_valid === undefined) {
       console.log('❌ Campos obrigatórios faltando:', { validation_id, is_valid });
       return new Response(JSON.stringify({
         error: 'Missing required fields',
-        details: 'validation_id and is_valid are required'
+        details: 'validation_id and is_valid are required',
+        received: { validation_id, is_valid, message }
       }), { 
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -80,7 +119,8 @@ serve(async (req) => {
       console.log('❌ Validação não encontrada:', validation_id);
       return new Response(JSON.stringify({
         error: 'Validation not found',
-        validation_id
+        validation_id,
+        details: 'No validation record found with this ID'
       }), { 
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -90,13 +130,17 @@ serve(async (req) => {
     console.log('✅ Validação encontrada:', existingValidation);
 
     // Atualizar status da validação
+    const updateData = {
+      status: is_valid ? 'valid' : 'invalid',
+      response_message: message || null,
+      validated_at: new Date().toISOString()
+    };
+
+    console.log('📝 Dados para atualização:', updateData);
+    
     const { data: updatedValidation, error: updateError } = await supabase
       .from('whatsapp_validations')
-      .update({ 
-        status: is_valid ? 'valid' : 'invalid',
-        response_message: message || null,
-        validated_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('id', validation_id)
       .select();
 
@@ -104,7 +148,8 @@ serve(async (req) => {
       console.error('❌ Erro ao atualizar validação:', updateError);
       return new Response(JSON.stringify({
         error: 'Error updating validation',
-        details: updateError.message
+        details: updateError.message,
+        validation_id
       }), { 
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -113,11 +158,16 @@ serve(async (req) => {
 
     console.log('✅ Validação atualizada com sucesso:', updatedValidation);
 
-    return new Response(JSON.stringify({ 
+    const response = {
       success: true,
       message: 'Validation updated successfully',
-      validation: updatedValidation?.[0] || null
-    }), {
+      validation: updatedValidation?.[0] || null,
+      timestamp: new Date().toISOString()
+    };
+
+    console.log('📤 Enviando resposta:', response);
+
+    return new Response(JSON.stringify(response), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     });
@@ -126,7 +176,8 @@ serve(async (req) => {
     console.error('💥 Erro no endpoint:', error);
     return new Response(JSON.stringify({
       error: 'Internal Server Error',
-      details: error.message
+      details: error.message,
+      timestamp: new Date().toISOString()
     }), { 
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
