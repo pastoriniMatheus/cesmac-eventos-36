@@ -4,14 +4,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { useCourses } from '@/hooks/useCourses';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { useFormSettings } from '@/hooks/useFormSettings';
+import { useCheckExistingLead, useUpdateLeadCourse } from '@/hooks/useLeads';
 import { supabase } from '@/integrations/supabase/client';
 import { useWhatsAppValidation } from '@/hooks/useWhatsAppValidation';
-import { Loader2, CheckCircle, XCircle } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, AlertTriangle, RefreshCw } from 'lucide-react';
 import ThankYouScreen from '@/components/ThankYouScreen';
 
 const LeadForm = () => {
@@ -20,6 +21,8 @@ const LeadForm = () => {
   const { data: systemSettings = [] } = useSystemSettings();
   const { data: formSettings = [] } = useFormSettings();
   const { validateWhatsApp, isValidating, validationResult, setValidationResult } = useWhatsAppValidation();
+  const checkExistingLead = useCheckExistingLead();
+  const updateLeadCourse = useUpdateLeadCourse();
   
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -27,6 +30,8 @@ const LeadForm = () => {
   const [eventName, setEventName] = useState('');
   const [trackingId, setTrackingId] = useState('');
   const [skipValidation, setSkipValidation] = useState(false);
+  const [existingLead, setExistingLead] = useState<any>(null);
+  const [showUpdateConfirm, setShowUpdateConfirm] = useState(false);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -178,6 +183,46 @@ const LeadForm = () => {
     if (validationResult) {
       setValidationResult(null);
     }
+    if (existingLead) {
+      setExistingLead(null);
+      setShowUpdateConfirm(false);
+    }
+  };
+
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({ ...formData, email: e.target.value });
+    if (existingLead) {
+      setExistingLead(null);
+      setShowUpdateConfirm(false);
+    }
+  };
+
+  const handleCheckExistingLead = async () => {
+    if (!formData.whatsapp && !formData.email) return;
+    
+    try {
+      const result = await checkExistingLead.mutateAsync({
+        whatsapp: formData.whatsapp,
+        email: formData.email
+      });
+      
+      if (result) {
+        setExistingLead(result);
+        setShowUpdateConfirm(true);
+        setFormData(prev => ({
+          ...prev,
+          name: result.name,
+          email: result.email,
+          whatsapp: formatWhatsApp(result.whatsapp),
+          course_id: result.course_id || ''
+        }));
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.log('Lead não encontrado, continuando com cadastro novo');
+      return false;
+    }
   };
 
   const handleNext = async () => {
@@ -189,6 +234,12 @@ const LeadForm = () => {
           variant: "destructive",
         });
         return;
+      }
+
+      // Verificar se o lead já existe
+      const leadExists = await handleCheckExistingLead();
+      if (leadExists && !showUpdateConfirm) {
+        return; // Para mostrar a mensagem de confirmação
       }
 
       // Se validação está configurada e ainda não validou, tentar validar
@@ -222,9 +273,36 @@ const LeadForm = () => {
         });
         return;
       }
+
+      // Se não foi verificado ainda, verificar se existe lead com este email
+      if (!existingLead) {
+        await handleCheckExistingLead();
+        if (showUpdateConfirm) {
+          return;
+        }
+      }
     }
     
     setCurrentStep(currentStep + 1);
+  };
+
+  const handleUpdateCourse = async () => {
+    if (!existingLead || !formData.course_id) return;
+    
+    try {
+      await updateLeadCourse.mutateAsync({
+        leadId: existingLead.id,
+        courseId: formData.course_id
+      });
+      
+      setShowThankYou(true);
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao atualizar curso",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleSubmit = async () => {
@@ -234,6 +312,12 @@ const LeadForm = () => {
         description: "Por favor, selecione um curso",
         variant: "destructive",
       });
+      return;
+    }
+
+    // Se é um lead existente, apenas atualizar o curso
+    if (existingLead && showUpdateConfirm) {
+      await handleUpdateCourse();
       return;
     }
 
@@ -371,6 +455,8 @@ const LeadForm = () => {
     });
     setCurrentStep(1);
     setValidationResult(null);
+    setExistingLead(null);
+    setShowUpdateConfirm(false);
 
     sessionStorage.removeItem('form_tracking_id');
     sessionStorage.removeItem('form_event_name');
@@ -424,6 +510,24 @@ const LeadForm = () => {
           </CardHeader>
           
           <CardContent className="space-y-6 px-6 pb-8">
+            {/* Alerta para lead existente */}
+            {showUpdateConfirm && existingLead && (
+              <Alert className="border-amber-200 bg-amber-50">
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="text-amber-800">
+                  <div className="space-y-2">
+                    <p><strong>Lead já cadastrado!</strong></p>
+                    <p>Nome: {existingLead.name}</p>
+                    <p>Email: {existingLead.email}</p>
+                    {existingLead.course && (
+                      <p>Curso atual: {existingLead.course.name}</p>
+                    )}
+                    <p className="text-sm mt-2">Deseja atualizar o curso de interesse?</p>
+                  </div>
+                </AlertDescription>
+              </Alert>
+            )}
+
             {/* Step 1: WhatsApp com validação */}
             {currentStep === 1 && (
               <div className="space-y-6">
@@ -452,7 +556,7 @@ const LeadForm = () => {
                           ? 'border-green-400 focus:border-green-500'
                           : 'border-blue-200 focus:border-blue-500'
                       }`}
-                      disabled={isValidating}
+                      disabled={isValidating || checkExistingLead.isPending}
                     />
                     {/* Ícones de status de validação */}
                     {!skipValidation && validationResult === 'valid' && (
@@ -487,12 +591,17 @@ const LeadForm = () => {
                 <Button
                   onClick={handleNext}
                   className="w-full h-12 text-lg font-semibold bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-lg"
-                  disabled={!validateWhatsAppFormat(formData.whatsapp) || isValidating}
+                  disabled={!validateWhatsAppFormat(formData.whatsapp) || isValidating || checkExistingLead.isPending}
                 >
                   {isValidating ? (
                     <>
                       <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                       Verificando...
+                    </>
+                  ) : checkExistingLead.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      Verificando cadastro...
                     </>
                   ) : (
                     'Próximo'
@@ -502,7 +611,7 @@ const LeadForm = () => {
             )}
 
             {/* Step 2: Personal Info */}
-            {currentStep === 2 && (
+            {currentStep === 2 && !showUpdateConfirm && (
               <div className="space-y-6">
                 <div className="text-center mb-6">
                   <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg">
@@ -548,15 +657,83 @@ const LeadForm = () => {
                   <Button
                     onClick={handleNext}
                     className="flex-1 h-12 text-lg font-semibold bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-lg"
-                    disabled={!formData.name || !formData.email}
+                    disabled={!formData.name || !formData.email || checkExistingLead.isPending}
                   >
-                    Próximo
+                    {checkExistingLead.isPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                        Verificando...
+                      </>
+                    ) : (
+                      'Próximo'
+                    )}
                   </Button>
                 </div>
               </div>
             )}
 
-            {currentStep === 3 && (
+            {/* Confirmação de atualização para lead existente */}
+            {showUpdateConfirm && existingLead && (
+              <div className="space-y-6">
+                <div className="text-center mb-6">
+                  <div className="w-12 h-12 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg">
+                    <RefreshCw className="h-6 w-6" />
+                  </div>
+                  <h3 className="font-semibold text-lg text-amber-700">Atualizar Interesse</h3>
+                  <p className="text-sm text-gray-600 mt-1">Selecione o novo curso de interesse</p>
+                </div>
+                
+                <div className="space-y-3">
+                  <Label htmlFor="course" className="text-blue-900 font-medium">Novo curso de interesse *</Label>
+                  <Select
+                    value={formData.course_id}
+                    onValueChange={(value) => setFormData({ ...formData, course_id: value })}
+                  >
+                    <SelectTrigger className="h-12 text-lg border-2 border-blue-200 focus:border-blue-500">
+                      <SelectValue placeholder="Selecione um curso" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {courses.map((course: any) => (
+                        <SelectItem key={course.id} value={course.id} className="text-lg py-3">
+                          {course.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex space-x-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowUpdateConfirm(false);
+                      setExistingLead(null);
+                      setCurrentStep(1);
+                    }}
+                    className="flex-1 h-12 text-lg border-2 border-gray-300 text-gray-700 hover:bg-gray-50"
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    onClick={handleUpdateCourse}
+                    className="flex-1 h-12 text-lg font-semibold bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 shadow-lg"
+                    disabled={updateLeadCourse.isPending || !formData.course_id}
+                  >
+                    {updateLeadCourse.isPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                        Atualizando...
+                      </>
+                    ) : (
+                      'Atualizar'
+                    )}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Step 3: Course Selection (apenas para leads novos) */}
+            {currentStep === 3 && !showUpdateConfirm && (
               <div className="space-y-6">
                 <div className="text-center mb-6">
                   <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg">
@@ -617,7 +794,7 @@ const LeadForm = () => {
                 <div
                   key={step}
                   className={`w-3 h-3 rounded-full transition-all duration-300 ${
-                    step <= currentStep 
+                    step <= currentStep || showUpdateConfirm
                       ? 'bg-gradient-to-r from-blue-600 to-blue-700 shadow-md' 
                       : 'bg-gray-300'
                   }`}
