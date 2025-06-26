@@ -23,6 +23,56 @@ export const useLeads = () => {
   });
 };
 
+export const useCheckExistingLead = () => {
+  return useMutation({
+    mutationFn: async ({ whatsapp, email }: { whatsapp: string; email: string }) => {
+      const cleanWhatsapp = whatsapp.replace(/\D/g, '');
+      
+      const { data, error } = await supabase
+        .from('leads')
+        .select(`
+          *,
+          course:courses(name)
+        `)
+        .or(`whatsapp.eq.${cleanWhatsapp},email.eq.${email}`)
+        .limit(1)
+        .single();
+      
+      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows found
+        throw error;
+      }
+      
+      return data;
+    }
+  });
+};
+
+export const useUpdateLeadCourse = () => {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ leadId, courseId }: { leadId: string; courseId: string }) => {
+      const { data, error } = await supabase
+        .from('leads')
+        .update({ course_id: courseId, updated_at: new Date().toISOString() })
+        .eq('id', leadId)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      toast({
+        title: "Lead atualizado",
+        description: "Curso de interesse atualizado com sucesso!",
+      });
+    }
+  });
+};
+
 export const useLeadStatuses = () => {
   return useQuery({
     queryKey: ['lead_statuses'],
