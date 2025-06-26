@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -213,37 +214,37 @@ const Messages = () => {
   };
 
   return (
-    <div className="p-3 md:p-6 space-y-4 md:space-y-6">
+    <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl md:text-3xl font-bold text-foreground">Mensagens</h1>
+        <h1 className="text-3xl font-bold text-foreground">Mensagens</h1>
       </div>
 
       <Tabs defaultValue="send" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 h-9 md:h-10">
-          <TabsTrigger value="send" className="text-xs md:text-sm">Enviar</TabsTrigger>
-          <TabsTrigger value="templates" className="text-xs md:text-sm">Templates</TabsTrigger>
-          <TabsTrigger value="history" className="text-xs md:text-sm">Histórico</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="send">Enviar Mensagem</TabsTrigger>
+          <TabsTrigger value="templates">Templates</TabsTrigger>
+          <TabsTrigger value="history">Histórico</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="send" className="space-y-4 md:space-y-6">
+        <TabsContent value="send" className="space-y-6">
           <Card>
-            <CardHeader className="pb-3 md:pb-6">
-              <CardTitle className="text-lg md:text-xl">Nova Mensagem</CardTitle>
-              <CardDescription className="text-sm">
+            <CardHeader>
+              <CardTitle>Nova Mensagem</CardTitle>
+              <CardDescription>
                 Envie mensagens para leads. Se nenhum filtro for selecionado, será enviado para todos.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-sm">Tipo de Mensagem</Label>
+                  <Label>Tipo de Mensagem</Label>
                   <Select 
                     value={currentMessage.messageType} 
                     onValueChange={(value: 'whatsapp' | 'email' | 'sms') => 
                       setCurrentMessage({...currentMessage, messageType: value})
                     }
                   >
-                    <SelectTrigger className="h-9 md:h-10">
+                    <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -270,14 +271,14 @@ const Messages = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-sm">Filtrar por</Label>
+                  <Label>Filtrar por</Label>
                   <Select 
                     value={currentMessage.filterType} 
                     onValueChange={(value: 'course' | 'event' | 'all') => 
                       setCurrentMessage({...currentMessage, filterType: value, filterValue: ''})
                     }
                   >
-                    <SelectTrigger className="h-9 md:h-10">
+                    <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -289,8 +290,8 @@ const Messages = () => {
                 </div>
 
                 {currentMessage.filterType !== 'all' && (
-                  <div className="space-y-2 md:col-span-1 col-span-1">
-                    <Label className="text-sm">
+                  <div className="space-y-2">
+                    <Label>
                       {currentMessage.filterType === 'course' ? 'Curso' : 'Evento'}
                     </Label>
                     <Select 
@@ -299,7 +300,7 @@ const Messages = () => {
                         setCurrentMessage({...currentMessage, filterValue: value})
                       }
                     >
-                      <SelectTrigger className="h-9 md:h-10">
+                      <SelectTrigger>
                         <SelectValue placeholder="Selecione..." />
                       </SelectTrigger>
                       <SelectContent>
@@ -319,32 +320,30 @@ const Messages = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="message-content" className="text-sm">Conteúdo da Mensagem</Label>
+                <Label htmlFor="message-content">Conteúdo da Mensagem</Label>
                 <Textarea
                   id="message-content"
                   placeholder="Digite sua mensagem aqui... Use {nome} para personalizar com o nome do lead."
                   value={currentMessage.content}
                   onChange={(e) => setCurrentMessage({...currentMessage, content: e.target.value})}
-                  rows={4}
-                  className="min-h-[100px] resize-none"
+                  rows={6}
                 />
               </div>
 
-              <div className="flex flex-col md:flex-row gap-2 md:gap-2">
-                <Button onClick={handleSendMessage} className="flex-1 h-10">
+              <div className="flex space-x-2">
+                <Button onClick={handleSendMessage} className="flex-1">
                   <Send className="h-4 w-4 mr-2" />
                   Enviar Mensagem
                 </Button>
                 
                 <Dialog open={templateDialog.open} onOpenChange={(open) => setTemplateDialog({...templateDialog, open})}>
                   <DialogTrigger asChild>
-                    <Button variant="outline" className="md:flex-none h-10">
+                    <Button variant="outline">
                       <Save className="h-4 w-4 mr-2" />
-                      <span className="hidden md:inline">Salvar como Template</span>
-                      <span className="md:hidden">Salvar</span>
+                      Salvar como Template
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="w-[95vw] max-w-md mx-auto">
+                  <DialogContent>
                     <DialogHeader>
                       <DialogTitle>Salvar Template</DialogTitle>
                       <DialogDescription>
@@ -406,47 +405,45 @@ const Messages = () => {
 
         <TabsContent value="templates">
           <Card>
-            <CardHeader className="pb-3 md:pb-6">
-              <CardTitle className="text-lg md:text-xl">Templates Salvos</CardTitle>
-              <CardDescription className="text-sm">
+            <CardHeader>
+              <CardTitle>Templates Salvos</CardTitle>
+              <CardDescription>
                 Gerencie seus templates de mensagem
               </CardDescription>
             </CardHeader>
             <CardContent>
               {templates.length > 0 ? (
-                <div className="space-y-3 md:space-y-4">
+                <div className="space-y-4">
                   {templates.map((template: any) => (
-                    <div key={template.id} className="border rounded-lg p-3 md:p-4">
-                      <div className="flex flex-col md:flex-row md:items-center justify-between mb-2 gap-2">
+                    <div key={template.id} className="border rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center space-x-2">
-                          <h3 className="font-medium text-sm md:text-base">{template.name}</h3>
-                          <Badge variant="outline" className="text-xs">{template.type}</Badge>
+                          <h3 className="font-medium">{template.name}</h3>
+                          <Badge variant="outline">{template.type}</Badge>
                         </div>
                         <div className="flex space-x-2">
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => useTemplate(template)}
-                            className="text-xs h-8"
                           >
-                            Usar
+                            Usar Template
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => handleDeleteTemplate(template.id)}
-                            className="h-8 w-8 p-0"
                           >
                             <Trash2 className="h-4 w-4 text-red-500" />
                           </Button>
                         </div>
                       </div>
-                      <p className="text-xs md:text-sm text-muted-foreground line-clamp-2">{template.content}</p>
+                      <p className="text-sm text-muted-foreground">{template.content}</p>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="text-center text-muted-foreground py-8 text-sm">
+                <p className="text-center text-muted-foreground py-8">
                   Nenhum template salvo ainda
                 </p>
               )}
@@ -456,54 +453,52 @@ const Messages = () => {
 
         <TabsContent value="history">
           <Card>
-            <CardHeader className="pb-3 md:pb-6">
-              <CardTitle className="text-lg md:text-xl">Histórico de Envios</CardTitle>
-              <CardDescription className="text-sm">
+            <CardHeader>
+              <CardTitle>Histórico de Envios</CardTitle>
+              <CardDescription>
                 Acompanhe o histórico de todas as mensagens enviadas
               </CardDescription>
             </CardHeader>
             <CardContent>
               {messageHistory.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="text-xs">Data</TableHead>
-                        <TableHead className="text-xs">Tipo</TableHead>
-                        <TableHead className="text-xs">Filtro</TableHead>
-                        <TableHead className="text-xs">Dest.</TableHead>
-                        <TableHead className="text-xs">Status</TableHead>
-                        <TableHead className="text-xs max-w-[120px]">Conteúdo</TableHead>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Data</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>Filtro</TableHead>
+                      <TableHead>Destinatários</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Conteúdo</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {messageHistory.map((message: any) => (
+                      <TableRow key={message.id}>
+                        <TableCell>
+                          {new Date(message.sent_at).toLocaleString('pt-BR')}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{message.type}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          {message.filter_type === 'all' ? 'Todos' : message.filter_type}
+                        </TableCell>
+                        <TableCell>{message.recipients_count}</TableCell>
+                        <TableCell>
+                          <Badge variant={message.status === 'sent' ? 'default' : 'secondary'}>
+                            {message.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="max-w-xs truncate">
+                          {message.content}
+                        </TableCell>
                       </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {messageHistory.map((message: any) => (
-                        <TableRow key={message.id}>
-                          <TableCell className="text-xs">
-                            {new Date(message.sent_at).toLocaleDateString('pt-BR')}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className="text-xs">{message.type}</Badge>
-                          </TableCell>
-                          <TableCell className="text-xs">
-                            {message.filter_type === 'all' ? 'Todos' : message.filter_type}
-                          </TableCell>
-                          <TableCell className="text-xs">{message.recipients_count}</TableCell>
-                          <TableCell>
-                            <Badge variant={message.status === 'sent' ? 'default' : 'secondary'} className="text-xs">
-                              {message.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="max-w-[120px] truncate text-xs">
-                            {message.content}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                    ))}
+                  </TableBody>
+                </Table>
               ) : (
-                <p className="text-center text-muted-foreground py-8 text-sm">
+                <p className="text-center text-muted-foreground py-8">
                   Nenhum histórico de mensagens ainda
                 </p>
               )}
