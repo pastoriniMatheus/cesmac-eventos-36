@@ -38,14 +38,13 @@ serve(async (req) => {
 
     // Enviar webhook com timeout
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 segundos
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
 
     try {
       const response = await fetch(webhook_url, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'User-Agent': 'Supabase-Functions/1.0'
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify(webhook_data),
         signal: controller.signal

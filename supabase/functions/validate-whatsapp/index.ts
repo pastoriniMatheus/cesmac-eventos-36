@@ -109,7 +109,7 @@ serve(async (req) => {
 
     console.log('✅ Validação criada:', validation);
 
-    // Enviar para webhook externo com timeout configurado
+    // Enviar para webhook externo sem headers de autorização
     try {
       console.log('📤 Enviando para webhook externo...');
       
@@ -122,13 +122,12 @@ serve(async (req) => {
       console.log('📋 Payload do webhook:', JSON.stringify(webhookPayload, null, 2));
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 segundos timeout
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
 
       const webhookResponse = await fetch(settings.value, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'User-Agent': 'Supabase-Functions/1.0',
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify(webhookPayload),
         signal: controller.signal,
