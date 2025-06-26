@@ -37,41 +37,41 @@ serve(async (req) => {
       });
     }
 
-    console.log(`🚀 Iniciando exportação via Supabase client: ${database}@${host}:${port}`);
+    console.log(`🚀 Iniciando exportação do banco: ${database}@${host}:${port}`);
 
-    // Usar cliente Supabase para conectar e fazer dump via API
-    const supabaseUrl = `https://${host.replace('.supabase.co', '')}.supabase.co`;
-    const supabase = createClient(supabaseUrl, password);
-
-    // Buscar todas as tabelas do schema
-    const { data: tables, error: tablesError } = await supabase
-      .from('information_schema.tables')
-      .select('table_name')
-      .eq('table_schema', schema || 'public')
-      .eq('table_type', 'BASE TABLE');
-
-    if (tablesError) {
-      console.error('❌ Erro ao buscar tabelas:', tablesError);
+    // Usar cliente Supabase correto com as credenciais fornecidas
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('❌ Variáveis de ambiente não configuradas');
       return new Response(JSON.stringify({
-        error: 'Erro ao conectar com o banco de dados',
-        details: tablesError.message
+        error: 'Server configuration error',
+        details: 'Missing Supabase environment variables'
       }), { 
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
-    if (!tables || tables.length === 0) {
-      return new Response(JSON.stringify({
-        error: 'Nenhuma tabela encontrada',
-        details: `Não foram encontradas tabelas no schema '${schema || 'public'}'`
-      }), { 
-        status: 404,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    console.log(`📊 Encontradas ${tables.length} tabelas para exportar`);
+    // Lista das tabelas do sistema
+    const systemTables = [
+      'authorized_users',
+      'courses', 
+      'events',
+      'lead_statuses',
+      'leads',
+      'message_history',
+      'message_templates',
+      'qr_codes',
+      'scan_sessions',
+      'system_settings',
+      'whatsapp_validations'
+    ];
+
+    console.log(`📊 Exportando ${systemTables.length} tabelas do sistema`);
 
     let dumpContent = `-- Database dump created on ${new Date().toISOString()}
 -- Source: ${database}@${host}:${port}
@@ -94,8 +94,7 @@ SET row_security = off;
 `;
 
     // Exportar dados de cada tabela
-    for (const table of tables) {
-      const tableName = table.table_name;
+    for (const tableName of systemTables) {
       console.log(`📋 Exportando tabela: ${tableName}`);
 
       try {
@@ -106,6 +105,7 @@ SET row_security = off;
 
         if (dataError) {
           console.error(`❌ Erro ao buscar dados da tabela ${tableName}:`, dataError);
+          dumpContent += `\n-- Error exporting table ${tableName}: ${dataError.message}\n`;
           continue;
         }
 
@@ -120,6 +120,7 @@ SET row_security = off;
               if (val === null) return 'NULL';
               if (typeof val === 'string') return `'${val.replace(/'/g, "''")}'`;
               if (typeof val === 'object') return `'${JSON.stringify(val).replace(/'/g, "''")}'`;
+              if (typeof val === 'boolean') return val ? 'true' : 'false';
               return val;
             }).join(', ');
             
@@ -148,7 +149,7 @@ SET row_security = off;
         timestamp: new Date().toISOString(),
         source: `${database}@${host}:${port}`,
         schema: schema || 'public',
-        tables_count: tables.length,
+        tables_count: systemTables.length,
         size_bytes: dumpContent.length,
         size_readable: `${Math.round(dumpContent.length / 1024)} KB`
       }
