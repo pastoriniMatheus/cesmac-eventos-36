@@ -12,3 +12,6 @@ verify_jwt = false
 
 [functions.database-export]
 verify_jwt = false
+
+[functions.qr-redirect]
+verify_jwt = false
