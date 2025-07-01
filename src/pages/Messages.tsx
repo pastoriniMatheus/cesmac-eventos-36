@@ -13,6 +13,7 @@ import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { useCourses } from '@/hooks/useCourses';
 import { useEvents } from '@/hooks/useEvents';
 import { useLeads } from '@/hooks/useLeads';
+import { supabase } from '@/integrations/supabase/client';
 import { Send, Copy, MessageSquare, History, Smile, Save, Filter, Users } from 'lucide-react';
 
 const Messages = () => {
@@ -32,7 +33,6 @@ const Messages = () => {
   const [selectedCourse, setSelectedCourse] = useState<string>('');
   const [selectedEvent, setSelectedEvent] = useState<string>('');
   const [templateName, setTemplateName] = useState<string>('');
-  const [recipients, setRecipients] = useState<string>('');
   const [filteredLeads, setFilteredLeads] = useState<any[]>([]);
   const [isSending, setIsSending] = useState<boolean>(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState<boolean>(false);
@@ -108,15 +108,15 @@ const Messages = () => {
   };
 
   const getFilteredRecipients = () => {
-    if (recipients.trim()) {
-      return recipients.split(',').map(r => r.trim());
-    }
-    
-    return filteredLeads.map(lead => {
+    return filteredLeads.map(lead => ({
+      name: lead.name,
+      whatsapp: lead.whatsapp,
+      email: lead.email
+    })).filter(lead => {
       if (messageType === 'whatsapp') return lead.whatsapp;
       if (messageType === 'email') return lead.email;
       return lead.whatsapp; // default
-    }).filter(Boolean);
+    });
   };
 
   const handleSendMessage = async () => {
@@ -134,7 +134,7 @@ const Messages = () => {
     if (recipientsArray.length === 0) {
       toast({
         title: "Nenhum destinatário",
-        description: "Selecione um filtro ou adicione destinatários manualmente.",
+        description: "Selecione um filtro para encontrar destinatários.",
         variant: "destructive",
       });
       return;
@@ -153,23 +153,64 @@ const Messages = () => {
     setIsSending(true);
 
     try {
-      const response = await handleSendWithWebhook(webhookUrl, recipientsArray, messageContent);
+      console.log('🚀 Enviando webhook com dados:', {
+        type: messageType,
+        recipients: recipientsArray,
+        message: messageContent,
+        webhook_url: webhookUrl
+      });
 
-      if (response?.error) {
+      const { data, error } = await supabase.functions.invoke('send-webhook', {
+        body: {
+          webhook_url: webhookUrl,
+          webhook_data: {
+            type: messageType,
+            recipients: recipientsArray,
+            message: messageContent
+          }
+        }
+      });
+
+      if (error) {
+        console.error('❌ Erro na edge function:', error);
         toast({
           title: "Erro ao enviar",
-          description: response.error,
+          description: error.message || "Erro ao executar webhook",
           variant: "destructive",
         });
-      } else {
-        toast({
-          title: "Mensagem enviada",
-          description: `Mensagem enviada com sucesso para ${recipientsArray.length} destinatários!`,
-        });
+        return;
       }
 
+      if (data?.error) {
+        console.error('❌ Erro retornado pela edge function:', data);
+        toast({
+          title: "Erro no webhook",
+          description: data.error || "Erro desconhecido no webhook",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      console.log('✅ Webhook enviado com sucesso:', data);
+      
+      // Salvar no histórico
+      await supabase.from('message_history').insert({
+        content: messageContent,
+        type: messageType,
+        recipients_count: recipientsArray.length,
+        status: 'sent',
+        filter_type: filterType,
+        filter_value: filterType === 'course' ? selectedCourse : filterType === 'event' ? selectedEvent : null,
+        webhook_response: JSON.stringify(data)
+      });
+
+      toast({
+        title: "Mensagem enviada",
+        description: `Mensagem enviada com sucesso para ${recipientsArray.length} destinatários!`,
+      });
+
     } catch (error: any) {
-      console.error("Erro ao enviar mensagem:", error);
+      console.error("❌ Erro geral ao enviar mensagem:", error);
       toast({
         title: "Erro ao enviar",
         description: error.message || "Erro desconhecido ao enviar mensagem",
@@ -177,36 +218,6 @@ const Messages = () => {
       });
     } finally {
       setIsSending(false);
-    }
-  };
-
-  const handleSendWithWebhook = async (webhookUrl: string, recipients: string[], message: string) => {
-    try {
-      const webhook_data = {
-        type: messageType,
-        recipients: recipients,
-        message: message
-      };
-
-      const response = await fetch('/api/send-webhook', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ webhook_url: webhookUrl, webhook_data: webhook_data }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`HTTP ${response.status}: ${errorText}`);
-      }
-
-      const data = await response.json();
-      return data;
-
-    } catch (error: any) {
-      console.error(`Erro ao enviar ${messageType}:`, error);
-      return { error: error.message || `Erro ao enviar ${messageType}` };
     }
   };
 
@@ -437,19 +448,6 @@ const Messages = () => {
                     </div>
                   </div>
                 )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="recipients">Destinatários Manuais (separados por vírgula)</Label>
-                <Input
-                  id="recipients"
-                  placeholder="Ex: +5511999999999, email@example.com"
-                  value={recipients}
-                  onChange={(e) => setRecipients(e.target.value)}
-                />
-                <p className="text-xs text-gray-500">
-                  Deixe vazio para usar apenas os destinatários filtrados
-                </p>
               </div>
 
               <div className="flex gap-4">
