@@ -27,12 +27,12 @@ export const getCurrentDomain = (): string => {
   return '';
 };
 
-// Função para construir URL de redirecionamento para QR codes WhatsApp
+// Função para construir URL de redirecionamento para QR codes WhatsApp - CORRIGIDA
 export const buildQRRedirectUrl = (shortUrl: string): string => {
   return `https://dobtquebpcnzjisftcfh.supabase.co/functions/v1/qr-redirect/${shortUrl}`;
 };
 
-// Função para construir URL do formulário com domínio atual - CORRIGIDA
+// Função para construir URL do formulário com domínio atual
 export const buildFormUrl = (eventName: string, trackingId: string): string => {
   const currentDomain = getCurrentDomain();
   

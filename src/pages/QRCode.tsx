@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useQRCodes } from '@/hooks/useQRCodes';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
-import { generateShortUrl, buildWhatsAppUrl, getCurrentDomain, buildQRRedirectUrl } from '@/utils/urlShortener';
+import { generateShortUrl, buildWhatsAppUrl, getCurrentDomain, buildQRRedirectUrl, buildFormUrl } from '@/utils/urlShortener';
 import { generateTrackingId } from '@/utils/trackingId';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -29,17 +29,16 @@ const QRCodePage = () => {
   const [previewQR, setPreviewQR] = useState<any>(null);
 
   const generateQRCode = (whatsappNumber: string, eventName: string, trackingId: string, type: string) => {
-    const currentDomain = getCurrentDomain();
-    
     if (type === 'whatsapp') {
+      // Para WhatsApp, criar URL direta do WhatsApp (que será salva como original_url)
       const waLink = buildWhatsAppUrl(whatsappNumber, eventName, trackingId);
-      const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(waLink)}`;
-      return { waLink, qrCodeUrl };
+      console.log('WhatsApp URL gerada:', waLink);
+      return { waLink };
     } else {
-      // Para formulário, gera URL direta
-      const formUrl = `${currentDomain}/form?event=${encodeURIComponent(eventName)}&tracking=${trackingId}`;
-      const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(formUrl)}`;
-      return { waLink: formUrl, qrCodeUrl };
+      // Para formulário, usar URL do formulário
+      const formUrl = buildFormUrl(eventName, trackingId);
+      console.log('Form URL gerada:', formUrl);
+      return { waLink: formUrl };
     }
   };
 
@@ -75,13 +74,12 @@ const QRCodePage = () => {
     }
 
     try {
-      // Para WhatsApp: manter funcionalidade original - sempre criar evento com WhatsApp
-      // Para formulário: criar evento sem WhatsApp obrigatório
+      // Criar evento
       const eventData: any = {
         name: newQRCode.eventName
       };
 
-      // Só adicionar WhatsApp se for QR Code WhatsApp (funcionalidade original)
+      // Só adicionar WhatsApp se for QR Code WhatsApp
       if (newQRCode.type === 'whatsapp') {
         eventData.whatsapp_number = newQRCode.whatsappNumber;
       }
@@ -98,14 +96,21 @@ const QRCodePage = () => {
       const trackingId = generateTrackingId();
       const { waLink } = generateQRCode(newQRCode.whatsappNumber, newQRCode.eventName, trackingId, newQRCode.type);
       
-      // Para WhatsApp usa short_url (funcionalidade original), para formulário usa URL direta
-      const shortUrl = newQRCode.type === 'whatsapp' ? generateShortUrl() : trackingId;
+      // Gerar short_url para ambos os tipos
+      const shortUrl = generateShortUrl();
 
-      // Criar o QR code com tracking ID
+      console.log('Dados do QR Code:', {
+        type: newQRCode.type,
+        shortUrl,
+        originalUrl: waLink,
+        trackingId
+      });
+
+      // Criar o QR code
       const qrCodeData: any = {
         event_id: event.id,
         short_url: shortUrl,
-        original_url: waLink,
+        original_url: waLink,  // A URL final (WhatsApp ou formulário)
         tracking_id: trackingId,
         type: newQRCode.type
       };
@@ -193,14 +198,17 @@ const QRCodePage = () => {
   };
 
   const downloadQRCode = (qrCode: any) => {
+    // Para QR codes WhatsApp, usar a URL da edge function
+    // Para QR codes de formulário, usar a URL original diretamente
     let qrUrl;
     
     if (qrCode.type === 'whatsapp') {
-      // Usar a URL da edge function do Supabase para redirecionamento
       qrUrl = buildQRRedirectUrl(qrCode.short_url);
     } else {
       qrUrl = qrCode.original_url;
     }
+    
+    console.log('URL do QR Code para download:', qrUrl);
     
     const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(qrUrl)}`;
     const link = document.createElement('a');
@@ -223,8 +231,10 @@ const QRCodePage = () => {
 
   const getQRCodeDisplayUrl = (qrCode: any) => {
     if (qrCode.type === 'whatsapp') {
+      // Para WhatsApp, mostrar a URL da edge function
       return buildQRRedirectUrl(qrCode.short_url);
     } else {
+      // Para formulário, mostrar a URL original
       return qrCode.original_url;
     }
   };
@@ -612,6 +622,53 @@ const QRCodePage = () => {
       </Dialog>
     </div>
   );
+};
+
+// Função para deletar QR code E o evento associado
+const handleDeleteQRCode = async (qrCodeId: string) => {
+  try {
+    // Primeiro, buscar o QR code para obter o event_id
+    const { data: qrCodeData, error: fetchError } = await supabase
+      .from('qr_codes')
+      .select('event_id')
+      .eq('id', qrCodeId)
+      .single();
+
+    if (fetchError) throw fetchError;
+
+    // Deletar o QR code
+    const { error: qrError } = await supabase
+      .from('qr_codes')
+      .delete()
+      .eq('id', qrCodeId);
+
+    if (qrError) throw qrError;
+
+    // Se existe um evento associado, deletá-lo também
+    if (qrCodeData.event_id) {
+      const { error: eventError } = await supabase
+        .from('events')
+        .delete()
+        .eq('id', qrCodeData.event_id);
+
+      if (eventError) throw eventError;
+    }
+
+    queryClient.invalidateQueries({ queryKey: ['qr_codes'] });
+    queryClient.invalidateQueries({ queryKey: ['events'] });
+    queryClient.invalidateQueries({ queryKey: ['leads'] });
+
+    toast({
+      title: "QR Code e evento removidos",
+      description: "QR Code e evento associado removidos com sucesso!",
+    });
+  } catch (error: any) {
+    toast({
+      title: "Erro",
+      description: error.message || "Erro ao remover QR Code",
+      variant: "destructive",
+    });
+  }
 };
 
 export default QRCodePage;
