@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -141,7 +142,7 @@ const QRCodePage = () => {
     }
   };
 
-  // Função atualizada para deletar QR code E o evento associado
+  // Função para deletar QR code E o evento associado
   const handleDeleteQRCode = async (qrCodeId: string) => {
     try {
       // Primeiro, buscar o QR code para obter o event_id
@@ -477,7 +478,7 @@ const QRCodePage = () => {
         </CardContent>
       </Card>
 
-      {/* Preview Dialog - Melhorado e mais compacto */}
+      {/* Preview Dialog */}
       <Dialog open={!!previewQR} onOpenChange={() => setPreviewQR(null)}>
         <DialogContent className="sm:max-w-[400px] max-h-[80vh] overflow-y-auto">
           <DialogHeader className="pb-3">
@@ -492,7 +493,6 @@ const QRCodePage = () => {
           </DialogHeader>
           {previewQR && (
             <div className="space-y-3">
-              {/* QR Code centralizado e menor */}
               <div className="flex justify-center">
                 <img
                   src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(getQRCodeDisplayUrl(previewQR))}`}
@@ -501,7 +501,6 @@ const QRCodePage = () => {
                 />
               </div>
               
-              {/* Informações compactas em grid */}
               <div className="grid grid-cols-1 gap-2 text-sm">
                 <div className="flex justify-between items-center">
                   <Label className="text-xs font-medium text-muted-foreground">Tipo</Label>
@@ -596,7 +595,6 @@ const QRCodePage = () => {
                 </div>
               </div>
               
-              {/* Botões de ação compactos */}
               <div className="flex space-x-2 pt-2">
                 <Button
                   onClick={() => downloadQRCode(previewQR)}
@@ -622,53 +620,6 @@ const QRCodePage = () => {
       </Dialog>
     </div>
   );
-};
-
-// Função para deletar QR code E o evento associado
-const handleDeleteQRCode = async (qrCodeId: string) => {
-  try {
-    // Primeiro, buscar o QR code para obter o event_id
-    const { data: qrCodeData, error: fetchError } = await supabase
-      .from('qr_codes')
-      .select('event_id')
-      .eq('id', qrCodeId)
-      .single();
-
-    if (fetchError) throw fetchError;
-
-    // Deletar o QR code
-    const { error: qrError } = await supabase
-      .from('qr_codes')
-      .delete()
-      .eq('id', qrCodeId);
-
-    if (qrError) throw qrError;
-
-    // Se existe um evento associado, deletá-lo também
-    if (qrCodeData.event_id) {
-      const { error: eventError } = await supabase
-        .from('events')
-        .delete()
-        .eq('id', qrCodeData.event_id);
-
-      if (eventError) throw eventError;
-    }
-
-    queryClient.invalidateQueries({ queryKey: ['qr_codes'] });
-    queryClient.invalidateQueries({ queryKey: ['events'] });
-    queryClient.invalidateQueries({ queryKey: ['leads'] });
-
-    toast({
-      title: "QR Code e evento removidos",
-      description: "QR Code e evento associado removidos com sucesso!",
-    });
-  } catch (error: any) {
-    toast({
-      title: "Erro",
-      description: error.message || "Erro ao remover QR Code",
-      variant: "destructive",
-    });
-  }
 };
 
 export default QRCodePage;

@@ -8,56 +8,88 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
+    console.log('Requisição recebida:', req.url);
+    
+    // Criar cliente Supabase usando as variáveis de ambiente
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    console.log('Supabase URL:', supabaseUrl);
+    console.log('Service Key presente:', !!supabaseServiceKey);
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('Variáveis de ambiente não encontradas');
+      return new Response('Configuração do servidor inválida', { 
+        status: 500,
+        headers: corsHeaders 
+      });
+    }
+    
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Extrair short_url da URL
     const url = new URL(req.url);
     const shortUrl = url.pathname.split('/').pop();
+    
+    console.log('Short URL extraída:', shortUrl);
 
     if (!shortUrl) {
-      return new Response('Short URL not provided', { 
+      return new Response('Short URL não fornecida', { 
         status: 400,
         headers: corsHeaders 
       });
     }
 
     // Buscar QR code pelo short_url
+    console.log('Buscando QR code:', shortUrl);
     const { data: qrCode, error } = await supabase
       .from('qr_codes')
       .select('*, event:events(name, whatsapp_number)')
       .eq('short_url', shortUrl)
       .single();
 
-    if (error || !qrCode) {
-      console.error('QR code not found:', error);
-      return new Response('QR code not found', { 
+    if (error) {
+      console.error('Erro ao buscar QR code:', error);
+      return new Response('QR code não encontrado', { 
         status: 404,
         headers: corsHeaders 
       });
     }
 
+    if (!qrCode) {
+      console.log('QR code não encontrado para short_url:', shortUrl);
+      return new Response('QR code não encontrado', { 
+        status: 404,
+        headers: corsHeaders 
+      });
+    }
+
+    console.log('QR code encontrado:', qrCode);
+
     // Incrementar contador de scans
+    const newScans = (qrCode.scans || 0) + 1;
     const { error: updateError } = await supabase
       .from('qr_codes')
-      .update({ scans: qrCode.scans + 1 })
+      .update({ scans: newScans })
       .eq('id', qrCode.id);
 
     if (updateError) {
-      console.error('Error updating scan count:', updateError);
+      console.error('Erro ao atualizar contador de scans:', updateError);
+    } else {
+      console.log('Contador de scans atualizado para:', newScans);
     }
 
-    // Registrar scan session (opcional)
+    // Registrar scan session
     const userAgent = req.headers.get('user-agent') || '';
     const ipAddress = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || '';
 
-    await supabase
+    const { error: sessionError } = await supabase
       .from('scan_sessions')
       .insert({
         qr_code_id: qrCode.id,
@@ -66,7 +98,14 @@ serve(async (req) => {
         ip_address: ipAddress
       });
 
+    if (sessionError) {
+      console.error('Erro ao registrar scan session:', sessionError);
+    } else {
+      console.log('Scan session registrada');
+    }
+
     // Redirecionar para a URL original
+    console.log('Redirecionando para:', qrCode.original_url);
     return new Response(null, {
       status: 302,
       headers: {
@@ -76,8 +115,8 @@ serve(async (req) => {
     });
 
   } catch (error) {
-    console.error('Error in qr-redirect function:', error);
-    return new Response('Internal Server Error', { 
+    console.error('Erro na função qr-redirect:', error);
+    return new Response('Erro interno do servidor', { 
       status: 500,
       headers: corsHeaders 
     });
