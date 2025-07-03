@@ -33,7 +33,8 @@ export const useCheckExistingLead = () => {
         .from('leads')
         .select(`
           *,
-          course:courses(name)
+          course:courses(name),
+          postgraduate_course:postgraduate_courses(name)
         `)
         .or(`whatsapp.eq.${cleanWhatsapp},email.eq.${email}`)
         .limit(1)
@@ -53,10 +54,23 @@ export const useUpdateLeadCourse = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ leadId, courseId }: { leadId: string; courseId: string }) => {
+    mutationFn: async ({ leadId, courseId, courseType }: { leadId: string; courseId: string; courseType: 'course' | 'postgraduate' }) => {
+      const updateData = {
+        course_type: courseType,
+        updated_at: new Date().toISOString()
+      };
+
+      if (courseType === 'course') {
+        updateData.course_id = courseId;
+        updateData.postgraduate_course_id = null;
+      } else {
+        updateData.postgraduate_course_id = courseId;
+        updateData.course_id = null;
+      }
+
       const { data, error } = await supabase
         .from('leads')
-        .update({ course_id: courseId, updated_at: new Date().toISOString() })
+        .update(updateData)
         .eq('id', leadId)
         .select()
         .single();

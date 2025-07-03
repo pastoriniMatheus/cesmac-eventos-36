@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useCourses } from '@/hooks/useCourses';
 import { useEvents } from '@/hooks/useEvents';
 import { useLeads, useLeadStatuses } from '@/hooks/useLeads';
+import { usePostgraduateCourses } from '@/hooks/usePostgraduateCourses';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import StatusEditor from '@/components/StatusEditor';
@@ -24,6 +25,7 @@ const Leads = () => {
   const { data: courses = [] } = useCourses();
   const { data: events = [] } = useEvents();
   const { data: leadStatuses = [] } = useLeadStatuses();
+  const { data: postgraduateCourses = [] } = usePostgraduateCourses();
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -36,7 +38,9 @@ const Leads = () => {
     name: '',
     whatsapp: '',
     email: '',
+    course_type: 'course',
     course_id: '',
+    postgraduate_course_id: '',
     event_id: '',
     status_id: '',
     shift: ''
@@ -53,17 +57,21 @@ const Leads = () => {
     }
 
     try {
+      const leadData = {
+        name: newLead.name,
+        whatsapp: newLead.whatsapp.replace(/\D/g, ''),
+        email: newLead.email.toLowerCase(),
+        course_type: newLead.course_type,
+        course_id: newLead.course_type === 'course' ? (newLead.course_id || null) : null,
+        postgraduate_course_id: newLead.course_type === 'postgraduate' ? (newLead.postgraduate_course_id || null) : null,
+        event_id: newLead.event_id || null,
+        status_id: newLead.status_id || leadStatuses[0]?.id,
+        shift: newLead.shift || null
+      };
+
       const { error } = await supabase
         .from('leads')
-        .insert([{
-          name: newLead.name,
-          whatsapp: newLead.whatsapp.replace(/\D/g, ''),
-          email: newLead.email.toLowerCase(),
-          course_id: newLead.course_id || null,
-          event_id: newLead.event_id || null,
-          status_id: newLead.status_id || leadStatuses[0]?.id,
-          shift: newLead.shift || null
-        }]);
+        .insert([leadData]);
 
       if (error) throw error;
 
@@ -72,7 +80,9 @@ const Leads = () => {
         name: '',
         whatsapp: '',
         email: '',
+        course_type: 'course',
         course_id: '',
+        postgraduate_course_id: '',
         event_id: '',
         status_id: '',
         shift: ''
@@ -96,17 +106,21 @@ const Leads = () => {
     if (!editingLead) return;
 
     try {
+      const updateData = {
+        name: editingLead.name,
+        whatsapp: editingLead.whatsapp.replace(/\D/g, ''),
+        email: editingLead.email.toLowerCase(),
+        course_type: editingLead.course_type,
+        course_id: editingLead.course_type === 'course' ? (editingLead.course_id === 'none' ? null : editingLead.course_id) : null,
+        postgraduate_course_id: editingLead.course_type === 'postgraduate' ? (editingLead.postgraduate_course_id === 'none' ? null : editingLead.postgraduate_course_id) : null,
+        event_id: editingLead.event_id || null,
+        status_id: editingLead.status_id,
+        shift: editingLead.shift === 'none' ? null : editingLead.shift
+      };
+
       const { error } = await supabase
         .from('leads')
-        .update({
-          name: editingLead.name,
-          whatsapp: editingLead.whatsapp.replace(/\D/g, ''),
-          email: editingLead.email.toLowerCase(),
-          course_id: editingLead.course_id === 'none' ? null : editingLead.course_id,
-          event_id: editingLead.event_id || null,
-          status_id: editingLead.status_id,
-          shift: editingLead.shift === 'none' ? null : editingLead.shift
-        })
+        .update(updateData)
         .eq('id', editingLead.id);
 
       if (error) throw error;
@@ -164,7 +178,9 @@ const Leads = () => {
   const openEditDialog = (lead: any) => {
     setEditingLead({
       ...lead,
+      course_type: lead.course_type || 'course',
       course_id: lead.course_id || 'none',
+      postgraduate_course_id: lead.postgraduate_course_id || 'none',
       event_id: lead.event_id || '',
       status_id: lead.status_id || '',
       shift: lead.shift || 'none'
@@ -241,21 +257,61 @@ const Leads = () => {
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="course">Curso</Label>
+                <Label htmlFor="course_type">Tipo de interesse</Label>
                 <Select 
-                  value={newLead.course_id} 
-                  onValueChange={(value) => setNewLead({...newLead, course_id: value})}
+                  value={newLead.course_type} 
+                  onValueChange={(value) => setNewLead({
+                    ...newLead, 
+                    course_type: value,
+                    course_id: '',
+                    postgraduate_course_id: ''
+                  })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione um curso" />
+                    <SelectValue placeholder="Selecione o tipo" />
                   </SelectTrigger>
                   <SelectContent>
-                    {courses.map((course: any) => (
-                      <SelectItem key={course.id} value={course.id}>{course.name}</SelectItem>
-                    ))}
+                    <SelectItem value="course">Curso de Graduação</SelectItem>
+                    <SelectItem value="postgraduate">Pós-graduação</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+              {newLead.course_type === 'course' && (
+                <div className="grid gap-2">
+                  <Label htmlFor="course">Curso</Label>
+                  <Select 
+                    value={newLead.course_id} 
+                    onValueChange={(value) => setNewLead({...newLead, course_id: value})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um curso" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {courses.map((course: any) => (
+                        <SelectItem key={course.id} value={course.id}>{course.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              {newLead.course_type === 'postgraduate' && (
+                <div className="grid gap-2">
+                  <Label htmlFor="postgraduate">Pós-graduação</Label>
+                  <Select 
+                    value={newLead.postgraduate_course_id} 
+                    onValueChange={(value) => setNewLead({...newLead, postgraduate_course_id: value})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione uma pós-graduação" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {postgraduateCourses.map((course: any) => (
+                        <SelectItem key={course.id} value={course.id}>{course.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <div className="grid gap-2">
                 <Label htmlFor="event">Evento</Label>
                 <Select 
@@ -500,22 +556,63 @@ const Leads = () => {
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="edit-course">Curso</Label>
+                <Label htmlFor="edit-course_type">Tipo de interesse</Label>
                 <Select 
-                  value={editingLead.course_id} 
-                  onValueChange={(value) => setEditingLead({...editingLead, course_id: value})}
+                  value={editingLead.course_type} 
+                  onValueChange={(value) => setEditingLead({
+                    ...editingLead, 
+                    course_type: value,
+                    course_id: 'none',
+                    postgraduate_course_id: 'none'
+                  })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione um curso" />
+                    <SelectValue placeholder="Selecione o tipo" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">Nenhum curso</SelectItem>
-                    {courses.map((course: any) => (
-                      <SelectItem key={course.id} value={course.id}>{course.name}</SelectItem>
-                    ))}
+                    <SelectItem value="course">Curso de Graduação</SelectItem>
+                    <SelectItem value="postgraduate">Pós-graduação</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+              {editingLead.course_type === 'course' && (
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-course">Curso</Label>
+                  <Select 
+                    value={editingLead.course_id} 
+                    onValueChange={(value) => setEditingLead({...editingLead, course_id: value})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um curso" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Nenhum curso</SelectItem>
+                      {courses.map((course: any) => (
+                        <SelectItem key={course.id} value={course.id}>{course.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              {editingLead.course_type === 'postgraduate' && (
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-postgraduate">Pós-graduação</Label>
+                  <Select 
+                    value={editingLead.postgraduate_course_id} 
+                    onValueChange={(value) => setEditingLead({...editingLead, postgraduate_course_id: value})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione uma pós-graduação" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Nenhuma pós-graduação</SelectItem>
+                      {postgraduateCourses.map((course: any) => (
+                        <SelectItem key={course.id} value={course.id}>{course.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <div className="grid gap-2">
                 <Label htmlFor="edit-status">Status</Label>
                 <Select 

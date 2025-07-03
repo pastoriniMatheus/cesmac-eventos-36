@@ -296,12 +296,14 @@ const LeadForm = () => {
     if (!existingLead) return;
     
     const courseId = formData.course_type === 'course' ? formData.course_id : formData.postgraduate_course_id;
+    const courseType = formData.course_type;
     if (!courseId) return;
     
     try {
       await updateLeadCourse.mutateAsync({
         leadId: existingLead.id,
-        courseId: courseId
+        courseId: courseId,
+        courseType: courseType as 'course' | 'postgraduate'
       });
       
       setShowThankYou(true);
