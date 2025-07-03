@@ -55,7 +55,12 @@ export const useUpdateLeadCourse = () => {
 
   return useMutation({
     mutationFn: async ({ leadId, courseId, courseType }: { leadId: string; courseId: string; courseType: 'course' | 'postgraduate' }) => {
-      const updateData = {
+      const updateData: {
+        course_type: 'course' | 'postgraduate';
+        updated_at: string;
+        course_id?: string | null;
+        postgraduate_course_id?: string | null;
+      } = {
         course_type: courseType,
         updated_at: new Date().toISOString()
       };
