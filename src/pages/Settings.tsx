@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Settings, Database, MessageSquare, BookOpen, GraduationCap, Webhook, Palette } from 'lucide-react';
+import { Settings as SettingsIcon, Database, MessageSquare, BookOpen, GraduationCap, Webhook, Palette } from 'lucide-react';
 import CourseManager from '@/components/CourseManager';
 import PostgraduateCourseManager from '@/components/PostgraduateCourseManager';
 import StatusManager from '@/components/StatusManager';
@@ -21,7 +21,7 @@ const Settings = () => {
       <Tabs value={activeMainTab} onValueChange={setActiveMainTab} className="space-y-6">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="configuracoes" className="flex items-center space-x-2">
-            <Settings className="h-4 w-4" />
+            <SettingsIcon className="h-4 w-4" />
             <span>Configurações</span>
           </TabsTrigger>
           <TabsTrigger value="cursos" className="flex items-center space-x-2">
@@ -42,7 +42,7 @@ const Settings = () => {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
-                <Settings className="h-5 w-5" />
+                <SettingsIcon className="h-5 w-5" />
                 <span>Configurações Gerais</span>
               </CardTitle>
               <CardDescription>
