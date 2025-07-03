@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Settings as SettingsIcon, Database, MessageSquare, BookOpen, GraduationCap, Webhook, Palette, Eye, FileText, Globe } from 'lucide-react';
+import { Database, MessageSquare, BookOpen, GraduationCap, Webhook, Palette, Eye, FileText, Globe } from 'lucide-react';
 import CourseManager from '@/components/CourseManager';
 import PostgraduateCourseManager from '@/components/PostgraduateCourseManager';
 import StatusManager from '@/components/StatusManager';
@@ -12,7 +12,7 @@ import VisualSettings from '@/components/VisualSettings';
 import FormSettings from '@/components/FormSettings';
 
 const Settings = () => {
-  const [activeMainTab, setActiveMainTab] = useState('configuracoes');
+  const [activeMainTab, setActiveMainTab] = useState('webhooks');
   const [activeCourseTab, setActiveCourseTab] = useState('cursos');
 
   return (
@@ -22,11 +22,7 @@ const Settings = () => {
       </div>
 
       <Tabs value={activeMainTab} onValueChange={setActiveMainTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-8">
-          <TabsTrigger value="configuracoes" className="flex items-center space-x-2">
-            <SettingsIcon className="h-4 w-4" />
-            <span>Configurações</span>
-          </TabsTrigger>
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="webhooks" className="flex items-center space-x-2">
             <Webhook className="h-4 w-4" />
             <span>Webhooks</span>
@@ -56,25 +52,6 @@ const Settings = () => {
             <span>Banco de Dados</span>
           </TabsTrigger>
         </TabsList>
-
-        <TabsContent value="configuracoes">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <SettingsIcon className="h-5 w-5" />
-                <span>Configurações Gerais</span>
-              </CardTitle>
-              <CardDescription>
-                Gerencie as configurações do sistema
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">
-                Configurações gerais do sistema em breve...
-              </p>
-            </CardContent>
-          </Card>
-        </TabsContent>
 
         <TabsContent value="webhooks">
           <WebhookSettings />

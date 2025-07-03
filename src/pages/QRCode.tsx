@@ -141,17 +141,38 @@ const QRCodePage = () => {
     }
   };
 
-  // Função para deletar QR code E o evento associado
+  // Função para deletar QR code E o evento associado - CORRIGIDA
   const handleDeleteQRCode = async (qrCodeId: string) => {
     try {
+      console.log('Iniciando deleção do QR Code:', qrCodeId);
+      
       // Primeiro, buscar o QR code para obter o event_id
       const { data: qrCodeData, error: fetchError } = await supabase
         .from('qr_codes')
-        .select('event_id')
+        .select('event_id, short_url')
         .eq('id', qrCodeId)
         .single();
 
-      if (fetchError) throw fetchError;
+      if (fetchError) {
+        console.error('Erro ao buscar QR code:', fetchError);
+        throw fetchError;
+      }
+
+      console.log('QR Code encontrado:', qrCodeData);
+
+      // Deletar sessões de scan relacionadas primeiro
+      if (qrCodeData.event_id) {
+        const { error: scanSessionsError } = await supabase
+          .from('scan_sessions')
+          .delete()
+          .eq('qr_code_id', qrCodeId);
+
+        if (scanSessionsError) {
+          console.error('Erro ao deletar scan sessions:', scanSessionsError);
+        } else {
+          console.log('Scan sessions deletadas com sucesso');
+        }
+      }
 
       // Deletar o QR code
       const { error: qrError } = await supabase
@@ -159,27 +180,55 @@ const QRCodePage = () => {
         .delete()
         .eq('id', qrCodeId);
 
-      if (qrError) throw qrError;
+      if (qrError) {
+        console.error('Erro ao deletar QR code:', qrError);
+        throw qrError;
+      }
+
+      console.log('QR Code deletado com sucesso');
 
       // Se existe um evento associado, deletá-lo também
       if (qrCodeData.event_id) {
+        // Deletar leads associados ao evento primeiro
+        const { error: leadsError } = await supabase
+          .from('leads')
+          .delete()
+          .eq('event_id', qrCodeData.event_id);
+
+        if (leadsError) {
+          console.error('Erro ao deletar leads do evento:', leadsError);
+        } else {
+          console.log('Leads do evento deletados');
+        }
+
+        // Agora deletar o evento
         const { error: eventError } = await supabase
           .from('events')
           .delete()
           .eq('id', qrCodeData.event_id);
 
-        if (eventError) throw eventError;
+        if (eventError) {
+          console.error('Erro ao deletar evento:', eventError);
+          throw eventError;
+        }
+
+        console.log('Evento deletado com sucesso');
       }
 
+      // Invalidar queries para atualizar a interface
       queryClient.invalidateQueries({ queryKey: ['qr_codes'] });
       queryClient.invalidateQueries({ queryKey: ['events'] });
       queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['scan_sessions'] });
 
       toast({
-        title: "QR Code e evento removidos",
-        description: "QR Code e evento associado removidos com sucesso!",
+        title: "QR Code removido",
+        description: "QR Code e dados associados removidos com sucesso!",
       });
+
+      console.log('Deleção completa realizada com sucesso');
     } catch (error: any) {
+      console.error('Erro completo na deleção:', error);
       toast({
         title: "Erro",
         description: error.message || "Erro ao remover QR Code",
