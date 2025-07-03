@@ -7,6 +7,9 @@ import CourseManager from '@/components/CourseManager';
 import PostgraduateCourseManager from '@/components/PostgraduateCourseManager';
 import StatusManager from '@/components/StatusManager';
 import DatabaseExport from '@/components/DatabaseExport';
+import WebhookSettings from '@/components/WebhookSettings';
+import VisualSettings from '@/components/VisualSettings';
+import FormSettings from '@/components/FormSettings';
 
 const Settings = () => {
   const [activeMainTab, setActiveMainTab] = useState('configuracoes');
@@ -74,60 +77,15 @@ const Settings = () => {
         </TabsContent>
 
         <TabsContent value="webhooks">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Webhook className="h-5 w-5" />
-                <span>Webhooks</span>
-              </CardTitle>
-              <CardDescription>
-                Configure webhooks para integração com outros sistemas
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">
-                Configurações de webhooks em breve...
-              </p>
-            </CardContent>
-          </Card>
+          <WebhookSettings />
         </TabsContent>
 
         <TabsContent value="visual">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Eye className="h-5 w-5" />
-                <span>Visual</span>
-              </CardTitle>
-              <CardDescription>
-                Personalize a aparência do sistema
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">
-                Configurações visuais em breve...
-              </p>
-            </CardContent>
-          </Card>
+          <VisualSettings />
         </TabsContent>
 
         <TabsContent value="formulario">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <FileText className="h-5 w-5" />
-                <span>Formulário</span>
-              </CardTitle>
-              <CardDescription>
-                Configure os formulários de captura de leads
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">
-                Configurações do formulário em breve...
-              </p>
-            </CardContent>
-          </Card>
+          <FormSettings />
         </TabsContent>
 
         <TabsContent value="status">

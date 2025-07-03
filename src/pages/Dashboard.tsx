@@ -5,6 +5,7 @@ import { useLeads } from '@/hooks/useLeads';
 import { useQRCodes } from '@/hooks/useQRCodes';
 import { useEvents } from '@/hooks/useEvents';
 import { useCourses } from '@/hooks/useCourses';
+import { usePostgraduateCourses } from '@/hooks/usePostgraduateCourses';
 import { useConversionMetrics } from '@/hooks/useMetrics';
 import { useIsMobile } from '@/hooks/use-mobile';
 import ConversionMetrics from '@/components/ConversionMetrics';
@@ -25,7 +26,9 @@ import {
   UserPlus,
   Target,
   Activity,
-  RefreshCw
+  RefreshCw,
+  GraduationCap,
+  BookOpen
 } from 'lucide-react';
 
 const Dashboard = () => {
@@ -33,6 +36,7 @@ const Dashboard = () => {
   const { data: qrCodes = [] } = useQRCodes();
   const { data: events = [] } = useEvents();
   const { data: courses = [] } = useCourses();
+  const { data: postgraduateCourses = [] } = usePostgraduateCourses();
   const { data: metrics } = useConversionMetrics();
   const isMobile = useIsMobile();
 
@@ -51,6 +55,10 @@ const Dashboard = () => {
     return today === leadDate;
   }).length;
 
+  // Métricas de graduação e pós-graduação
+  const graduationLeads = leads.filter(lead => lead.course_id).length;
+  const postgraduateLeads = leads.filter(lead => lead.postgraduate_course_id).length;
+
   const conversionRate = totalScans > 0 ? ((leads.length / totalScans) * 100).toFixed(1) : '0';
   const lastUpdate = new Date().toLocaleString('pt-BR');
 
@@ -64,6 +72,22 @@ const Dashboard = () => {
       textColor: 'text-blue-700'
     },
     {
+      title: 'Leads Graduação',
+      value: graduationLeads.toLocaleString(),
+      icon: BookOpen,
+      color: 'from-indigo-500 to-indigo-600',
+      bgColor: 'bg-indigo-50',
+      textColor: 'text-indigo-700'
+    },
+    {
+      title: 'Leads Pós-graduação',
+      value: postgraduateLeads.toLocaleString(),
+      icon: GraduationCap,
+      color: 'from-purple-500 to-purple-600',
+      bgColor: 'bg-purple-50',
+      textColor: 'text-purple-700'
+    },
+    {
       title: 'Leads Hoje',
       value: todayLeads.toLocaleString(),
       icon: UserPlus,
@@ -75,33 +99,33 @@ const Dashboard = () => {
       title: 'QR Codes Ativos',
       value: qrCodes.length.toLocaleString(),
       icon: QrCode,
-      color: 'from-purple-500 to-purple-600',
-      bgColor: 'bg-purple-50',
-      textColor: 'text-purple-700'
-    },
-    {
-      title: 'Total de Scans',
-      value: totalScans.toLocaleString(),
-      icon: Eye,
       color: 'from-orange-500 to-orange-600',
       bgColor: 'bg-orange-50',
       textColor: 'text-orange-700'
     },
     {
+      title: 'Total de Scans',
+      value: totalScans.toLocaleString(),
+      icon: Eye,
+      color: 'from-cyan-500 to-cyan-600',
+      bgColor: 'bg-cyan-50',
+      textColor: 'text-cyan-700'
+    },
+    {
       title: 'Eventos Ativos',
       value: events.length.toLocaleString(),
       icon: Calendar,
-      color: 'from-indigo-500 to-indigo-600',
-      bgColor: 'bg-indigo-50',
-      textColor: 'text-indigo-700'
+      color: 'from-emerald-500 to-emerald-600',
+      bgColor: 'bg-emerald-50',
+      textColor: 'text-emerald-700'
     },
     {
       title: 'Taxa de Conversão',
       value: `${conversionRate}%`,
       icon: Target,
-      color: 'from-emerald-500 to-emerald-600',
-      bgColor: 'bg-emerald-50',
-      textColor: 'text-emerald-700'
+      color: 'from-rose-500 to-rose-600',
+      bgColor: 'bg-rose-50',
+      textColor: 'text-rose-700'
     }
   ];
 
@@ -135,7 +159,7 @@ const Dashboard = () => {
 
         {/* Stats Cards */}
         {visibility.stats && (
-          <div className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'} gap-6 mb-8`}>
+          <div className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-2 lg:grid-cols-4'} gap-6 mb-8`}>
             {statsCards.map((stat, index) => (
               <Card key={index} className={`${stat.bgColor} border-0 shadow-lg hover:shadow-xl transition-all duration-300`}>
                 <CardContent className={`${isMobile ? 'p-4' : 'p-6'}`}>

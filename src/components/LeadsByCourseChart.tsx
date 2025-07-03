@@ -8,6 +8,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts';
+import { usePostgraduateCourses } from '@/hooks/usePostgraduateCourses';
 
 interface LeadsByCourseChartProps {
   leads: any[];
@@ -15,6 +16,8 @@ interface LeadsByCourseChartProps {
 }
 
 const LeadsByCourseChart = ({ leads, courses }: LeadsByCourseChartProps) => {
+  const { data: postgraduateCourses = [] } = usePostgraduateCourses();
+  
   const colors = [
     '#3b82f6',
     '#8b5cf6',
@@ -26,14 +29,27 @@ const LeadsByCourseChart = ({ leads, courses }: LeadsByCourseChartProps) => {
     '#f97316',
   ];
 
-  const chartData = courses.map((course: any, index: number) => {
+  // Dados de cursos regulares
+  const courseData = courses.map((course: any, index: number) => {
     const courseLeads = leads.filter(lead => lead.course_id === course.id);
     return {
-      name: course.name,
+      name: `${course.name} (Graduação)`,
       value: courseLeads.length,
       color: colors[index % colors.length],
     };
   }).filter(item => item.value > 0);
+
+  // Dados de pós-graduação
+  const postgraduateData = postgraduateCourses.map((course: any, index: number) => {
+    const courseLeads = leads.filter(lead => lead.postgraduate_course_id === course.id);
+    return {
+      name: `${course.name} (Pós)`,
+      value: courseLeads.length,
+      color: colors[(courses.length + index) % colors.length],
+    };
+  }).filter(item => item.value > 0);
+
+  const chartData = [...courseData, ...postgraduateData];
 
   if (chartData.length === 0) {
     return (

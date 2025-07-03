@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
-import { TrendingUp, Medal, Award, Trophy } from 'lucide-react';
+import { usePostgraduateCourses } from '@/hooks/usePostgraduateCourses';
 
 interface CourseRankingProps {
   leads: any[];
@@ -9,31 +9,36 @@ interface CourseRankingProps {
 }
 
 const CourseRanking = ({ leads, courses }: CourseRankingProps) => {
-  const courseStats = courses.map((course: any) => {
+  const { data: postgraduateCourses = [] } = usePostgraduateCourses();
+
+  // Ranking de cursos regulares
+  const courseRanking = courses.map((course: any) => {
     const courseLeads = leads.filter(lead => lead.course_id === course.id);
     return {
       id: course.id,
       name: course.name,
-      leadsCount: courseLeads.length,
+      type: 'Graduação',
+      leadCount: courseLeads.length,
     };
-  }).filter(course => course.leadsCount > 0)
-    .sort((a, b) => b.leadsCount - a.leadsCount);
+  }).filter(course => course.leadCount > 0);
 
-  const getRankIcon = (position: number) => {
-    if (position === 0) return <Trophy className="h-5 w-5 text-yellow-500" />;
-    if (position === 1) return <Medal className="h-5 w-5 text-gray-400" />;
-    if (position === 2) return <Award className="h-5 w-5 text-amber-600" />;
-    return <TrendingUp className="h-4 w-4 text-blue-500" />;
-  };
+  // Ranking de pós-graduação
+  const postgraduateRanking = postgraduateCourses.map((course: any) => {
+    const courseLeads = leads.filter(lead => lead.postgraduate_course_id === course.id);
+    return {
+      id: course.id,
+      name: course.name,
+      type: 'Pós-graduação',
+      leadCount: courseLeads.length,
+    };
+  }).filter(course => course.leadCount > 0);
 
-  const getRankBadgeColor = (position: number) => {
-    if (position === 0) return 'bg-yellow-100 text-yellow-800';
-    if (position === 1) return 'bg-gray-100 text-gray-800';
-    if (position === 2) return 'bg-amber-100 text-amber-800';
-    return 'bg-blue-100 text-blue-800';
-  };
+  // Combinar e ordenar por número de leads
+  const allCourses = [...courseRanking, ...postgraduateRanking]
+    .sort((a, b) => b.leadCount - a.leadCount)
+    .slice(0, 10);
 
-  if (courseStats.length === 0) {
+  if (allCourses.length === 0) {
     return (
       <div className="flex items-center justify-center h-64 text-gray-500">
         <p>Nenhum curso com leads ainda</p>
@@ -41,23 +46,34 @@ const CourseRanking = ({ leads, courses }: CourseRankingProps) => {
     );
   }
 
+  const maxLeads = Math.max(...allCourses.map(course => course.leadCount));
+
   return (
-    <div className="space-y-4">
-      {courseStats.slice(0, 10).map((course, index) => (
-        <div key={course.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-          <div className="flex items-center space-x-4">
-            {getRankIcon(index)}
+    <div className="space-y-3">
+      {allCourses.map((course, index) => (
+        <div key={`${course.type}-${course.id}`} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+          <div className="flex items-center space-x-3">
+            <div className="flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-600 rounded-full font-semibold text-sm">
+              {index + 1}
+            </div>
             <div>
-              <h4 className="font-semibold text-gray-900">{course.name}</h4>
-              <p className="text-sm text-gray-600">
-                {course.leadsCount} lead{course.leadsCount !== 1 ? 's' : ''}
-              </p>
+              <p className="font-medium text-gray-900">{course.name}</p>
+              <Badge variant={course.type === 'Graduação' ? 'default' : 'secondary'} className="text-xs">
+                {course.type}
+              </Badge>
             </div>
           </div>
-          <div className="flex items-center space-x-2">
-            <Badge className={getRankBadgeColor(index)}>
-              #{index + 1}
-            </Badge>
+          <div className="flex items-center space-x-3">
+            <div className="text-right">
+              <p className="text-lg font-bold text-gray-900">{course.leadCount}</p>
+              <p className="text-xs text-gray-500">leads</p>
+            </div>
+            <div className="w-20 bg-gray-200 rounded-full h-2">
+              <div 
+                className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                style={{ width: `${(course.leadCount / maxLeads) * 100}%` }}
+              />
+            </div>
           </div>
         </div>
       ))}
