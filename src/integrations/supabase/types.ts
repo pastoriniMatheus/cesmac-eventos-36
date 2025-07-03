@@ -99,11 +99,13 @@ export type Database = {
       leads: {
         Row: {
           course_id: string | null
+          course_type: string | null
           created_at: string
           email: string
           event_id: string | null
           id: string
           name: string
+          postgraduate_course_id: string | null
           scan_session_id: string | null
           shift: string | null
           source: string | null
@@ -113,11 +115,13 @@ export type Database = {
         }
         Insert: {
           course_id?: string | null
+          course_type?: string | null
           created_at?: string
           email: string
           event_id?: string | null
           id?: string
           name: string
+          postgraduate_course_id?: string | null
           scan_session_id?: string | null
           shift?: string | null
           source?: string | null
@@ -127,11 +131,13 @@ export type Database = {
         }
         Update: {
           course_id?: string | null
+          course_type?: string | null
           created_at?: string
           email?: string
           event_id?: string | null
           id?: string
           name?: string
+          postgraduate_course_id?: string | null
           scan_session_id?: string | null
           shift?: string | null
           source?: string | null
@@ -152,6 +158,13 @@ export type Database = {
             columns: ["event_id"]
             isOneToOne: false
             referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_postgraduate_course_id_fkey"
+            columns: ["postgraduate_course_id"]
+            isOneToOne: false
+            referencedRelation: "postgraduate_courses"
             referencedColumns: ["id"]
           },
           {
@@ -227,6 +240,24 @@ export type Database = {
           id?: string
           name?: string
           type?: string
+        }
+        Relationships: []
+      }
+      postgraduate_courses: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
         }
         Relationships: []
       }

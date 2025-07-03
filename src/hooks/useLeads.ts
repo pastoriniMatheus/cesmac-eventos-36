@@ -12,6 +12,7 @@ export const useLeads = () => {
         .select(`
           *,
           course:courses(name),
+          postgraduate_course:postgraduate_courses(name),
           event:events(name),
           status:lead_statuses(name, color)
         `)

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,6 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import StatusEditor from '@/components/StatusEditor';
 import { exportLeadsToCSV } from '@/utils/csvExport';
+import { BookOpen, GraduationCap } from 'lucide-react';
 
 const Leads = () => {
   const { toast } = useToast();
@@ -403,7 +403,19 @@ const Leads = () => {
                   </TableCell>
                   <TableCell className="font-mono">{lead.whatsapp}</TableCell>
                   <TableCell>{lead.email}</TableCell>
-                  <TableCell>{lead.course?.name || '-'}</TableCell>
+                  <TableCell>
+                    {lead.course_type === 'postgraduate' ? (
+                      <div className="flex items-center space-x-1">
+                        <GraduationCap className="h-4 w-4 text-purple-600" />
+                        <span>{lead.postgraduate_course?.name || '-'}</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center space-x-1">
+                        <BookOpen className="h-4 w-4 text-blue-600" />
+                        <span>{lead.course?.name || '-'}</span>
+                      </div>
+                    )}
+                  </TableCell>
                   <TableCell>{lead.event?.name || '-'}</TableCell>
                   <TableCell>
                     {lead.status ? (

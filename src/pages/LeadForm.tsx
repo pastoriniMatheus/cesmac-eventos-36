@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { useCourses } from '@/hooks/useCourses';
+import { usePostgraduateCourses } from '@/hooks/usePostgraduateCourses';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { useFormSettings } from '@/hooks/useFormSettings';
 import { useCheckExistingLead, useUpdateLeadCourse } from '@/hooks/useLeads';
@@ -18,6 +19,7 @@ import ThankYouScreen from '@/components/ThankYouScreen';
 const LeadForm = () => {
   const { toast } = useToast();
   const { data: courses = [] } = useCourses();
+  const { data: postgraduateCourses = [] } = usePostgraduateCourses();
   const { data: systemSettings = [] } = useSystemSettings();
   const { data: formSettings = [] } = useFormSettings();
   const { validateWhatsApp, isValidating, validationResult, setValidationResult } = useWhatsAppValidation();
@@ -37,7 +39,9 @@ const LeadForm = () => {
     name: '',
     email: '',
     whatsapp: '',
-    course_id: ''
+    course_type: 'course',
+    course_id: '',
+    postgraduate_course_id: ''
   });
 
   // Obter logo do sistema
@@ -214,7 +218,9 @@ const LeadForm = () => {
           name: result.name,
           email: result.email,
           whatsapp: formatWhatsApp(result.whatsapp),
-          course_id: result.course_id || ''
+          course_type: result.course_type || 'course',
+          course_id: result.course_id || '',
+          postgraduate_course_id: result.postgraduate_course_id || ''
         }));
         return true;
       }
@@ -287,12 +293,15 @@ const LeadForm = () => {
   };
 
   const handleUpdateCourse = async () => {
-    if (!existingLead || !formData.course_id) return;
+    if (!existingLead) return;
+    
+    const courseId = formData.course_type === 'course' ? formData.course_id : formData.postgraduate_course_id;
+    if (!courseId) return;
     
     try {
       await updateLeadCourse.mutateAsync({
         leadId: existingLead.id,
-        courseId: formData.course_id
+        courseId: courseId
       });
       
       setShowThankYou(true);
@@ -306,10 +315,11 @@ const LeadForm = () => {
   };
 
   const handleSubmit = async () => {
-    if (!formData.course_id) {
+    const courseId = formData.course_type === 'course' ? formData.course_id : formData.postgraduate_course_id;
+    if (!courseId) {
       toast({
         title: "Curso obrigatório",
-        description: "Por favor, selecione um curso",
+        description: `Por favor, selecione ${formData.course_type === 'course' ? 'um curso' : 'uma pós-graduação'}`,
         variant: "destructive",
       });
       return;
@@ -354,10 +364,12 @@ const LeadForm = () => {
         name: formData.name,
         email: formData.email,
         whatsapp: formData.whatsapp.replace(/\D/g, ''),
-        course_id: formData.course_id,
+        course_type: formData.course_type,
+        course_id: formData.course_type === 'course' ? courseId : null,
+        postgraduate_course_id: formData.course_type === 'postgraduate' ? courseId : null,
         event_id: eventId,
         source: 'form',
-        status_id: defaultStatusId // Adicionar status padrão
+        status_id: defaultStatusId
       };
 
       const { data: lead, error: leadError } = await supabase
@@ -451,7 +463,9 @@ const LeadForm = () => {
       name: '',
       email: '',
       whatsapp: '',
-      course_id: ''
+      course_type: 'course',
+      course_id: '',
+      postgraduate_course_id: ''
     });
     setCurrentStep(1);
     setValidationResult(null);
@@ -519,7 +533,10 @@ const LeadForm = () => {
                     <p><strong>Lead já cadastrado!</strong></p>
                     <p>Nome: {existingLead.name}</p>
                     <p>Email: {existingLead.email}</p>
-                    {existingLead.course && (
+                    {existingLead.course_type === 'postgraduate' && existingLead.postgraduate_course && (
+                      <p>Pós-graduação atual: {existingLead.postgraduate_course.name}</p>
+                    )}
+                    {existingLead.course_type === 'course' && existingLead.course && (
                       <p>Curso atual: {existingLead.course.name}</p>
                     )}
                     <p className="text-sm mt-2">Deseja atualizar o curso de interesse?</p>
@@ -680,26 +697,76 @@ const LeadForm = () => {
                     <RefreshCw className="h-6 w-6" />
                   </div>
                   <h3 className="font-semibold text-lg text-amber-700">Atualizar Interesse</h3>
-                  <p className="text-sm text-gray-600 mt-1">Selecione o novo curso de interesse</p>
+                  <p className="text-sm text-gray-600 mt-1">Selecione o novo interesse</p>
                 </div>
                 
-                <div className="space-y-3">
-                  <Label htmlFor="course" className="text-blue-900 font-medium">Novo curso de interesse *</Label>
-                  <Select
-                    value={formData.course_id}
-                    onValueChange={(value) => setFormData({ ...formData, course_id: value })}
-                  >
-                    <SelectTrigger className="h-12 text-lg border-2 border-blue-200 focus:border-blue-500">
-                      <SelectValue placeholder="Selecione um curso" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {courses.map((course: any) => (
-                        <SelectItem key={course.id} value={course.id} className="text-lg py-3">
-                          {course.name}
+                <div className="space-y-4">
+                  <div className="space-y-3">
+                    <Label htmlFor="course_type" className="text-blue-900 font-medium">Tipo de interesse *</Label>
+                    <Select
+                      value={formData.course_type}
+                      onValueChange={(value) => setFormData({ 
+                        ...formData, 
+                        course_type: value,
+                        course_id: '',
+                        postgraduate_course_id: ''
+                      })}
+                    >
+                      <SelectTrigger className="h-12 text-lg border-2 border-blue-200 focus:border-blue-500">
+                        <SelectValue placeholder="Selecione o tipo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="course" className="text-lg py-3">
+                          Curso de Graduação
                         </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                        <SelectItem value="postgraduate" className="text-lg py-3">
+                          Pós-graduação
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {formData.course_type === 'course' && (
+                    <div className="space-y-3">
+                      <Label htmlFor="course" className="text-blue-900 font-medium">Novo curso de interesse *</Label>
+                      <Select
+                        value={formData.course_id}
+                        onValueChange={(value) => setFormData({ ...formData, course_id: value })}
+                      >
+                        <SelectTrigger className="h-12 text-lg border-2 border-blue-200 focus:border-blue-500">
+                          <SelectValue placeholder="Selecione um curso" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {courses.map((course: any) => (
+                            <SelectItem key={course.id} value={course.id} className="text-lg py-3">
+                              {course.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {formData.course_type === 'postgraduate' && (
+                    <div className="space-y-3">
+                      <Label htmlFor="postgraduate" className="text-blue-900 font-medium">Nova pós-graduação de interesse *</Label>
+                      <Select
+                        value={formData.postgraduate_course_id}
+                        onValueChange={(value) => setFormData({ ...formData, postgraduate_course_id: value })}
+                      >
+                        <SelectTrigger className="h-12 text-lg border-2 border-blue-200 focus:border-blue-500">
+                          <SelectValue placeholder="Selecione uma pós-graduação" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {postgraduateCourses.map((course: any) => (
+                            <SelectItem key={course.id} value={course.id} className="text-lg py-3">
+                              {course.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex space-x-3">
@@ -717,7 +784,7 @@ const LeadForm = () => {
                   <Button
                     onClick={handleUpdateCourse}
                     className="flex-1 h-12 text-lg font-semibold bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 shadow-lg"
-                    disabled={updateLeadCourse.isPending || !formData.course_id}
+                    disabled={updateLeadCourse.isPending || (!formData.course_id && !formData.postgraduate_course_id)}
                   >
                     {updateLeadCourse.isPending ? (
                       <>
@@ -732,7 +799,7 @@ const LeadForm = () => {
               </div>
             )}
 
-            {/* Step 3: Course Selection (apenas para leads novos) */}
+            {/* Step 3: Course Type and Selection */}
             {currentStep === 3 && !showUpdateConfirm && (
               <div className="space-y-6">
                 <div className="text-center mb-6">
@@ -740,26 +807,76 @@ const LeadForm = () => {
                     <span className="text-lg font-bold">3</span>
                   </div>
                   <h3 className="font-semibold text-lg text-blue-900">Interesse</h3>
-                  <p className="text-sm text-gray-600 mt-1">Qual curso desperta seu interesse?</p>
+                  <p className="text-sm text-gray-600 mt-1">Qual é o seu interesse?</p>
                 </div>
                 
-                <div className="space-y-3">
-                  <Label htmlFor="course" className="text-blue-900 font-medium">Curso de interesse *</Label>
-                  <Select
-                    value={formData.course_id}
-                    onValueChange={(value) => setFormData({ ...formData, course_id: value })}
-                  >
-                    <SelectTrigger className="h-12 text-lg border-2 border-blue-200 focus:border-blue-500">
-                      <SelectValue placeholder="Selecione um curso" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {courses.map((course: any) => (
-                        <SelectItem key={course.id} value={course.id} className="text-lg py-3">
-                          {course.name}
+                <div className="space-y-4">
+                  <div className="space-y-3">
+                    <Label htmlFor="course_type" className="text-blue-900 font-medium">Tipo de interesse *</Label>
+                    <Select
+                      value={formData.course_type}
+                      onValueChange={(value) => setFormData({ 
+                        ...formData, 
+                        course_type: value,
+                        course_id: '',
+                        postgraduate_course_id: ''
+                      })}
+                    >
+                      <SelectTrigger className="h-12 text-lg border-2 border-blue-200 focus:border-blue-500">
+                        <SelectValue placeholder="Selecione o tipo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="course" className="text-lg py-3">
+                          Curso de Graduação
                         </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                        <SelectItem value="postgraduate" className="text-lg py-3">
+                          Pós-graduação
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {formData.course_type === 'course' && (
+                    <div className="space-y-3">
+                      <Label htmlFor="course" className="text-blue-900 font-medium">Curso de interesse *</Label>
+                      <Select
+                        value={formData.course_id}
+                        onValueChange={(value) => setFormData({ ...formData, course_id: value })}
+                      >
+                        <SelectTrigger className="h-12 text-lg border-2 border-blue-200 focus:border-blue-500">
+                          <SelectValue placeholder="Selecione um curso" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {courses.map((course: any) => (
+                            <SelectItem key={course.id} value={course.id} className="text-lg py-3">
+                              {course.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {formData.course_type === 'postgraduate' && (
+                    <div className="space-y-3">
+                      <Label htmlFor="postgraduate" className="text-blue-900 font-medium">Pós-graduação de interesse *</Label>
+                      <Select
+                        value={formData.postgraduate_course_id}
+                        onValueChange={(value) => setFormData({ ...formData, postgraduate_course_id: value })}
+                      >
+                        <SelectTrigger className="h-12 text-lg border-2 border-blue-200 focus:border-blue-500">
+                          <SelectValue placeholder="Selecione uma pós-graduação" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {postgraduateCourses.map((course: any) => (
+                            <SelectItem key={course.id} value={course.id} className="text-lg py-3">
+                              {course.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex space-x-3">
@@ -773,7 +890,7 @@ const LeadForm = () => {
                   <Button
                     onClick={handleSubmit}
                     className="flex-1 h-12 text-lg font-semibold bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 shadow-lg"
-                    disabled={isSubmitting || !formData.course_id}
+                    disabled={isSubmitting || (!formData.course_id && !formData.postgraduate_course_id)}
                   >
                     {isSubmitting ? (
                       <>
