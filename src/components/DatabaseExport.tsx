@@ -149,13 +149,13 @@ const DatabaseExport: React.FC<DatabaseExportProps> = ({ className }) => {
             <div className="flex items-start space-x-2">
               <Info className="h-5 w-5 text-blue-600 mt-0.5" />
               <div className="text-sm text-blue-800">
-                <p className="font-medium mb-1">Informações de Conexão</p>
-                <p>Use estas informações para importar o banco em outro servidor:</p>
+                <p className="font-medium mb-1">Informações sobre o Backup</p>
+                <p>O arquivo SQL gerado contém todos os dados e estrutura do banco.</p>
                 <ul className="mt-2 space-y-1 text-xs">
-                  <li>• Host: dobtquebpcnzjisftcfh.supabase.co</li>
-                  <li>• Porta: 5432</li>
-                  <li>• Database: postgres</li>
-                  <li>• Schema: public</li>
+                  <li>• Backup completo de todas as tabelas</li>
+                  <li>• Estrutura e dados preservados</li>
+                  <li>• Compatível com PostgreSQL</li>
+                  <li>• Arquivo compactado para download</li>
                 </ul>
               </div>
             </div>
@@ -163,16 +163,16 @@ const DatabaseExport: React.FC<DatabaseExportProps> = ({ className }) => {
 
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
             <div className="text-sm text-amber-800">
-              <p className="font-medium mb-1">Comando para Importar</p>
-              <p className="mb-2">Para importar o dump em outro banco PostgreSQL, use:</p>
+              <p className="font-medium mb-1">Como usar o arquivo exportado</p>
+              <p className="mb-2">Para importar o dump em outro banco PostgreSQL, use o comando psql:</p>
               <Textarea
                 readOnly
-                value={`psql -h [HOST] -p [PORT] -U [USERNAME] -d [DATABASE] -f database_dump_[TIMESTAMP].sql`}
+                value={`psql -h [HOST] -p [PORT] -U [USERNAME] -d [DATABASE] -f [ARQUIVO_DUMP].sql`}
                 className="font-mono text-xs bg-amber-100 border-amber-300"
                 rows={2}
               />
               <p className="mt-2 text-xs">
-                Substitua os valores entre colchetes pelas informações do banco de destino
+                Substitua os valores entre colchetes pelas informações do seu banco de destino
               </p>
             </div>
           </div>
