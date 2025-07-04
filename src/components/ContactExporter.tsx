@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -39,10 +38,25 @@ const ContactExporter = ({ leads }: ContactExporterProps) => {
       );
     } else if (filterType === 'date' && startDate && endDate) {
       filteredLeads = leads.filter(lead => {
+        // Parse the lead date and normalize to start of day in local timezone
         const leadDate = new Date(lead.created_at);
-        const start = new Date(startDate);
-        const end = new Date(endDate);
-        return leadDate >= start && leadDate <= end;
+        const leadDateOnly = new Date(leadDate.getFullYear(), leadDate.getMonth(), leadDate.getDate());
+        
+        // Parse the filter dates and normalize to start of day in local timezone
+        const startDateObj = new Date(startDate + 'T00:00:00');
+        const endDateObj = new Date(endDate + 'T23:59:59');
+        
+        console.log('Filtering lead:', {
+          leadCreatedAt: lead.created_at,
+          leadDateOnly: leadDateOnly.toISOString(),
+          startDate: startDateObj.toISOString(),
+          endDate: endDateObj.toISOString(),
+          isInRange: leadDateOnly >= new Date(startDateObj.getFullYear(), startDateObj.getMonth(), startDateObj.getDate()) && 
+                     leadDateOnly <= new Date(endDateObj.getFullYear(), endDateObj.getMonth(), endDateObj.getDate())
+        });
+        
+        return leadDateOnly >= new Date(startDateObj.getFullYear(), startDateObj.getMonth(), startDateObj.getDate()) && 
+               leadDateOnly <= new Date(endDateObj.getFullYear(), endDateObj.getMonth(), endDateObj.getDate());
       });
     }
 
@@ -210,12 +224,17 @@ const ContactExporter = ({ leads }: ContactExporterProps) => {
             {filterType === 'course' && selectedValue && 
               `Contatos do curso: ${leads.filter(l => l.course_id === selectedValue || l.postgraduate_course_id === selectedValue).length}`
             }
-            {filterType === 'date' && startDate && endDate && 
-              `Contatos no período: ${leads.filter(l => {
+            {filterType === 'date' && startDate && endDate && (() => {
+              const count = leads.filter(l => {
                 const leadDate = new Date(l.created_at);
-                return leadDate >= new Date(startDate) && leadDate <= new Date(endDate);
-              }).length}`
-            }
+                const leadDateOnly = new Date(leadDate.getFullYear(), leadDate.getMonth(), leadDate.getDate());
+                const startDateObj = new Date(startDate + 'T00:00:00');
+                const endDateObj = new Date(endDate + 'T23:59:59');
+                return leadDateOnly >= new Date(startDateObj.getFullYear(), startDateObj.getMonth(), startDateObj.getDate()) && 
+                       leadDateOnly <= new Date(endDateObj.getFullYear(), endDateObj.getMonth(), endDateObj.getDate());
+              }).length;
+              return `Contatos no período: ${count}`;
+            })()}
           </div>
         </div>
         <div className="flex justify-end space-x-2">
