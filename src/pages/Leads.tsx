@@ -17,6 +17,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import StatusEditor from '@/components/StatusEditor';
 import { exportLeadsToCSV } from '@/utils/csvExport';
 import { BookOpen, GraduationCap } from 'lucide-react';
+import ContactExporter from '@/components/ContactExporter';
 
 const Leads = () => {
   const { toast } = useToast();
@@ -213,148 +214,151 @@ const Leads = () => {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-blue-600">Gerenciamento de Leads</h1>
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700">
-              <Plus className="h-4 w-4" />
-              <span>Novo Lead</span>
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
-            <DialogHeader>
-              <DialogTitle>Criar Novo Lead</DialogTitle>
-              <DialogDescription>
-                Adicione um novo lead ao sistema
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="name">Nome*</Label>
-                <Input
-                  id="name"
-                  value={newLead.name}
-                  onChange={(e) => setNewLead({...newLead, name: e.target.value})}
-                  placeholder="João Silva"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="whatsapp">WhatsApp*</Label>
-                <Input
-                  id="whatsapp"
-                  value={newLead.whatsapp}
-                  onChange={(e) => setNewLead({...newLead, whatsapp: e.target.value})}
-                  placeholder="(82) 99999-9999"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="email">E-mail*</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={newLead.email}
-                  onChange={(e) => setNewLead({...newLead, email: e.target.value})}
-                  placeholder="joao@email.com"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="course_type">Tipo de interesse</Label>
-                <Select 
-                  value={newLead.course_type} 
-                  onValueChange={(value) => setNewLead({
-                    ...newLead, 
-                    course_type: value,
-                    course_id: '',
-                    postgraduate_course_id: ''
-                  })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o tipo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="course">Curso de Graduação</SelectItem>
-                    <SelectItem value="postgraduate">Pós-graduação</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              {newLead.course_type === 'course' && (
+        <div className="flex space-x-2">
+          <ContactExporter leads={leads} />
+          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700">
+                <Plus className="h-4 w-4" />
+                <span>Novo Lead</span>
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>Criar Novo Lead</DialogTitle>
+                <DialogDescription>
+                  Adicione um novo lead ao sistema
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="course">Curso</Label>
+                  <Label htmlFor="name">Nome*</Label>
+                  <Input
+                    id="name"
+                    value={newLead.name}
+                    onChange={(e) => setNewLead({...newLead, name: e.target.value})}
+                    placeholder="João Silva"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="whatsapp">WhatsApp*</Label>
+                  <Input
+                    id="whatsapp"
+                    value={newLead.whatsapp}
+                    onChange={(e) => setNewLead({...newLead, whatsapp: e.target.value})}
+                    placeholder="(82) 99999-9999"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="email">E-mail*</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={newLead.email}
+                    onChange={(e) => setNewLead({...newLead, email: e.target.value})}
+                    placeholder="joao@email.com"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="course_type">Tipo de interesse</Label>
                   <Select 
-                    value={newLead.course_id} 
-                    onValueChange={(value) => setNewLead({...newLead, course_id: value})}
+                    value={newLead.course_type} 
+                    onValueChange={(value) => setNewLead({
+                      ...newLead, 
+                      course_type: value,
+                      course_id: '',
+                      postgraduate_course_id: ''
+                    })}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecione um curso" />
+                      <SelectValue placeholder="Selecione o tipo" />
                     </SelectTrigger>
                     <SelectContent>
-                      {courses.map((course: any) => (
-                        <SelectItem key={course.id} value={course.id}>{course.name}</SelectItem>
+                      <SelectItem value="course">Curso de Graduação</SelectItem>
+                      <SelectItem value="postgraduate">Pós-graduação</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {newLead.course_type === 'course' && (
+                  <div className="grid gap-2">
+                    <Label htmlFor="course">Curso</Label>
+                    <Select 
+                      value={newLead.course_id} 
+                      onValueChange={(value) => setNewLead({...newLead, course_id: value})}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione um curso" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {courses.map((course: any) => (
+                          <SelectItem key={course.id} value={course.id}>{course.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                {newLead.course_type === 'postgraduate' && (
+                  <div className="grid gap-2">
+                    <Label htmlFor="postgraduate">Pós-graduação</Label>
+                    <Select 
+                      value={newLead.postgraduate_course_id} 
+                      onValueChange={(value) => setNewLead({...newLead, postgraduate_course_id: value})}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione uma pós-graduação" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {postgraduateCourses.map((course: any) => (
+                          <SelectItem key={course.id} value={course.id}>{course.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                <div className="grid gap-2">
+                  <Label htmlFor="event">Evento</Label>
+                  <Select 
+                    value={newLead.event_id} 
+                    onValueChange={(value) => setNewLead({...newLead, event_id: value})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um evento" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {events.map((event: any) => (
+                        <SelectItem key={event.id} value={event.id}>{event.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-              )}
-              {newLead.course_type === 'postgraduate' && (
                 <div className="grid gap-2">
-                  <Label htmlFor="postgraduate">Pós-graduação</Label>
+                  <Label htmlFor="shift">Turno</Label>
                   <Select 
-                    value={newLead.postgraduate_course_id} 
-                    onValueChange={(value) => setNewLead({...newLead, postgraduate_course_id: value})}
+                    value={newLead.shift} 
+                    onValueChange={(value) => setNewLead({...newLead, shift: value})}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecione uma pós-graduação" />
+                      <SelectValue placeholder="Selecione um turno" />
                     </SelectTrigger>
                     <SelectContent>
-                      {postgraduateCourses.map((course: any) => (
-                        <SelectItem key={course.id} value={course.id}>{course.name}</SelectItem>
-                      ))}
+                      <SelectItem value="manhã">Manhã</SelectItem>
+                      <SelectItem value="tarde">Tarde</SelectItem>
+                      <SelectItem value="noite">Noite</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-              )}
-              <div className="grid gap-2">
-                <Label htmlFor="event">Evento</Label>
-                <Select 
-                  value={newLead.event_id} 
-                  onValueChange={(value) => setNewLead({...newLead, event_id: value})}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione um evento" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {events.map((event: any) => (
-                      <SelectItem key={event.id} value={event.id}>{event.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="shift">Turno</Label>
-                <Select 
-                  value={newLead.shift} 
-                  onValueChange={(value) => setNewLead({...newLead, shift: value})}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione um turno" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="manhã">Manhã</SelectItem>
-                    <SelectItem value="tarde">Tarde</SelectItem>
-                    <SelectItem value="noite">Noite</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button onClick={handleCreateLead} className="bg-blue-600 hover:bg-blue-700">
+                  Criar Lead
+                </Button>
               </div>
-            </div>
-            <div className="flex justify-end space-x-2">
-              <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-                Cancelar
-              </Button>
-              <Button onClick={handleCreateLead} className="bg-blue-600 hover:bg-blue-700">
-                Criar Lead
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* Filters and Search */}
@@ -405,7 +409,7 @@ const Leads = () => {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Ações</Label>
+              <Label>Exportação Rápida</Label>
               <Button variant="outline" className="w-full" onClick={handleExportCSV}>
                 <Download className="h-4 w-4 mr-2" />
                 Exportar CSV

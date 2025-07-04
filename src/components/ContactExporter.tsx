@@ -1,0 +1,235 @@
+
+import React, { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Download } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { useCourses } from '@/hooks/useCourses';
+import { useEvents } from '@/hooks/useEvents';
+import { usePostgraduateCourses } from '@/hooks/usePostgraduateCourses';
+
+interface ContactExporterProps {
+  leads: any[];
+}
+
+const ContactExporter = ({ leads }: ContactExporterProps) => {
+  const { toast } = useToast();
+  const { data: courses = [] } = useCourses();
+  const { data: events = [] } = useEvents();
+  const { data: postgraduateCourses = [] } = usePostgraduateCourses();
+
+  const [isOpen, setIsOpen] = useState(false);
+  const [filterType, setFilterType] = useState('all');
+  const [selectedValue, setSelectedValue] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+
+  const exportContacts = () => {
+    let filteredLeads = [...leads];
+
+    // Aplicar filtros
+    if (filterType === 'event' && selectedValue) {
+      filteredLeads = leads.filter(lead => lead.event_id === selectedValue);
+    } else if (filterType === 'course' && selectedValue) {
+      filteredLeads = leads.filter(lead => 
+        lead.course_id === selectedValue || lead.postgraduate_course_id === selectedValue
+      );
+    } else if (filterType === 'date' && startDate && endDate) {
+      filteredLeads = leads.filter(lead => {
+        const leadDate = new Date(lead.created_at);
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        return leadDate >= start && leadDate <= end;
+      });
+    }
+
+    if (filteredLeads.length === 0) {
+      toast({
+        title: "Nenhum contato encontrado",
+        description: "Não há contatos para exportar com os filtros selecionados.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Criar CSV
+    const headers = ['Nome', 'Email', 'WhatsApp', 'Curso', 'Evento', 'Status', 'Turno', 'Data de Criação'];
+    
+    const csvContent = [
+      headers.join(','),
+      ...filteredLeads.map(lead => [
+        `"${lead.name}"`,
+        `"${lead.email}"`,
+        `"${lead.whatsapp}"`,
+        `"${lead.course?.name || lead.postgraduate_course?.name || ''}"`,
+        `"${lead.event?.name || ''}"`,
+        `"${lead.status?.name || ''}"`,
+        `"${lead.shift || ''}"`,
+        `"${new Date(lead.created_at).toLocaleDateString('pt-BR')}"`
+      ].join(','))
+    ].join('\n');
+
+    // Download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    
+    // Nome do arquivo baseado no filtro
+    let fileName = 'contatos_';
+    if (filterType === 'event' && selectedValue) {
+      const eventName = events.find(e => e.id === selectedValue)?.name || 'evento';
+      fileName += `${eventName.replace(/\s+/g, '-').toLowerCase()}_`;
+    } else if (filterType === 'course' && selectedValue) {
+      const courseName = [...courses, ...postgraduateCourses].find(c => c.id === selectedValue)?.name || 'curso';
+      fileName += `${courseName.replace(/\s+/g, '-').toLowerCase()}_`;
+    } else if (filterType === 'date') {
+      fileName += `${startDate}_${endDate}_`;
+    }
+    fileName += `${new Date().toISOString().split('T')[0]}.csv`;
+    
+    link.setAttribute('download', fileName);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    setIsOpen(false);
+    toast({
+      title: "Contatos exportados",
+      description: `${filteredLeads.length} contatos exportados com sucesso!`,
+    });
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" className="bg-green-600 hover:bg-green-700 text-white">
+          <Download className="h-4 w-4 mr-2" />
+          Exportar Contatos
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle>Exportar Contatos</DialogTitle>
+          <DialogDescription>
+            Escolha como deseja filtrar os contatos para exportação
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="grid gap-2">
+            <Label htmlFor="filterType">Filtrar por</Label>
+            <Select value={filterType} onValueChange={(value) => {
+              setFilterType(value);
+              setSelectedValue('');
+              setStartDate('');
+              setEndDate('');
+            }}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione o tipo de filtro" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os contatos</SelectItem>
+                <SelectItem value="event">Por evento</SelectItem>
+                <SelectItem value="course">Por curso</SelectItem>
+                <SelectItem value="date">Por data</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {filterType === 'event' && (
+            <div className="grid gap-2">
+              <Label htmlFor="event">Evento</Label>
+              <Select value={selectedValue} onValueChange={setSelectedValue}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um evento" />
+                </SelectTrigger>
+                <SelectContent>
+                  {events.map((event: any) => (
+                    <SelectItem key={event.id} value={event.id}>{event.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {filterType === 'course' && (
+            <div className="grid gap-2">
+              <Label htmlFor="course">Curso</Label>
+              <Select value={selectedValue} onValueChange={setSelectedValue}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um curso" />
+                </SelectTrigger>
+                <SelectContent>
+                  <optgroup label="Cursos de Graduação">
+                    {courses.map((course: any) => (
+                      <SelectItem key={course.id} value={course.id}>{course.name}</SelectItem>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Pós-graduação">
+                    {postgraduateCourses.map((course: any) => (
+                      <SelectItem key={course.id} value={course.id}>{course.name}</SelectItem>
+                    ))}
+                  </optgroup>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {filterType === 'date' && (
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="startDate">Data inicial</Label>
+                <Input
+                  id="startDate"
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="endDate">Data final</Label>
+                <Input
+                  id="endDate"
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                />
+              </div>
+            </div>
+          )}
+
+          <div className="text-sm text-muted-foreground">
+            {filterType === 'all' && `Total de contatos: ${leads.length}`}
+            {filterType === 'event' && selectedValue && 
+              `Contatos do evento: ${leads.filter(l => l.event_id === selectedValue).length}`
+            }
+            {filterType === 'course' && selectedValue && 
+              `Contatos do curso: ${leads.filter(l => l.course_id === selectedValue || l.postgraduate_course_id === selectedValue).length}`
+            }
+            {filterType === 'date' && startDate && endDate && 
+              `Contatos no período: ${leads.filter(l => {
+                const leadDate = new Date(l.created_at);
+                return leadDate >= new Date(startDate) && leadDate <= new Date(endDate);
+              }).length}`
+            }
+          </div>
+        </div>
+        <div className="flex justify-end space-x-2">
+          <Button variant="outline" onClick={() => setIsOpen(false)}>
+            Cancelar
+          </Button>
+          <Button onClick={exportContacts} className="bg-green-600 hover:bg-green-700">
+            <Download className="h-4 w-4 mr-2" />
+            Exportar
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+export default ContactExporter;
