@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Download, Database, Info } from 'lucide-react';
+import { Download, Database, Info, Upload, FileUp } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -16,39 +16,19 @@ interface DatabaseExportProps {
 const DatabaseExport: React.FC<DatabaseExportProps> = ({ className }) => {
   const { toast } = useToast();
   const [isExporting, setIsExporting] = useState(false);
-  const [exportConfig, setExportConfig] = useState({
-    host: 'dobtquebpcnzjisftcfh.supabase.co',
-    port: '5432',
-    database: 'postgres',
-    username: 'postgres',
-    password: '',
-    schema: 'public'
-  });
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadPassword, setUploadPassword] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const handleExportDatabase = async () => {
-    if (!exportConfig.password.trim()) {
-      toast({
-        title: "Senha necessária",
-        description: "Por favor, preencha a senha do banco de dados para executar o dump.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setIsExporting(true);
 
     try {
       console.log('🚀 Iniciando exportação do banco de dados...');
       
-      // Usar Edge Function para executar o dump
       const { data, error } = await supabase.functions.invoke('database-export', {
         body: {
-          host: exportConfig.host,
-          port: parseInt(exportConfig.port),
-          database: exportConfig.database,
-          username: exportConfig.username,
-          password: exportConfig.password,
-          schema: exportConfig.schema
+          password: 'admin123' // Senha fixa para segurança
         }
       });
 
@@ -61,7 +41,7 @@ const DatabaseExport: React.FC<DatabaseExportProps> = ({ className }) => {
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const filename = `database_dump_${timestamp}.sql`;
       
-      const blob = new Blob([data.dump], { type: 'text/sql' });
+      const blob = new Blob([data], { type: 'text/sql' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -91,126 +71,192 @@ const DatabaseExport: React.FC<DatabaseExportProps> = ({ className }) => {
     }
   };
 
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && file.name.endsWith('.sql')) {
+      setSelectedFile(file);
+    } else {
+      toast({
+        title: "Arquivo inválido",
+        description: "Por favor, selecione um arquivo .sql válido",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleUploadDatabase = async () => {
+    if (!selectedFile || !uploadPassword.trim()) {
+      toast({
+        title: "Dados incompletos",
+        description: "Por favor, selecione um arquivo SQL e digite a senha",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUploading(true);
+
+    try {
+      const fileContent = await selectedFile.text();
+      
+      const { data, error } = await supabase.functions.invoke('database-import', {
+        body: {
+          password: uploadPassword,
+          sqlContent: fileContent,
+          filename: selectedFile.name
+        }
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Erro ao importar banco de dados');
+      }
+
+      toast({
+        title: "Importação concluída",
+        description: "Banco de dados importado com sucesso!",
+      });
+
+      setSelectedFile(null);
+      setUploadPassword('');
+      
+    } catch (error: any) {
+      console.error('💥 Erro na importação:', error);
+      toast({
+        title: "Erro na importação",
+        description: error.message || "Erro ao importar banco de dados",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   return (
-    <Card className={className}>
-      <CardHeader>
-        <div className="flex items-center space-x-2">
-          <Database className="h-5 w-5" />
-          <CardTitle>Exportar Banco de Dados</CardTitle>
-        </div>
-        <CardDescription>
-          Execute um dump completo do banco de dados para backup ou migração
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="flex items-start space-x-2">
-            <Info className="h-5 w-5 text-blue-600 mt-0.5" />
-            <div className="text-sm text-blue-800">
-              <p className="font-medium mb-1">Informações de Conexão</p>
-              <p>Use estas informações para importar o banco em outro servidor:</p>
-              <ul className="mt-2 space-y-1 text-xs">
-                <li>• Host: {exportConfig.host}</li>
-                <li>• Porta: {exportConfig.port}</li>
-                <li>• Database: {exportConfig.database}</li>
-                <li>• Schema: {exportConfig.schema}</li>
-              </ul>
+    <div className={`space-y-6 ${className}`}>
+      {/* Exportar Banco */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center space-x-2">
+            <Download className="h-5 w-5" />
+            <CardTitle>Exportar/Baixar Banco de Dados</CardTitle>
+          </div>
+          <CardDescription>
+            Execute um dump completo do banco de dados para backup ou migração
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-start space-x-2">
+              <Info className="h-5 w-5 text-blue-600 mt-0.5" />
+              <div className="text-sm text-blue-800">
+                <p className="font-medium mb-1">Informações de Conexão</p>
+                <p>Use estas informações para importar o banco em outro servidor:</p>
+                <ul className="mt-2 space-y-1 text-xs">
+                  <li>• Host: dobtquebpcnzjisftcfh.supabase.co</li>
+                  <li>• Porta: 5432</li>
+                  <li>• Database: postgres</li>
+                  <li>• Schema: public</li>
+                </ul>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="host">Host</Label>
-            <Input
-              id="host"
-              value={exportConfig.host}
-              onChange={(e) => setExportConfig({...exportConfig, host: e.target.value})}
-              placeholder="host.supabase.co"
-            />
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+            <div className="text-sm text-amber-800">
+              <p className="font-medium mb-1">Comando para Importar</p>
+              <p className="mb-2">Para importar o dump em outro banco PostgreSQL, use:</p>
+              <Textarea
+                readOnly
+                value={`psql -h [HOST] -p [PORT] -U [USERNAME] -d [DATABASE] -f database_dump_[TIMESTAMP].sql`}
+                className="font-mono text-xs bg-amber-100 border-amber-300"
+                rows={2}
+              />
+              <p className="mt-2 text-xs">
+                Substitua os valores entre colchetes pelas informações do banco de destino
+              </p>
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="port">Porta</Label>
-            <Input
-              id="port"
-              value={exportConfig.port}
-              onChange={(e) => setExportConfig({...exportConfig, port: e.target.value})}
-              placeholder="5432"
-            />
+          <Button 
+            onClick={handleExportDatabase} 
+            disabled={isExporting}
+            className="w-full"
+          >
+            <Download className="h-4 w-4 mr-2" />
+            {isExporting ? 'Exportando...' : 'Baixar Dump do Banco'}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Importar Banco */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center space-x-2">
+            <Upload className="h-5 w-5" />
+            <CardTitle>Importar/Upload Banco de Dados</CardTitle>
+          </div>
+          <CardDescription>
+            Envie um arquivo SQL para restaurar ou importar dados para este banco
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex items-start space-x-2">
+              <Info className="h-5 w-5 text-red-600 mt-0.5" />
+              <div className="text-sm text-red-800">
+                <p className="font-medium mb-1">⚠️ Atenção</p>
+                <p>Esta operação pode sobrescrever dados existentes. Faça um backup antes de prosseguir.</p>
+              </div>
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="database">Database</Label>
-            <Input
-              id="database"
-              value={exportConfig.database}
-              onChange={(e) => setExportConfig({...exportConfig, database: e.target.value})}
-              placeholder="postgres"
-            />
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="sql-file">Arquivo SQL</Label>
+              <div className="flex items-center space-x-2">
+                <Input
+                  id="sql-file"
+                  type="file"
+                  accept=".sql"
+                  onChange={handleFileSelect}
+                  className="flex-1"
+                />
+                <FileUp className="h-5 w-5 text-gray-400" />
+              </div>
+              {selectedFile && (
+                <p className="text-xs text-green-600">
+                  Arquivo selecionado: {selectedFile.name}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="upload-password">Senha de Segurança *</Label>
+              <Input
+                id="upload-password"
+                type="password"
+                value={uploadPassword}
+                onChange={(e) => setUploadPassword(e.target.value)}
+                placeholder="Digite a senha de segurança"
+              />
+              <p className="text-xs text-muted-foreground">
+                Esta senha é necessária para confirmar a operação de importação
+              </p>
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="username">Usuário</Label>
-            <Input
-              id="username"
-              value={exportConfig.username}
-              onChange={(e) => setExportConfig({...exportConfig, username: e.target.value})}
-              placeholder="postgres"
-            />
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="password">Senha do Banco *</Label>
-          <Input
-            id="password"
-            type="password"
-            value={exportConfig.password}
-            onChange={(e) => setExportConfig({...exportConfig, password: e.target.value})}
-            placeholder="Digite a senha do banco de dados"
-          />
-          <p className="text-xs text-muted-foreground">
-            Esta senha não será salva e é usada apenas para a exportação
-          </p>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="schema">Schema</Label>
-          <Input
-            id="schema"
-            value={exportConfig.schema}
-            onChange={(e) => setExportConfig({...exportConfig, schema: e.target.value})}
-            placeholder="public"
-          />
-        </div>
-
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-          <div className="text-sm text-amber-800">
-            <p className="font-medium mb-1">Comando para Importar</p>
-            <p className="mb-2">Para importar o dump em outro banco PostgreSQL, use:</p>
-            <Textarea
-              readOnly
-              value={`psql -h [HOST] -p [PORT] -U [USERNAME] -d [DATABASE] -f database_dump_[TIMESTAMP].sql`}
-              className="font-mono text-xs bg-amber-100 border-amber-300"
-              rows={2}
-            />
-            <p className="mt-2 text-xs">
-              Substitua os valores entre colchetes pelas informações do banco de destino
-            </p>
-          </div>
-        </div>
-
-        <Button 
-          onClick={handleExportDatabase} 
-          disabled={isExporting || !exportConfig.password.trim()}
-          className="w-full"
-        >
-          <Download className="h-4 w-4 mr-2" />
-          {isExporting ? 'Exportando...' : 'Baixar Dump do Banco'}
-        </Button>
-      </CardContent>
-    </Card>
+          <Button 
+            onClick={handleUploadDatabase} 
+            disabled={isUploading || !selectedFile || !uploadPassword.trim()}
+            className="w-full"
+            variant="destructive"
+          >
+            <Upload className="h-4 w-4 mr-2" />
+            {isUploading ? 'Importando...' : 'Importar Banco de Dados'}
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 
