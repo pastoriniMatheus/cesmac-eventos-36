@@ -142,48 +142,102 @@ const QRCodePage = () => {
     }
   };
 
-  // Função para deletar QR code E o evento associado
+  // Função melhorada para deletar QR code E o evento associado
   const handleDeleteQRCode = async (qrCodeId: string) => {
     try {
+      console.log('Iniciando exclusão do QR Code:', qrCodeId);
+      
       // Primeiro, buscar o QR code para obter o event_id
       const { data: qrCodeData, error: fetchError } = await supabase
         .from('qr_codes')
-        .select('event_id')
+        .select('event_id, short_url')
         .eq('id', qrCodeId)
         .single();
 
-      if (fetchError) throw fetchError;
+      if (fetchError) {
+        console.error('Erro ao buscar QR Code:', fetchError);
+        throw fetchError;
+      }
+
+      console.log('QR Code encontrado:', qrCodeData);
+
+      // Deletar primeiro as sessões de scan relacionadas ao QR code
+      const { error: scanSessionsError } = await supabase
+        .from('scan_sessions')
+        .delete()
+        .eq('qr_code_id', qrCodeId);
+
+      if (scanSessionsError) {
+        console.error('Erro ao deletar sessões de scan:', scanSessionsError);
+        // Continuar mesmo com erro nas sessões de scan
+      }
+
+      // Se existe um evento associado, deletar os leads primeiro
+      if (qrCodeData.event_id) {
+        console.log('Deletando leads do evento:', qrCodeData.event_id);
+        const { error: leadsError } = await supabase
+          .from('leads')
+          .delete()
+          .eq('event_id', qrCodeData.event_id);
+
+        if (leadsError) {
+          console.error('Erro ao deletar leads:', leadsError);
+          // Continuar mesmo com erro nos leads
+        }
+
+        // Deletar sessões de scan relacionadas ao evento
+        const { error: eventScanSessionsError } = await supabase
+          .from('scan_sessions')
+          .delete()
+          .eq('event_id', qrCodeData.event_id);
+
+        if (eventScanSessionsError) {
+          console.error('Erro ao deletar sessões de scan do evento:', eventScanSessionsError);
+          // Continuar mesmo com erro
+        }
+      }
 
       // Deletar o QR code
+      console.log('Deletando QR Code...');
       const { error: qrError } = await supabase
         .from('qr_codes')
         .delete()
         .eq('id', qrCodeId);
 
-      if (qrError) throw qrError;
+      if (qrError) {
+        console.error('Erro ao deletar QR Code:', qrError);
+        throw qrError;
+      }
 
-      // Se existe um evento associado, deletá-lo também
+      // Se existe um evento associado, deletá-lo por último
       if (qrCodeData.event_id) {
+        console.log('Deletando evento:', qrCodeData.event_id);
         const { error: eventError } = await supabase
           .from('events')
           .delete()
           .eq('id', qrCodeData.event_id);
 
-        if (eventError) throw eventError;
+        if (eventError) {
+          console.error('Erro ao deletar evento:', eventError);
+          throw eventError;
+        }
       }
 
+      // Atualizar as queries
       queryClient.invalidateQueries({ queryKey: ['qr_codes'] });
       queryClient.invalidateQueries({ queryKey: ['events'] });
       queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['scan_sessions'] });
 
       toast({
         title: "QR Code e evento removidos",
-        description: "QR Code e evento associado removidos com sucesso!",
+        description: "QR Code, evento e todos os dados relacionados foram removidos com sucesso!",
       });
     } catch (error: any) {
+      console.error('Erro completo na exclusão:', error);
       toast({
         title: "Erro",
-        description: error.message || "Erro ao remover QR Code",
+        description: error.message || "Erro ao remover QR Code e evento",
         variant: "destructive",
       });
     }
@@ -372,7 +426,7 @@ const QRCodePage = () => {
             <TableBody>
               {qrCodes.map((qrCode: any) => {
                 const displayUrl = getQRCodeDisplayUrl(qrCode);
-                const qrType = qrCode.type || 'whatsapp'; // Fallback para QR codes antigos
+                const qrType = qrCode.type || 'whatsapp';
                 return (
                   <TableRow key={qrCode.id}>
                     <TableCell>
@@ -467,7 +521,7 @@ const QRCodePage = () => {
                               <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
                               <AlertDialogDescription>
                                 Tem certeza de que deseja excluir este QR Code e o evento associado "{qrCode.event?.name}"? 
-                                Esta ação não pode ser desfeita e todos os dados relacionados serão perdidos.
+                                Esta ação não pode ser desfeita e todos os dados relacionados (leads, sessões de scan, etc.) serão perdidos permanentemente.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
@@ -476,7 +530,7 @@ const QRCodePage = () => {
                                 onClick={() => handleDeleteQRCode(qrCode.id)}
                                 className="bg-red-600 hover:bg-red-700"
                               >
-                                Excluir
+                                Excluir Tudo
                               </AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>
