@@ -1,11 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Webhook, Save, Clock, Sync } from 'lucide-react';
+import { Webhook, Save, Clock, sync } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useSystemSettings, useUpdateSystemSetting } from '@/hooks/useSystemSettings';
 
@@ -167,7 +166,7 @@ const WebhookSettings = () => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
-            <Sync className="h-5 w-5" />
+            <sync className="h-5 w-5" />
             <span>Webhook de Sincronização</span>
           </CardTitle>
           <CardDescription>
