@@ -1,7 +1,8 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Download } from 'lucide-react';
@@ -178,16 +179,18 @@ const ContactExporter = ({ leads }: ContactExporterProps) => {
                   <SelectValue placeholder="Selecione um curso" />
                 </SelectTrigger>
                 <SelectContent>
-                  <optgroup label="Cursos de Graduação">
+                  <SelectGroup>
+                    <SelectLabel>Cursos de Graduação</SelectLabel>
                     {courses.map((course: any) => (
                       <SelectItem key={course.id} value={course.id}>{course.name}</SelectItem>
                     ))}
-                  </optgroup>
-                  <optgroup label="Pós-graduação">
+                  </SelectGroup>
+                  <SelectGroup>
+                    <SelectLabel>Pós-graduação</SelectLabel>
                     {postgraduateCourses.map((course: any) => (
                       <SelectItem key={course.id} value={course.id}>{course.name}</SelectItem>
                     ))}
-                  </optgroup>
+                  </SelectGroup>
                 </SelectContent>
               </Select>
             </div>
