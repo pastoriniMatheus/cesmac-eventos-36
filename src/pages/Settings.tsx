@@ -10,6 +10,7 @@ import DatabaseExport from '@/components/DatabaseExport';
 import WebhookSettings from '@/components/WebhookSettings';
 import VisualSettings from '@/components/VisualSettings';
 import FormSettings from '@/components/FormSettings';
+import ApiDocumentation from '@/components/ApiDocumentation';
 
 const Settings = () => {
   const [activeMainTab, setActiveMainTab] = useState('webhooks');
@@ -93,22 +94,7 @@ const Settings = () => {
         </TabsContent>
 
         <TabsContent value="api">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Globe className="h-5 w-5" />
-                <span>API</span>
-              </CardTitle>
-              <CardDescription>
-                Configure as integrações via API
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">
-                Configurações da API em breve...
-              </p>
-            </CardContent>
-          </Card>
+          <ApiDocumentation />
         </TabsContent>
 
         <TabsContent value="banco">
