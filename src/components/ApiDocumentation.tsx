@@ -45,26 +45,49 @@ const ApiDocumentation = () => {
       name: 'Captura de Leads',
       method: 'POST',
       path: '/lead-capture',
-      description: 'Recebe dados de formulário e cria leads',
+      description: 'Recebe dados de formulário e cria leads com vinculação automática ao QR code',
       category: 'leads',
       public: true,
       headers: [
         { name: 'Content-Type', value: 'application/json' }
       ],
       body: {
-        name: 'string (obrigatório)',
-        email: 'string (obrigatório)',
-        whatsapp: 'string (obrigatório)',
-        course_id: 'uuid (opcional)',
-        course_name: 'string (opcional)',
-        shift: 'string (opcional)',
-        tracking_id: 'string (opcional)'
+        name: 'string (obrigatório) - Nome completo do lead',
+        email: 'string (obrigatório) - Email válido',
+        whatsapp: 'string (obrigatório) - Número com DDD (ex: 5582999501666)',
+        course_id: 'uuid (opcional) - ID do curso de graduação',
+        course_name: 'string (opcional) - Nome do curso (busca automaticamente o ID)',
+        shift: 'string (opcional) - Turno de interesse (matutino, vespertino, noturno, integral)',
+        tracking_id: 'string (opcional) - ID para vincular ao QR code escaneado'
+      },
+      fieldsDetail: {
+        automaticFields: {
+          course_type: 'Definido automaticamente como "course" ou "postgraduate"',
+          source: 'Definido automaticamente como "form"',
+          status_id: 'Busca status "pendente" como padrão',
+          scan_session_id: 'Vincula à sessão de scan via tracking_id',
+          event_id: 'Obtido do QR code via tracking_id'
+        },
+        businessLogic: {
+          courseResolution: 'Se course_name for enviado sem course_id, busca o curso pelo nome',
+          trackingFlow: 'tracking_id vincula o lead à sessão de scan do QR code',
+          conversionTracking: 'Sessão de scan é marcada como convertida automaticamente'
+        }
       },
       responses: [
         { status: 200, description: 'Lead criado com sucesso' },
-        { status: 400, description: 'Campos obrigatórios faltando' }
+        { status: 400, description: 'Campos obrigatórios faltando ou curso não encontrado' },
+        { status: 500, description: 'Erro interno do servidor' }
       ],
-      example: `${baseUrl}/lead-capture`
+      example: `${baseUrl}/lead-capture`,
+      examplePayload: {
+        name: "Matheus Aciolly",
+        email: "joao@email.com",
+        whatsapp: "5582999501666",
+        course_name: "Administração",
+        shift: "noturno",
+        tracking_id: "nPDr2H"
+      }
     },
     {
       id: 'validate-whatsapp',
@@ -243,6 +266,43 @@ const ApiDocumentation = () => {
                       </div>
                     )}
 
+                    {endpoint.fieldsDetail && (
+                      <div className="space-y-4">
+                        <div>
+                          <h4 className="font-semibold mb-2">Campos Automáticos:</h4>
+                          <div className="space-y-2">
+                            {Object.entries(endpoint.fieldsDetail.automaticFields).map(([field, desc]) => (
+                              <div key={field} className="flex items-start space-x-2 text-sm">
+                                <code className="bg-muted px-2 py-1 rounded">{field}</code>
+                                <span className="text-muted-foreground">{desc}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <h4 className="font-semibold mb-2">Lógica de Negócio:</h4>
+                          <div className="space-y-2">
+                            {Object.entries(endpoint.fieldsDetail.businessLogic).map(([key, desc]) => (
+                              <div key={key} className="flex items-start space-x-2 text-sm">
+                                <Badge variant="outline" className="text-xs">{key}</Badge>
+                                <span className="text-muted-foreground">{desc}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {endpoint.examplePayload && (
+                      <div>
+                        <h4 className="font-semibold mb-2">Exemplo de Payload:</h4>
+                        <div className="bg-muted p-3 rounded text-sm">
+                          <pre>{JSON.stringify(endpoint.examplePayload, null, 2)}</pre>
+                        </div>
+                      </div>
+                    )}
+
                     <div>
                       <h4 className="font-semibold mb-2">Respostas:</h4>
                       <div className="space-y-1">
@@ -361,6 +421,24 @@ const ApiDocumentation = () => {
       </Card>
     </div>
   );
+};
+
+const getCategoryIcon = (category: string) => {
+  switch (category) {
+    case 'qr': return <ExternalLink className="h-4 w-4" />;
+    case 'leads': return <Database className="h-4 w-4" />;
+    case 'whatsapp': return <MessageSquare className="h-4 w-4" />;
+    default: return <Globe className="h-4 w-4" />;
+  }
+};
+
+const getCategoryColor = (category: string) => {
+  switch (category) {
+    case 'qr': return 'bg-blue-100 text-blue-800';
+    case 'leads': return 'bg-green-100 text-green-800';
+    case 'whatsapp': return 'bg-purple-100 text-purple-800';
+    default: return 'bg-gray-100 text-gray-800';
+  }
 };
 
 export default ApiDocumentation;
