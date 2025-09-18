@@ -35,7 +35,19 @@ export const useAuthProvider = () => {
     // Verificar se há usuário logado no localStorage
     const savedUser = localStorage.getItem('cesmac_user');
     if (savedUser) {
-      setUser(JSON.parse(savedUser));
+      try {
+        const userData = JSON.parse(savedUser);
+        // Validar se os dados do localStorage são válidos
+        if (userData && userData.id && userData.username) {
+          setUser(userData);
+        } else {
+          // Limpar dados inválidos
+          localStorage.removeItem('cesmac_user');
+        }
+      } catch (error) {
+        console.error('Erro ao carregar dados do usuário:', error);
+        localStorage.removeItem('cesmac_user');
+      }
     }
     
     // Verificar se o sistema precisa de instalação
@@ -76,34 +88,69 @@ export const useAuthProvider = () => {
     try {
       console.log('Tentando fazer login:', username);
       
+      // Validação de input para prevenir ataques
+      if (!username || !password) {
+        return { success: false, error: 'Usuário e senha são obrigatórios' };
+      }
+      
+      if (username.length < 3 || password.length < 6) {
+        return { success: false, error: 'Credenciais inválidas' };
+      }
+      
+      // Verificar se existe a função RPC
       const { data, error } = await supabase
         .rpc('verify_login', {
-          p_username: username,
+          p_username: username.trim().toLowerCase(), // Normalizar input
           p_password: password
         });
 
       if (error) {
         console.error('Erro na verificação:', error);
-        return { success: false, error: 'Erro interno do sistema' };
+        // Não expor detalhes do erro interno por segurança
+        return { success: false, error: 'Credenciais inválidas' };
       }
 
       if (data && data.length > 0 && data[0].success) {
         const userData = data[0].user_data as unknown as User;
+        
+        // Validar se os dados retornados são válidos
+        if (!userData || !userData.id || !userData.username) {
+          return { success: false, error: 'Dados do usuário inválidos' };
+        }
+        
         setUser(userData);
-        localStorage.setItem('cesmac_user', JSON.stringify(userData));
+        
+        // Armazenar com dados mínimos no localStorage (não armazenar senhas ou dados sensíveis)
+        const safeUserData = {
+          id: userData.id,
+          username: userData.username,
+          email: userData.email
+        };
+        localStorage.setItem('cesmac_user', JSON.stringify(safeUserData));
+        
         return { success: true };
       } else {
-        return { success: false, error: 'Usuário ou senha incorretos' };
+        return { success: false, error: 'Credenciais inválidas' };
       }
     } catch (error) {
       console.error('Erro no login:', error);
-      return { success: false, error: 'Erro de conexão' };
+      // Não expor detalhes técnicos por segurança
+      return { success: false, error: 'Erro de autenticação' };
     }
   };
 
   const logout = () => {
     setUser(null);
     localStorage.removeItem('cesmac_user');
+    
+    // Limpar outros dados sensíveis que possam estar no localStorage
+    const keysToRemove = ['form_tracking_id', 'form_event_name', 'scan_session_id'];
+    keysToRemove.forEach(key => {
+      localStorage.removeItem(key);
+    });
+    
+    // Opcional: Limpar sessionStorage também
+    sessionStorage.clear();
   };
 
   return {
