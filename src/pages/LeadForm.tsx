@@ -374,13 +374,26 @@ const LeadForm = () => {
         status_id: defaultStatusId
       };
 
-      const { data: lead, error: leadError } = await supabase
-        .from('leads')
-        .insert([leadData])
-        .select()
-        .single();
+      // Chamar função edge para captura de lead (garante webhook)
+      const response = await supabase.functions.invoke('lead-capture', {
+        body: {
+          name: formData.name,
+          email: formData.email,
+          whatsapp: formData.whatsapp.replace(/\D/g, ''),
+          course_id: formData.course_type === 'course' ? courseId : null,
+          postgraduate_course_id: formData.course_type === 'postgraduate' ? courseId : null,
+          tracking_id: trackingId
+        }
+      });
 
-      if (leadError) throw leadError;
+      if (response.error) throw response.error;
+      
+      const lead = { 
+        id: response.data.lead_id,
+        ...leadData
+      };
+
+      if (response.error) throw response.error;
 
       // Se há tracking ID, criar/atualizar sessão de scan
       if (trackingId) {

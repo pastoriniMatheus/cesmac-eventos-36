@@ -95,7 +95,7 @@ serve(async (req) => {
       });
     }
 
-    const { name, email, whatsapp, course_id, course_name, shift, tracking_id } = await req.json();
+    const { name, email, whatsapp, course_id, course_name, shift, tracking_id, postgraduate_course_id } = await req.json();
 
     console.log('Dados recebidos:', { name, email, whatsapp, course_id, course_name, shift, tracking_id });
 
@@ -112,18 +112,33 @@ serve(async (req) => {
     if (course_name && !course_id) {
       console.log('Buscando curso pelo nome:', course_name);
       
-      const { data: course, error: courseError } = await supabase
+      // Buscar curso primeiro com nome exato, depois com busca aproximada
+      let { data: course, error: courseError } = await supabase
         .from('courses')
         .select('id')
         .ilike('name', course_name)
         .single();
 
+      // Se não encontrou, tentar busca por similaridade (curso poderia ter erro de digitação)
+      if (courseError && courseError.code === 'PGRST116') {
+        console.log('Curso não encontrado exatamente, tentando busca por similaridade');
+        
+        const { data: courses } = await supabase
+          .from('courses')
+          .select('id, name')
+          .or(`name.ilike.%${course_name}%,name.ilike.%${course_name.replace('sci', 'si')}%`);
+        
+        if (courses && courses.length > 0) {
+          course = courses[0];
+          courseError = null;
+          console.log('Curso encontrado por similaridade:', course);
+        }
+      }
+
       if (courseError) {
         console.log('Erro ao buscar curso:', courseError);
-        return new Response(`Course not found: ${course_name}`, { 
-          status: 400,
-          headers: corsHeaders 
-        });
+        console.log('Continuando sem curso definido - lead será criado sem curso');
+        finalCourseId = null;
       }
 
       if (course) {
@@ -192,10 +207,13 @@ serve(async (req) => {
         email,
         whatsapp,
         course_id: finalCourseId,
+        postgraduate_course_id,
+        course_type: postgraduate_course_id ? 'postgraduate' : 'course',
         shift,
         event_id: eventId,
         scan_session_id: scanSessionId,
-        status_id: defaultStatusId // Adicionar status padrão
+        status_id: defaultStatusId,
+        source: 'form'
       }])
       .select()
       .single();
