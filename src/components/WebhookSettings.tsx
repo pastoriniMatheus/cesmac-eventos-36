@@ -27,6 +27,8 @@ const WebhookSettings = () => {
     enabled: false
   });
 
+  const [isManualSyncing, setIsManualSyncing] = useState(false);
+
   // Carregar configurações salvas
   useEffect(() => {
     const webhookSettings = settings.find(s => s.key === 'webhook_urls');
@@ -82,12 +84,29 @@ const WebhookSettings = () => {
 
   const setupSyncWebhook = async () => {
     try {
-      // Aqui implementaremos a lógica para configurar o webhook de sincronização
       console.log('Configurando webhook de sincronização:', {
         url: webhooks.sync,
         interval: syncSettings.interval,
         mode: syncSettings.mode
       });
+
+      // Configurar cron job apenas se não for envio imediato
+      if (syncSettings.interval !== 'immediate') {
+        const response = await fetch('https://dobtquebpcnzjisftcfh.supabase.co/functions/v1/setup-sync-cron', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRvYnRxdWVicGNuemppc2Z0Y2ZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk1NzcyNTMsImV4cCI6MjA2NTE1MzI1M30.GvPd5cEdgmAZG-Jsch66mdX24QNosV12Tz-F1Af93_0'
+          },
+          body: JSON.stringify({
+            interval: syncSettings.interval,
+            enabled: syncSettings.enabled
+          })
+        });
+
+        const result = await response.json();
+        console.log('Resultado configuração cron:', result);
+      }
     } catch (error) {
       console.error('Erro ao configurar webhook de sincronização:', error);
     }
@@ -99,6 +118,50 @@ const WebhookSettings = () => {
 
   const handleSyncSettingChange = (field: string, value: any) => {
     setSyncSettings(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleManualSync = async () => {
+    if (!webhooks.sync) {
+      toast({
+        title: "Erro",
+        description: "Configure a URL do webhook de sincronização primeiro",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsManualSyncing(true);
+    
+    try {
+      const response = await fetch('https://dobtquebpcnzjisftcfh.supabase.co/functions/v1/sync-leads', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRvYnRxdWVicGNuemppc2Z0Y2ZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk1NzcyNTMsImV4cCI6MjA2NTE1MzI1M30.GvPd5cEdgmAZG-Jsch66mdX24QNosV12Tz-F1Af93_0'
+        },
+        body: JSON.stringify({ manual_sync: true })
+      });
+
+      const result = await response.json();
+      
+      if (response.ok) {
+        toast({
+          title: "Sincronização concluída",
+          description: `${result.leads_sent} leads enviados com sucesso!`,
+        });
+      } else {
+        throw new Error(result.error || 'Erro na sincronização');
+      }
+    } catch (error) {
+      console.error('Erro na sincronização manual:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao sincronizar leads manualmente",
+        variant: "destructive",
+      });
+    } finally {
+      setIsManualSyncing(false);
+    }
   };
 
   return (
@@ -199,6 +262,7 @@ const WebhookSettings = () => {
                     <SelectValue placeholder="Selecione o intervalo" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="immediate">Envio imediato (tempo real)</SelectItem>
                     <SelectItem value="15">15 minutos</SelectItem>
                     <SelectItem value="30">30 minutos</SelectItem>
                     <SelectItem value="60">1 hora</SelectItem>
@@ -239,16 +303,30 @@ const WebhookSettings = () => {
               <Label htmlFor="sync-enabled">Habilitar sincronização automática</Label>
             </div>
 
+            <div className="flex space-x-3">
+              <Button 
+                onClick={handleManualSync} 
+                disabled={isManualSyncing || !webhooks.sync}
+                variant="outline"
+                className="flex-1"
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${isManualSyncing ? 'animate-spin' : ''}`} />
+                {isManualSyncing ? 'Sincronizando...' : 'Sincronizar Todos os Leads Agora'}
+              </Button>
+            </div>
+
             <div className="p-4 bg-muted rounded-lg">
               <div className="flex items-center space-x-2 mb-2">
                 <Clock className="h-4 w-4" />
                 <span className="font-medium">Como funciona:</span>
               </div>
               <ul className="text-sm text-muted-foreground space-y-1">
-                <li>• Os leads serão enviados automaticamente no intervalo configurado</li>
+                <li>• <strong>Envio imediato:</strong> Cada lead é enviado automaticamente assim que entra no sistema</li>
+                <li>• <strong>Intervalos regulares:</strong> Os leads são enviados no intervalo configurado</li>
                 <li>• No modo "todos os leads", sempre envia todos os leads do banco</li>
                 <li>• No modo "apenas novos", envia apenas leads criados após o último envio bem-sucedido</li>
                 <li>• Os dados são enviados via POST como um array JSON de leads</li>
+                <li>• O botão "Sincronizar Agora" envia todos os leads imediatamente</li>
               </ul>
             </div>
           </div>

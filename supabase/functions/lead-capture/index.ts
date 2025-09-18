@@ -2,6 +2,75 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+// Função para verificar e enviar sincronização imediata
+async function checkAndSendImmediateSync(leadData: any) {
+  try {
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
+    // Buscar configurações de sincronização
+    const { data: syncSettings } = await supabaseClient
+      .from('system_settings')
+      .select('value')
+      .eq('key', 'sync_webhook_settings')
+      .single();
+
+    const { data: webhookSettings } = await supabaseClient
+      .from('system_settings')
+      .select('value')
+      .eq('key', 'webhook_urls')
+      .single();
+
+    if (!syncSettings?.value || !webhookSettings?.value) {
+      console.log('Configurações de sincronização não encontradas');
+      return;
+    }
+
+    const config = typeof syncSettings.value === 'string' 
+      ? JSON.parse(syncSettings.value) 
+      : syncSettings.value;
+
+    const webhookUrls = typeof webhookSettings.value === 'string'
+      ? JSON.parse(webhookSettings.value)
+      : webhookSettings.value;
+
+    // Verificar se o envio imediato está habilitado
+    if (!config.enabled || config.interval !== 'immediate' || !webhookUrls.sync) {
+      console.log('Envio imediato não configurado');
+      return;
+    }
+
+    console.log('Enviando lead imediatamente para webhook:', webhookUrls.sync);
+
+    // Enviar lead para o webhook
+    const response = await fetch(webhookUrls.sync, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        leads: [leadData],
+        sync_mode: 'immediate',
+        timestamp: new Date().toISOString(),
+        total_leads: 1
+      })
+    });
+
+    const responseText = await response.text();
+    console.log('Resposta do webhook imediato:', responseText);
+
+    if (!response.ok) {
+      console.error('Erro no webhook imediato:', response.status, responseText);
+    } else {
+      console.log('Lead enviado imediatamente com sucesso');
+    }
+  } catch (error) {
+    console.error('Erro no envio imediato:', error);
+  }
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -157,6 +226,29 @@ serve(async (req) => {
       } else {
         console.log('Sessão de scan atualizada com sucesso');
       }
+    }
+
+    // Tentativa de envio imediato via webhook (não bloqueia a resposta)
+    try {
+      // Buscar dados completos do lead para envio
+      const { data: fullLead } = await supabase
+        .from('leads')
+        .select(`
+          *,
+          course:courses(name),
+          postgraduate_course:postgraduate_courses(name),
+          event:events(name),
+          status:lead_statuses(name, color)
+        `)
+        .eq('id', lead.id)
+        .single();
+
+      if (fullLead) {
+        // Enviar em background sem await para não bloquear resposta
+        checkAndSendImmediateSync(fullLead);
+      }
+    } catch (syncError) {
+      console.log('Erro no envio imediato (não crítico):', syncError);
     }
 
     return new Response(JSON.stringify({ 
