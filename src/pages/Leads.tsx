@@ -6,11 +6,14 @@ import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Badge } from '@/components/ui/badge';
 import { Plus, Edit, Trash2, Copy, Search, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useCourses } from '@/hooks/useCourses';
 import { useEvents } from '@/hooks/useEvents';
-import { useLeads, useLeadStatuses } from '@/hooks/useLeads';
+import { useLeads, useLeadStatuses, useDeleteMultipleLeads } from '@/hooks/useLeads';
 import { usePostgraduateCourses } from '@/hooks/usePostgraduateCourses';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
@@ -27,6 +30,7 @@ const Leads = () => {
   const { data: events = [] } = useEvents();
   const { data: leadStatuses = [] } = useLeadStatuses();
   const { data: postgraduateCourses = [] } = usePostgraduateCourses();
+  const deleteMultipleLeads = useDeleteMultipleLeads();
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -34,6 +38,7 @@ const Leads = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCourse, setFilterCourse] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
   
   const [newLead, setNewLead] = useState({
     name: '',
@@ -197,6 +202,31 @@ const Leads = () => {
     });
   };
 
+  const handleSelectLead = (leadId: string) => {
+    setSelectedLeads(prev => 
+      prev.includes(leadId) 
+        ? prev.filter(id => id !== leadId)
+        : [...prev, leadId]
+    );
+  };
+
+  const handleSelectAll = () => {
+    if (selectedLeads.length === filteredLeads.length) {
+      setSelectedLeads([]);
+    } else {
+      setSelectedLeads(filteredLeads.map(lead => lead.id));
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    try {
+      await deleteMultipleLeads.mutateAsync(selectedLeads);
+      setSelectedLeads([]);
+    } catch (error) {
+      console.error('Erro ao deletar leads:', error);
+    }
+  };
+
   // Filter leads based on search and filters
   const filteredLeads = leads.filter((lead: any) => {
     const matchesSearch = 
@@ -213,7 +243,39 @@ const Leads = () => {
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-blue-600">Gerenciamento de Leads</h1>
+        <div className="flex items-center gap-4">
+          <h1 className="text-3xl font-bold text-blue-600">Gerenciamento de Leads</h1>
+          {selectedLeads.length > 0 && (
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary">
+                {selectedLeads.length} selecionado(s)
+              </Badge>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" size="sm">
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Excluir Selecionados
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Tem certeza que deseja excluir {selectedLeads.length} lead(s) selecionado(s)? 
+                      Esta ação não pode ser desfeita.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDeleteSelected}>
+                      Excluir
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          )}
+        </div>
         <div className="flex space-x-2">
           <ContactExporter leads={leads} />
           <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
@@ -431,6 +493,13 @@ const Leads = () => {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-12">
+                  <Checkbox
+                    checked={selectedLeads.length === filteredLeads.length && filteredLeads.length > 0}
+                    onCheckedChange={handleSelectAll}
+                    aria-label="Selecionar todos os leads"
+                  />
+                </TableHead>
                 <TableHead>Nome</TableHead>
                 <TableHead>ID do Lead</TableHead>
                 <TableHead>WhatsApp</TableHead>
@@ -444,86 +513,153 @@ const Leads = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredLeads.map((lead: any) => (
-                <TableRow key={lead.id}>
-                  <TableCell className="font-medium">{lead.name}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center space-x-2">
-                      <code className="text-xs bg-muted px-2 py-1 rounded">
-                        {lead.id}
-                      </code>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => copyToClipboard(lead.id, 'ID do Lead')}
-                      >
-                        <Copy className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-mono">{lead.whatsapp}</TableCell>
-                  <TableCell>{lead.email}</TableCell>
-                  <TableCell>
-                    {lead.course_type === 'postgraduate' ? (
-                      <div className="flex items-center space-x-1">
-                        <GraduationCap className="h-4 w-4 text-purple-600" />
-                        <span>{lead.postgraduate_course?.name || '-'}</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center space-x-1">
-                        <BookOpen className="h-4 w-4 text-blue-600" />
-                        <span>{lead.course?.name || '-'}</span>
-                      </div>
-                    )}
-                  </TableCell>
-                  <TableCell>{lead.event?.name || '-'}</TableCell>
-                  <TableCell>
-                    {lead.status ? (
-                      <StatusEditor leadId={lead.id} currentStatus={lead.status} />
-                    ) : (
-                      '-'
-                    )}
-                  </TableCell>
-                  <TableCell>{lead.shift || '-'}</TableCell>
-                  <TableCell>
-                    {new Date(lead.created_at).toLocaleDateString('pt-BR')}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex space-x-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => openEditDialog(lead)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDeleteLead(lead.id)}
-                      >
-                        <Trash2 className="h-4 w-4 text-red-500" />
-                      </Button>
-                    </div>
+              {filteredLeads.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={11} className="h-24 text-center">
+                    Nenhum lead encontrado.
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                filteredLeads.map((lead: any) => (
+                  <TableRow key={lead.id}>
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedLeads.includes(lead.id)}
+                        onCheckedChange={() => handleSelectLead(lead.id)}
+                        aria-label={`Selecionar lead ${lead.name}`}
+                      />
+                    </TableCell>
+                    <TableCell className="font-medium">{lead.name}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-xs text-muted-foreground font-mono">
+                          {lead.id.slice(0, 8)}...
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => copyToClipboard(lead.id, 'ID do Lead')}
+                          className="h-6 w-6 p-0"
+                        >
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center space-x-2">
+                        <span>{lead.whatsapp}</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => copyToClipboard(lead.whatsapp, 'WhatsApp')}
+                          className="h-6 w-6 p-0"
+                        >
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center space-x-2">
+                        <span className="max-w-[200px] truncate">{lead.email}</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => copyToClipboard(lead.email, 'E-mail')}
+                          className="h-6 w-6 p-0"
+                        >
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center space-x-2">
+                        {lead.course_type === 'course' && lead.course?.name && (
+                          <>
+                            <BookOpen className="h-4 w-4 text-blue-500" />
+                            <span>{lead.course.name}</span>
+                          </>
+                        )}
+                        {lead.course_type === 'postgraduate' && lead.postgraduate_course?.name && (
+                          <>
+                            <GraduationCap className="h-4 w-4 text-purple-500" />
+                            <span>{lead.postgraduate_course.name}</span>
+                          </>
+                        )}
+                        {!lead.course?.name && !lead.postgraduate_course?.name && (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {lead.event?.name ? (
+                        <Badge variant="outline">{lead.event.name}</Badge>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {lead.status ? (
+                        <Badge 
+                          variant="secondary"
+                          style={{ 
+                            backgroundColor: `${lead.status.color}20`, 
+                            color: lead.status.color,
+                            borderColor: lead.status.color 
+                          }}
+                        >
+                          {lead.status.name}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {lead.shift ? (
+                        <Badge variant="secondary">
+                          {lead.shift.charAt(0).toUpperCase() + lead.shift.slice(1)}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm text-muted-foreground">
+                        {new Date(lead.created_at).toLocaleDateString('pt-BR', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric'
+                        })}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center space-x-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openEditDialog(lead)}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteLead(lead.id)}
+                          className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
-          {filteredLeads.length === 0 && (
-            <div className="text-center py-8">
-              <p className="text-muted-foreground">
-                {searchTerm || filterCourse !== 'all' || filterStatus !== 'all' 
-                  ? 'Nenhum lead encontrado com os filtros aplicados.'
-                  : 'Nenhum lead criado ainda. Clique em "Novo Lead" para começar.'
-                }
-              </p>
-            </div>
-          )}
         </CardContent>
       </Card>
 
-      {/* Edit Dialog */}
+      {/* Edit Lead Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
@@ -560,7 +696,7 @@ const Leads = () => {
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="edit-course_type">Tipo de interesse</Label>
+                <Label htmlFor="edit-course-type">Tipo de interesse</Label>
                 <Select 
                   value={editingLead.course_type} 
                   onValueChange={(value) => setEditingLead({
@@ -571,7 +707,7 @@ const Leads = () => {
                   })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione o tipo" />
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="course">Curso de Graduação</SelectItem>
@@ -587,7 +723,7 @@ const Leads = () => {
                     onValueChange={(value) => setEditingLead({...editingLead, course_id: value})}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecione um curso" />
+                      <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">Nenhum curso</SelectItem>
@@ -606,7 +742,7 @@ const Leads = () => {
                     onValueChange={(value) => setEditingLead({...editingLead, postgraduate_course_id: value})}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecione uma pós-graduação" />
+                      <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">Nenhuma pós-graduação</SelectItem>
@@ -618,13 +754,30 @@ const Leads = () => {
                 </div>
               )}
               <div className="grid gap-2">
+                <Label htmlFor="edit-event">Evento</Label>
+                <Select 
+                  value={editingLead.event_id} 
+                  onValueChange={(value) => setEditingLead({...editingLead, event_id: value})}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Nenhum evento</SelectItem>
+                    {events.map((event: any) => (
+                      <SelectItem key={event.id} value={event.id}>{event.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
                 <Label htmlFor="edit-status">Status</Label>
                 <Select 
                   value={editingLead.status_id} 
                   onValueChange={(value) => setEditingLead({...editingLead, status_id: value})}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione um status" />
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     {leadStatuses.map((status: any) => (
@@ -640,7 +793,7 @@ const Leads = () => {
                   onValueChange={(value) => setEditingLead({...editingLead, shift: value})}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione um turno" />
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Nenhum turno</SelectItem>
@@ -662,6 +815,7 @@ const Leads = () => {
           </div>
         </DialogContent>
       </Dialog>
+
     </div>
   );
 };

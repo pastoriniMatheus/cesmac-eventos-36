@@ -139,3 +139,34 @@ export const useCreateLeadStatus = () => {
     }
   });
 };
+
+export const useDeleteMultipleLeads = () => {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (leadIds: string[]) => {
+      const { error } = await supabase
+        .from('leads')
+        .delete()
+        .in('id', leadIds);
+      
+      if (error) throw error;
+      return leadIds;
+    },
+    onSuccess: (leadIds) => {
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      toast({
+        title: "Leads removidos",
+        description: `${leadIds.length} lead(s) removido(s) com sucesso!`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao remover leads",
+        variant: "destructive",
+      });
+    }
+  });
+};
