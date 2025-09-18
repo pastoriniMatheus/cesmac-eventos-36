@@ -598,20 +598,10 @@ const Leads = () => {
                       )}
                     </TableCell>
                     <TableCell>
-                      {lead.status ? (
-                        <Badge 
-                          variant="secondary"
-                          style={{ 
-                            backgroundColor: `${lead.status.color}20`, 
-                            color: lead.status.color,
-                            borderColor: lead.status.color 
-                          }}
-                        >
-                          {lead.status.name}
-                        </Badge>
-                      ) : (
-                        <span className="text-muted-foreground">-</span>
-                      )}
+                      <StatusEditor 
+                        leadId={lead.id} 
+                        currentStatus={lead.status} 
+                      />
                     </TableCell>
                     <TableCell>
                       {lead.shift ? (
