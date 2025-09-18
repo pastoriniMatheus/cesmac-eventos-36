@@ -7,6 +7,7 @@ import CourseManager from '@/components/CourseManager';
 import PostgraduateCourseManager from '@/components/PostgraduateCourseManager';
 import StatusManager from '@/components/StatusManager';
 import DatabaseExport from '@/components/DatabaseExport';
+import DatabaseInstaller from '@/components/DatabaseInstaller';
 import WebhookSettings from '@/components/WebhookSettings';
 import VisualSettings from '@/components/VisualSettings';
 import FormSettings from '@/components/FormSettings';
