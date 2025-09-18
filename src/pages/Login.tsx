@@ -82,9 +82,12 @@ const Login = () => {
             </form>
 
             <div className="mt-8 pt-6 border-t border-gray-200">
-              <div className="text-center">
-                <button onClick={() => navigate('/apresentacao')} className="text-blue-600 hover:text-blue-800 text-sm font-medium">
+              <div className="text-center space-y-3">
+                <button onClick={() => navigate('/apresentacao')} className="block w-full text-blue-600 hover:text-blue-800 text-sm font-medium">
                   Ver apresentação do sistema
+                </button>
+                <button onClick={() => navigate('/install')} className="block w-full text-green-600 hover:text-green-800 text-sm font-medium">
+                  Primeira instalação? Configurar sistema
                 </button>
               </div>
             </div>

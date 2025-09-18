@@ -14,6 +14,7 @@ import Messages from "./pages/Messages";
 import Settings from "./pages/Settings";
 import LeadForm from "./pages/LeadForm";
 import Login from "./pages/Login";
+import Install from "./pages/Install";
 import Apresentacao from "./pages/Apresentacao";
 import NotFound from "./pages/NotFound";
 import { useAuth } from "./hooks/useAuth";
@@ -21,7 +22,7 @@ import { useAuth } from "./hooks/useAuth";
 const queryClient = new QueryClient();
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, loading, needsInstallation } = useAuth();
   
   if (loading) {
     return (
@@ -29,6 +30,10 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
+  }
+  
+  if (needsInstallation) {
+    return <Navigate to="/install" replace />;
   }
   
   if (!user) {
@@ -41,6 +46,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 function AppRoutes() {
   return (
     <Routes>
+      <Route path="/install" element={<Install />} />
       <Route path="/login" element={<Login />} />
       <Route path="/apresentacao" element={<Apresentacao />} />
       <Route path="/form" element={<LeadForm />} />

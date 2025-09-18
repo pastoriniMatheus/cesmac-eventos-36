@@ -11,9 +11,10 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface DatabaseInstallerProps {
   className?: string;
+  isPublicInstall?: boolean;
 }
 
-const DatabaseInstaller: React.FC<DatabaseInstallerProps> = ({ className }) => {
+const DatabaseInstaller: React.FC<DatabaseInstallerProps> = ({ className, isPublicInstall = false }) => {
   const { toast } = useToast();
   const [isChecking, setIsChecking] = useState(true);
   const [isConnected, setIsConnected] = useState(false);
@@ -117,6 +118,20 @@ const DatabaseInstaller: React.FC<DatabaseInstallerProps> = ({ className }) => {
         title: "Instalação concluída!",
         description: `Banco instalado com sucesso. ${successCount} comandos executados.`,
       });
+
+      if (isPublicInstall) {
+        // Mostrar instruções de login
+        toast({
+          title: "Sistema instalado!",
+          description: "Agora você pode fazer login com: admin / admin123",
+          duration: 8000,
+        });
+        
+        // Aguardar um pouco e redirecionar para login
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 3000);
+      }
 
       // Recheck connection
       setTimeout(() => {
@@ -251,7 +266,7 @@ const DatabaseInstaller: React.FC<DatabaseInstallerProps> = ({ className }) => {
             ) : (
               <>
                 <Database className="h-4 w-4 mr-2" />
-                Instalar Banco de Dados
+                {isPublicInstall ? 'Instalar e Configurar Sistema' : 'Instalar Banco de Dados'}
               </>
             )}
           </Button>

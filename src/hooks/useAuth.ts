@@ -13,6 +13,7 @@ interface AuthContextType {
   login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   loading: boolean;
+  needsInstallation: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -28,6 +29,7 @@ export const useAuth = () => {
 export const useAuthProvider = () => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [needsInstallation, setNeedsInstallation] = useState(false);
 
   useEffect(() => {
     // Verificar se há usuário logado no localStorage
@@ -35,8 +37,40 @@ export const useAuthProvider = () => {
     if (savedUser) {
       setUser(JSON.parse(savedUser));
     }
-    setLoading(false);
+    
+    // Verificar se o sistema precisa de instalação
+    checkInstallationNeeded();
   }, []);
+
+  const checkInstallationNeeded = async () => {
+    try {
+      // Tentar verificar se existem usuários no sistema
+      const { data, error } = await supabase
+        .from('authorized_users')
+        .select('id')
+        .limit(1);
+
+      if (error) {
+        // Se há erro (tabela não existe, etc), precisa de instalação
+        console.log('Tabela não existe ou erro de conexão:', error);
+        setNeedsInstallation(true);
+      } else if (!data || data.length === 0) {
+        // Tabela existe mas está vazia - precisa de instalação
+        console.log('Sistema sem usuários, precisa de instalação');
+        setNeedsInstallation(true);
+      } else {
+        // Há usuários, sistema já instalado
+        console.log('Sistema já instalado');
+        setNeedsInstallation(false);
+      }
+    } catch (err) {
+      // Em caso de erro, assumir que precisa de instalação
+      console.log('Erro ao verificar instalação:', err);
+      setNeedsInstallation(true);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const login = async (username: string, password: string) => {
     try {
@@ -76,7 +110,8 @@ export const useAuthProvider = () => {
     user,
     login,
     logout,
-    loading
+    loading,
+    needsInstallation
   };
 };
 
