@@ -99,7 +99,10 @@ const Settings = () => {
         </TabsContent>
 
         <TabsContent value="banco">
-          <DatabaseExport />
+          <div className="space-y-6">
+            <DatabaseInstaller />
+            <DatabaseExport />
+          </div>
         </TabsContent>
       </Tabs>
     </div>

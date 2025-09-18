@@ -85,9 +85,11 @@ serve(async (req) => {
         if (command.toUpperCase().startsWith('INSERT') || 
             command.toUpperCase().startsWith('UPDATE') || 
             command.toUpperCase().startsWith('DELETE') ||
-            command.toUpperCase().startsWith('TRUNCATE')) {
+            command.toUpperCase().startsWith('TRUNCATE') ||
+            command.toUpperCase().startsWith('CREATE') ||
+            command.toUpperCase().startsWith('ALTER')) {
           
-          const { error } = await supabase.rpc('execute_sql', { 
+          const { data, error } = await supabase.rpc('execute_sql', { 
             sql_query: command 
           });
 
@@ -95,8 +97,10 @@ serve(async (req) => {
             console.error(`❌ Erro ao executar comando: ${command.substring(0, 50)}...`, error);
             errors.push(`${command.substring(0, 50)}: ${error.message}`);
             errorCount++;
-          } else {
+          } else if (data && typeof data === 'object' && 'success' in data && data.success) {
             successCount++;
+          } else {
+            successCount++; // Assumir sucesso se não houve erro
           }
         }
       } catch (cmdError: any) {

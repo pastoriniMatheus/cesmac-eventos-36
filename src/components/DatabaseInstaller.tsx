@@ -82,8 +82,10 @@ const DatabaseInstaller: React.FC<DatabaseInstallerProps> = ({ className }) => {
               command.toUpperCase().includes('ALTER') ||
               command.toUpperCase().includes('INSERT')) {
             
-            await supabase.rpc('execute_sql', { sql_query: command });
-            successCount++;
+            const { data, error } = await supabase.rpc('execute_sql', { sql_query: command });
+            if (!error && data && typeof data === 'object' && 'success' in data && data.success) {
+              successCount++;
+            }
           }
         } catch (cmdError) {
           console.warn(`Comando ignorado (pode já existir): ${command.substring(0, 50)}...`);
@@ -97,13 +99,17 @@ const DatabaseInstaller: React.FC<DatabaseInstallerProps> = ({ className }) => {
 
       // Criar usuário admin padrão
       const defaultPassword = 'admin123';
-      await supabase.rpc('execute_sql', {
+      const { error: userError } = await supabase.rpc('execute_sql', {
         sql_query: `
           INSERT INTO public.authorized_users (username, email, password_hash)
           VALUES ('admin', 'admin@sistema.com', crypt('${defaultPassword}', gen_salt('bf')))
           ON CONFLICT (username) DO NOTHING;
         `
       });
+
+      if (!userError) {
+        console.log('✅ Usuário admin criado com sucesso');
+      }
 
       setInstallProgress(100);
 

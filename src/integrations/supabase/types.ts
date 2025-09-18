@@ -429,6 +429,10 @@ export type Database = {
         Args: { name: string }
         Returns: undefined
       }
+      execute_sql: {
+        Args: { sql_query: string }
+        Returns: Json
+      }
       get_scan_sessions: {
         Args: Record<PropertyKey, never>
         Returns: {
