@@ -22,7 +22,7 @@ const StatusEditor = ({ leadId, currentStatus }: StatusEditorProps) => {
     try {
       const { error } = await supabase
         .from('leads')
-        .update({ status_id: newStatusId })
+        .update({ status_id: newStatusId === 'none' ? null : newStatusId })
         .eq('id', leadId);
 
       if (error) throw error;
@@ -45,11 +45,12 @@ const StatusEditor = ({ leadId, currentStatus }: StatusEditorProps) => {
 
   if (isEditing) {
     return (
-      <Select value={currentStatus?.id} onValueChange={handleStatusChange}>
+      <Select value={currentStatus?.id || 'none'} onValueChange={handleStatusChange}>
         <SelectTrigger className="w-32">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
+          <SelectItem value="none">Nenhum status</SelectItem>
           {leadStatuses.map((status: any) => (
             <SelectItem key={status.id} value={status.id}>
               {status.name}

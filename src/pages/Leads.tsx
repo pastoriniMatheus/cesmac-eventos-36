@@ -70,9 +70,9 @@ const Leads = () => {
         course_type: newLead.course_type,
         course_id: newLead.course_type === 'course' ? (newLead.course_id || null) : null,
         postgraduate_course_id: newLead.course_type === 'postgraduate' ? (newLead.postgraduate_course_id || null) : null,
-        event_id: newLead.event_id || null,
-        status_id: newLead.status_id || leadStatuses[0]?.id,
-        shift: newLead.shift || null
+        event_id: newLead.event_id === 'none' ? null : newLead.event_id,
+        status_id: newLead.status_id === 'none' ? leadStatuses[0]?.id : newLead.status_id,
+        shift: newLead.shift === 'none' ? null : newLead.shift
       };
 
       const { error } = await supabase
@@ -87,11 +87,11 @@ const Leads = () => {
         whatsapp: '',
         email: '',
         course_type: 'course',
-        course_id: '',
-        postgraduate_course_id: '',
-        event_id: '',
-        status_id: '',
-        shift: ''
+        course_id: 'none',
+        postgraduate_course_id: 'none',
+        event_id: 'none',
+        status_id: 'none',
+        shift: 'none'
       });
       setIsCreateDialogOpen(false);
 
@@ -119,8 +119,8 @@ const Leads = () => {
         course_type: editingLead.course_type,
         course_id: editingLead.course_type === 'course' ? (editingLead.course_id === 'none' ? null : editingLead.course_id) : null,
         postgraduate_course_id: editingLead.course_type === 'postgraduate' ? (editingLead.postgraduate_course_id === 'none' ? null : editingLead.postgraduate_course_id) : null,
-        event_id: editingLead.event_id || null,
-        status_id: editingLead.status_id,
+        event_id: editingLead.event_id === 'none' ? null : editingLead.event_id,
+        status_id: editingLead.status_id === 'none' ? null : editingLead.status_id,
         shift: editingLead.shift === 'none' ? null : editingLead.shift
       };
 
@@ -187,8 +187,8 @@ const Leads = () => {
       course_type: lead.course_type || 'course',
       course_id: lead.course_id || 'none',
       postgraduate_course_id: lead.postgraduate_course_id || 'none',
-      event_id: lead.event_id || '',
-      status_id: lead.status_id || '',
+      event_id: lead.event_id || 'none',
+      status_id: lead.status_id || (leadStatuses[0]?.id || 'none'),
       shift: lead.shift || 'none'
     });
     setIsEditDialogOpen(true);
@@ -387,6 +387,7 @@ const Leads = () => {
                       <SelectValue placeholder="Selecione um evento" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="none">Nenhum evento</SelectItem>
                       {events.map((event: any) => (
                         <SelectItem key={event.id} value={event.id}>{event.name}</SelectItem>
                       ))}
@@ -403,6 +404,7 @@ const Leads = () => {
                       <SelectValue placeholder="Selecione um turno" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="none">Nenhum turno</SelectItem>
                       <SelectItem value="manhã">Manhã</SelectItem>
                       <SelectItem value="tarde">Tarde</SelectItem>
                       <SelectItem value="noite">Noite</SelectItem>
@@ -752,12 +754,12 @@ const Leads = () => {
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">Nenhum evento</SelectItem>
-                    {events.map((event: any) => (
-                      <SelectItem key={event.id} value={event.id}>{event.name}</SelectItem>
-                    ))}
-                  </SelectContent>
+                    <SelectContent>
+                      <SelectItem value="none">Nenhum evento</SelectItem>
+                      {events.map((event: any) => (
+                        <SelectItem key={event.id} value={event.id}>{event.name}</SelectItem>
+                      ))}
+                    </SelectContent>
                 </Select>
               </div>
               <div className="grid gap-2">
@@ -770,6 +772,7 @@ const Leads = () => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="none">Nenhum status</SelectItem>
                     {leadStatuses.map((status: any) => (
                       <SelectItem key={status.id} value={status.id}>{status.name}</SelectItem>
                     ))}
