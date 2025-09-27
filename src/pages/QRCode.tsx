@@ -7,9 +7,9 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { QrCode, Download, Plus, Copy, Eye, Trash2, MessageCircle, FileText } from 'lucide-react';
+import { QrCode, Download, Plus, Copy, Eye, Trash2, MessageCircle, FileText, Edit3 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useQRCodes } from '@/hooks/useQRCodes';
+import { useQRCodes, useUpdateQRCode } from '@/hooks/useQRCodes';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { generateShortUrl, buildWhatsAppUrl, getCurrentDomain, buildQRRedirectUrl, buildFormUrl } from '@/utils/urlShortener';
@@ -20,8 +20,16 @@ const QRCodePage = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data: qrCodes = [] } = useQRCodes();
+  const updateQRCodeMutation = useUpdateQRCode();
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingQRCode, setEditingQRCode] = useState<any>(null);
+  const [editForm, setEditForm] = useState({
+    trackingId: '',
+    eventName: '',
+    whatsappNumber: ''
+  });
   const [newQRCode, setNewQRCode] = useState({
     eventName: '',
     whatsappNumber: '',
@@ -294,6 +302,85 @@ const QRCodePage = () => {
     }
   };
 
+  const handleEditQRCode = (qrCode: any) => {
+    setEditingQRCode(qrCode);
+    setEditForm({
+      trackingId: qrCode.tracking_id || '',
+      eventName: qrCode.event?.name || '',
+      whatsappNumber: qrCode.event?.whatsapp_number || ''
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdateQRCode = async () => {
+    if (!editingQRCode || !editForm.trackingId || !editForm.eventName) {
+      toast({
+        title: "Erro",
+        description: "Por favor, preencha todos os campos obrigatórios.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validar tracking ID (deve ter 6 caracteres)
+    if (editForm.trackingId.length !== 6) {
+      toast({
+        title: "Erro",
+        description: "O Tracking ID deve ter exatamente 6 caracteres.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validar WhatsApp para QR codes WhatsApp
+    if (editingQRCode.type === 'whatsapp' && !editForm.whatsappNumber) {
+      toast({
+        title: "Erro",
+        description: "Número do WhatsApp é obrigatório para QR codes WhatsApp.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (editingQRCode.type === 'whatsapp') {
+      const whatsappRegex = /^[1-9]\d{1,14}$/;
+      if (!whatsappRegex.test(editForm.whatsappNumber)) {
+        toast({
+          title: "Erro",
+          description: "Número do WhatsApp inválido. Use apenas números (ex: 5582988898565).",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    try {
+      await updateQRCodeMutation.mutateAsync({
+        qrCodeId: editingQRCode.id,
+        trackingId: editForm.trackingId,
+        eventName: editForm.eventName,
+        type: editingQRCode.type || 'whatsapp',
+        whatsappNumber: editForm.whatsappNumber
+      });
+
+      setIsEditDialogOpen(false);
+      setEditingQRCode(null);
+      setEditForm({ trackingId: '', eventName: '', whatsappNumber: '' });
+
+      toast({
+        title: "QR Code atualizado",
+        description: "QR Code foi atualizado com sucesso!",
+      });
+    } catch (error: any) {
+      console.error('Erro ao atualizar QR Code:', error);
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao atualizar QR Code",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -503,6 +590,13 @@ const QRCodePage = () => {
                         <Button
                           variant="ghost"
                           size="sm"
+                          onClick={() => handleEditQRCode(qrCode)}
+                        >
+                          <Edit3 className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           onClick={() => downloadQRCode(qrCode)}
                         >
                           <Download className="h-4 w-4" />
@@ -552,6 +646,78 @@ const QRCodePage = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Editar QR Code</DialogTitle>
+            <DialogDescription>
+              Edite o tracking ID e a mensagem do QR Code
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="edit-tracking">Tracking ID*</Label>
+              <Input
+                id="edit-tracking"
+                value={editForm.trackingId}
+                onChange={(e) => setEditForm({...editForm, trackingId: e.target.value})}
+                placeholder="6 caracteres"
+                maxLength={6}
+              />
+              <p className="text-xs text-muted-foreground">
+                Deve ter exatamente 6 caracteres
+              </p>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="edit-event">Nome do Evento*</Label>
+              <Input
+                id="edit-event"
+                value={editForm.eventName}
+                onChange={(e) => setEditForm({...editForm, eventName: e.target.value})}
+                placeholder="Nome do evento"
+              />
+            </div>
+
+            {editingQRCode?.type === 'whatsapp' && (
+              <div className="grid gap-2">
+                <Label htmlFor="edit-whatsapp">Número do WhatsApp*</Label>
+                <Input
+                  id="edit-whatsapp"
+                  value={editForm.whatsappNumber}
+                  onChange={(e) => setEditForm({...editForm, whatsappNumber: e.target.value})}
+                  placeholder="5582988898565"
+                />
+              </div>
+            )}
+
+            {editForm.eventName && editForm.trackingId && (
+              <div className="mt-4 p-4 bg-muted rounded-lg">
+                <Label>Preview da {editingQRCode?.type === 'whatsapp' ? 'Mensagem' : 'URL'}:</Label>
+                <p className="text-sm font-mono mt-1 break-all">
+                  {editingQRCode?.type === 'whatsapp' 
+                    ? `${editForm.eventName} id:${editForm.trackingId}`
+                    : `${window.location.origin}/form?event=${encodeURIComponent(editForm.eventName)}&tracking=${editForm.trackingId}`
+                  }
+                </p>
+              </div>
+            )}
+          </div>
+          <div className="flex justify-end space-x-2">
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleUpdateQRCode}
+              disabled={updateQRCodeMutation.isPending}
+            >
+              {updateQRCodeMutation.isPending ? 'Salvando...' : 'Salvar'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Preview Dialog */}
       <Dialog open={!!previewQR} onOpenChange={() => setPreviewQR(null)}>
