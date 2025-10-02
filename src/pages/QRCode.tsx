@@ -272,7 +272,7 @@ const QRCodePage = () => {
         qrUrl = qrCode.original_url;
       }
       
-      const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(qrUrl)}`;
+      const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=1000x1000&data=${encodeURIComponent(qrUrl)}`;
       
       // Fetch da imagem e converter para blob
       const response = await fetch(qrCodeUrl);
