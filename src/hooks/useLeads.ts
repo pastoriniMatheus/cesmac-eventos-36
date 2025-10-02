@@ -170,3 +170,37 @@ export const useDeleteMultipleLeads = () => {
     }
   });
 };
+
+export const useUpdateMultipleLeadsEvent = () => {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ leadIds, eventId }: { leadIds: string[]; eventId: string | null }) => {
+      const { error } = await supabase
+        .from('leads')
+        .update({ 
+          event_id: eventId,
+          updated_at: new Date().toISOString()
+        })
+        .in('id', leadIds);
+      
+      if (error) throw error;
+      return { leadIds, eventId };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      toast({
+        title: "Leads atualizados",
+        description: `Evento atualizado para ${data.leadIds.length} lead(s)!`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao atualizar evento dos leads",
+        variant: "destructive",
+      });
+    }
+  });
+};

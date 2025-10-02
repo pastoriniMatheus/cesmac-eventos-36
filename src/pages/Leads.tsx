@@ -13,7 +13,7 @@ import { Plus, Edit, Trash2, Copy, Search, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useCourses } from '@/hooks/useCourses';
 import { useEvents } from '@/hooks/useEvents';
-import { useLeads, useLeadStatuses, useDeleteMultipleLeads } from '@/hooks/useLeads';
+import { useLeads, useLeadStatuses, useDeleteMultipleLeads, useUpdateMultipleLeadsEvent } from '@/hooks/useLeads';
 import { usePostgraduateCourses } from '@/hooks/usePostgraduateCourses';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
@@ -31,14 +31,17 @@ const Leads = () => {
   const { data: leadStatuses = [] } = useLeadStatuses();
   const { data: postgraduateCourses = [] } = usePostgraduateCourses();
   const deleteMultipleLeads = useDeleteMultipleLeads();
+  const updateMultipleLeadsEvent = useUpdateMultipleLeadsEvent();
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isBulkEditEventDialogOpen, setIsBulkEditEventDialogOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCourse, setFilterCourse] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
+  const [bulkEventId, setBulkEventId] = useState<string>('none');
   
   const [newLead, setNewLead] = useState({
     name: '',
@@ -227,6 +230,18 @@ const Leads = () => {
     }
   };
 
+  const handleBulkEditEvent = async () => {
+    try {
+      const eventId = bulkEventId === 'none' ? null : bulkEventId;
+      await updateMultipleLeadsEvent.mutateAsync({ leadIds: selectedLeads, eventId });
+      setSelectedLeads([]);
+      setIsBulkEditEventDialogOpen(false);
+      setBulkEventId('none');
+    } catch (error) {
+      console.error('Erro ao atualizar evento dos leads:', error);
+    }
+  };
+
   // Filter leads based on search and filters
   const filteredLeads = leads.filter((lead: any) => {
     const matchesSearch = 
@@ -250,6 +265,14 @@ const Leads = () => {
               <Badge variant="secondary">
                 {selectedLeads.length} selecionado(s)
               </Badge>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setIsBulkEditEventDialogOpen(true)}
+              >
+                <Edit className="w-4 h-4 mr-2" />
+                Editar Evento
+              </Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="destructive" size="sm">
@@ -804,6 +827,45 @@ const Leads = () => {
             </Button>
             <Button onClick={handleEditLead} className="bg-blue-600 hover:bg-blue-700">
               Salvar Alterações
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Edit Event Dialog */}
+      <Dialog open={isBulkEditEventDialogOpen} onOpenChange={setIsBulkEditEventDialogOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Editar Evento em Massa</DialogTitle>
+            <DialogDescription>
+              Atualizar o evento de {selectedLeads.length} lead(s) selecionado(s)
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="bulk-event">Evento</Label>
+              <Select 
+                value={bulkEventId} 
+                onValueChange={setBulkEventId}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um evento" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nenhum evento</SelectItem>
+                  {events.map((event: any) => (
+                    <SelectItem key={event.id} value={event.id}>{event.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="flex justify-end space-x-2">
+            <Button variant="outline" onClick={() => setIsBulkEditEventDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleBulkEditEvent} className="bg-blue-600 hover:bg-blue-700">
+              Atualizar {selectedLeads.length} Lead(s)
             </Button>
           </div>
         </DialogContent>
