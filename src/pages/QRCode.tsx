@@ -276,7 +276,8 @@ const QRCodePage = () => {
     const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(qrUrl)}`;
     const link = document.createElement('a');
     link.href = qrCodeUrl;
-    link.download = `qrcode-${qrCode.type}-${qrCode.event?.name?.replace(/\s+/g, '-').toLowerCase() || 'qrcode'}.png`;
+    const eventName = qrCode.event?.name?.replace(/\s+/g, '-').toLowerCase() || 'qrcode';
+    link.download = `${eventName}.png`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
