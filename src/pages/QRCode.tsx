@@ -260,32 +260,50 @@ const QRCodePage = () => {
     });
   };
 
-  const downloadQRCode = (qrCode: any) => {
-    // Para QR codes WhatsApp, usar a URL da edge function
-    // Para QR codes de formulário, usar a URL original diretamente
-    let qrUrl;
-    
-    if (qrCode.type === 'whatsapp') {
-      qrUrl = buildQRRedirectUrl(qrCode.short_url);
-    } else {
-      qrUrl = qrCode.original_url;
-    }
-    
-    console.log('URL do QR Code para download:', qrUrl);
-    
-    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(qrUrl)}`;
-    const link = document.createElement('a');
-    link.href = qrCodeUrl;
-    const eventName = qrCode.event?.name?.replace(/\s+/g, '-').toLowerCase() || 'qrcode';
-    link.download = `${eventName}.png`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const downloadQRCode = async (qrCode: any) => {
+    try {
+      // Para QR codes WhatsApp, usar a URL da edge function
+      // Para QR codes de formulário, usar a URL original diretamente
+      let qrUrl;
+      
+      if (qrCode.type === 'whatsapp') {
+        qrUrl = buildQRRedirectUrl(qrCode.short_url);
+      } else {
+        qrUrl = qrCode.original_url;
+      }
+      
+      const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(qrUrl)}`;
+      
+      // Fetch da imagem e converter para blob
+      const response = await fetch(qrCodeUrl);
+      const blob = await response.blob();
+      
+      // Criar URL local do blob
+      const blobUrl = window.URL.createObjectURL(blob);
+      
+      // Criar link e fazer download
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      const eventName = qrCode.event?.name?.replace(/\s+/g, '-').toLowerCase() || 'qrcode';
+      link.download = `${eventName}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Limpar URL do blob
+      window.URL.revokeObjectURL(blobUrl);
 
-    toast({
-      title: "Download iniciado",
-      description: "QR Code sendo baixado...",
-    });
+      toast({
+        title: "Download concluído",
+        description: "QR Code baixado com sucesso!",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro no download",
+        description: "Não foi possível baixar o QR Code.",
+        variant: "destructive",
+      });
+    }
   };
 
   const getPreviewMessage = (qrCode: any) => {
