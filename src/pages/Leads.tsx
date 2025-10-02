@@ -221,6 +221,11 @@ const Leads = () => {
     }
   };
 
+  const handleSelectLeadsWithoutEvent = () => {
+    const leadsWithoutEvent = filteredLeads.filter((lead: any) => !lead.event_id);
+    setSelectedLeads(leadsWithoutEvent.map(lead => lead.id));
+  };
+
   const handleDeleteSelected = async () => {
     try {
       await deleteMultipleLeads.mutateAsync(selectedLeads);
@@ -509,10 +514,17 @@ const Leads = () => {
       {/* Leads Table */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-blue-600">Leads ({filteredLeads.length})</CardTitle>
-          <CardDescription>
-            Gerencie todos os leads do sistema
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-blue-600">Leads ({filteredLeads.length})</CardTitle>
+              <CardDescription>
+                Gerencie todos os leads do sistema
+              </CardDescription>
+            </div>
+            <Button onClick={handleSelectLeadsWithoutEvent} variant="outline" size="sm">
+              Selecionar sem evento
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <Table>
