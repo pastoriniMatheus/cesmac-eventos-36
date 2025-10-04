@@ -178,7 +178,8 @@ const LeadForm = () => {
 
   const validateWhatsAppFormat = (phone: string): boolean => {
     const numbers = phone.replace(/\D/g, '');
-    return numbers.length === 11 && numbers.startsWith('1') === false;
+    // Validar 11 dígitos e terceiro dígito deve ser 9 (celular)
+    return numbers.length === 11 && numbers[2] === '9';
   };
 
   const handleWhatsAppChange = (e: React.ChangeEvent<HTMLInputElement>) => {
