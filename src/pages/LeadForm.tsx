@@ -15,6 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useWhatsAppValidation } from '@/hooks/useWhatsAppValidation';
 import { Loader2, CheckCircle, XCircle, AlertTriangle, RefreshCw } from 'lucide-react';
 import ThankYouScreen from '@/components/ThankYouScreen';
+import { validateWhatsApp as validateWhatsAppSecurity } from '@/utils/security';
 
 const LeadForm = () => {
   const { toast } = useToast();
@@ -177,9 +178,7 @@ const LeadForm = () => {
   };
 
   const validateWhatsAppFormat = (phone: string): boolean => {
-    const numbers = phone.replace(/\D/g, '');
-    // Validar 11 dígitos e terceiro dígito deve ser 9 (celular)
-    return numbers.length === 11 && numbers[2] === '9';
+    return validateWhatsAppSecurity(phone).isValid;
   };
 
   const handleWhatsAppChange = (e: React.ChangeEvent<HTMLInputElement>) => {
