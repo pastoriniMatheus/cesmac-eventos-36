@@ -33,7 +33,7 @@ const QRCodePage = () => {
   const [newQRCode, setNewQRCode] = useState({
     eventName: '',
     whatsappNumber: '',
-    type: 'whatsapp' // 'whatsapp' ou 'form'
+    type: 'whatsapp' // 'whatsapp', 'form' ou 'both'
   });
   const [previewQR, setPreviewQR] = useState<any>(null);
 
@@ -61,16 +61,16 @@ const QRCodePage = () => {
       return;
     }
 
-    if (newQRCode.type === 'whatsapp' && !newQRCode.whatsappNumber) {
+    if ((newQRCode.type === 'whatsapp' || newQRCode.type === 'both') && !newQRCode.whatsappNumber) {
       toast({
         title: "Erro",
-        description: "Por favor, preencha o número do WhatsApp para QR Code WhatsApp.",
+        description: "Por favor, preencha o número do WhatsApp.",
         variant: "destructive",
       });
       return;
     }
 
-    if (newQRCode.type === 'whatsapp') {
+    if ((newQRCode.type === 'whatsapp' || newQRCode.type === 'both') && newQRCode.whatsappNumber) {
       const whatsappRegex = /^[1-9]\d{1,14}$/;
       if (!whatsappRegex.test(newQRCode.whatsappNumber)) {
         toast({
@@ -88,8 +88,8 @@ const QRCodePage = () => {
         name: newQRCode.eventName
       };
 
-      // Só adicionar WhatsApp se for QR Code WhatsApp
-      if (newQRCode.type === 'whatsapp') {
+      // Adicionar WhatsApp se necessário
+      if (newQRCode.type === 'whatsapp' || newQRCode.type === 'both') {
         eventData.whatsapp_number = newQRCode.whatsappNumber;
       }
 
@@ -101,45 +101,82 @@ const QRCodePage = () => {
 
       if (eventError) throw eventError;
 
-      // Gerar tracking ID e URLs
-      const trackingId = generateTrackingId();
-      const { waLink } = generateQRCode(newQRCode.whatsappNumber, newQRCode.eventName, trackingId, newQRCode.type);
-      
-      // Gerar short_url para ambos os tipos
-      const shortUrl = generateShortUrl();
+      // Se type === 'both', criar dois QR codes
+      if (newQRCode.type === 'both') {
+        // QR Code 1: WhatsApp
+        const trackingIdWA = generateTrackingId();
+        const { waLink: waLinkWA } = generateQRCode(newQRCode.whatsappNumber, newQRCode.eventName, trackingIdWA, 'whatsapp');
+        const shortUrlWA = generateShortUrl();
 
-      console.log('Dados do QR Code:', {
-        type: newQRCode.type,
-        shortUrl,
-        originalUrl: waLink,
-        trackingId
-      });
+        const qrCodeWA = {
+          event_id: event.id,
+          short_url: shortUrlWA,
+          original_url: waLinkWA,
+          tracking_id: trackingIdWA,
+          type: 'whatsapp'
+        };
 
-      // Criar o QR code
-      const qrCodeData: any = {
-        event_id: event.id,
-        short_url: shortUrl,
-        original_url: waLink,  // A URL final (WhatsApp ou formulário)
-        tracking_id: trackingId,
-        type: newQRCode.type
-      };
+        // QR Code 2: Formulário
+        const trackingIdForm = generateTrackingId();
+        const { waLink: formUrlForm } = generateQRCode('', newQRCode.eventName, trackingIdForm, 'form');
+        const shortUrlForm = generateShortUrl();
 
-      const { error: qrError } = await supabase
-        .from('qr_codes')
-        .insert([qrCodeData]);
+        const qrCodeForm = {
+          event_id: event.id,
+          short_url: shortUrlForm,
+          original_url: formUrlForm,
+          tracking_id: trackingIdForm,
+          type: 'form'
+        };
 
-      if (qrError) throw qrError;
+        // Inserir ambos os QR codes
+        const { error: qrError } = await supabase
+          .from('qr_codes')
+          .insert([qrCodeWA, qrCodeForm]);
 
-      queryClient.invalidateQueries({ queryKey: ['qr_codes'] });
-      queryClient.invalidateQueries({ queryKey: ['events'] });
-      
-      setNewQRCode({ eventName: '', whatsappNumber: '', type: 'whatsapp' });
-      setIsCreateDialogOpen(false);
+        if (qrError) throw qrError;
 
-      toast({
-        title: "QR Code criado",
-        description: `QR Code ${newQRCode.type === 'whatsapp' ? 'WhatsApp' : 'Formulário'} para o evento "${newQRCode.eventName}" foi criado com sucesso!`,
-      });
+        queryClient.invalidateQueries({ queryKey: ['qr_codes'] });
+        queryClient.invalidateQueries({ queryKey: ['events'] });
+        
+        setNewQRCode({ eventName: '', whatsappNumber: '', type: 'whatsapp' });
+        setIsCreateDialogOpen(false);
+
+        toast({
+          title: "QR Codes criados",
+          description: `2 QR Codes (WhatsApp + Formulário) vinculados ao evento "${newQRCode.eventName}" foram criados com sucesso!`,
+        });
+      } else {
+        // Criar apenas um QR code
+        const trackingId = generateTrackingId();
+        const { waLink } = generateQRCode(newQRCode.whatsappNumber, newQRCode.eventName, trackingId, newQRCode.type);
+        const shortUrl = generateShortUrl();
+
+        const qrCodeData: any = {
+          event_id: event.id,
+          short_url: shortUrl,
+          original_url: waLink,
+          tracking_id: trackingId,
+          type: newQRCode.type
+        };
+
+        const { error: qrError } = await supabase
+          .from('qr_codes')
+          .insert([qrCodeData]);
+
+        if (qrError) throw qrError;
+
+        queryClient.invalidateQueries({ queryKey: ['qr_codes'] });
+        queryClient.invalidateQueries({ queryKey: ['events'] });
+        
+        setNewQRCode({ eventName: '', whatsappNumber: '', type: 'whatsapp' });
+        setIsCreateDialogOpen(false);
+
+        toast({
+          title: "QR Code criado",
+          description: `QR Code ${newQRCode.type === 'whatsapp' ? 'WhatsApp' : 'Formulário'} para o evento "${newQRCode.eventName}" foi criado com sucesso!`,
+        });
+      }
     } catch (error: any) {
       console.error('Erro ao criar QR Code:', error);
       toast({
@@ -438,17 +475,25 @@ const QRCodePage = () => {
                         <span>Formulário</span>
                       </div>
                     </SelectItem>
+                    <SelectItem value="both">
+                      <div className="flex items-center space-x-2">
+                        <QrCode className="h-4 w-4" />
+                        <span>Ambos (WhatsApp + Formulário)</span>
+                      </div>
+                    </SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
                   {newQRCode.type === 'whatsapp' 
                     ? 'Direciona para uma conversa do WhatsApp com texto pré-definido'
-                    : 'Direciona para o formulário de captura de leads'
+                    : newQRCode.type === 'form'
+                    ? 'Direciona para o formulário de captura de leads'
+                    : 'Cria 2 QR Codes vinculados ao mesmo evento (1 para WhatsApp + 1 para Formulário)'
                   }
                 </p>
               </div>
 
-              {newQRCode.type === 'whatsapp' && (
+              {(newQRCode.type === 'whatsapp' || newQRCode.type === 'both') && (
                 <div className="grid gap-2">
                   <Label htmlFor="whatsapp">Número do WhatsApp*</Label>
                   <Input
@@ -481,15 +526,35 @@ const QRCodePage = () => {
 
               {newQRCode.eventName && (
                 <div className="mt-4 p-4 bg-muted rounded-lg">
-                  <Label>Preview {newQRCode.type === 'whatsapp' ? 'da Mensagem' : 'da URL'}:</Label>
-                  <p className="text-sm font-mono mt-1 break-all">
-                    {newQRCode.type === 'whatsapp' 
-                      ? `${newQRCode.eventName} id:XXXXXX`
-                      : `${window.location.origin}/form?event=${encodeURIComponent(newQRCode.eventName)}&tracking=XXXXXX`
-                    }
-                  </p>
+                  <Label>Preview:</Label>
+                  {newQRCode.type === 'both' ? (
+                    <div className="space-y-2 mt-2">
+                      <div>
+                        <p className="text-xs font-semibold text-muted-foreground">WhatsApp:</p>
+                        <p className="text-sm font-mono mt-1 break-all">
+                          {newQRCode.eventName} id:XXXXXX
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-muted-foreground">Formulário:</p>
+                        <p className="text-sm font-mono mt-1 break-all">
+                          {window.location.origin}/form?event={encodeURIComponent(newQRCode.eventName)}&tracking=YYYYYY
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm font-mono mt-1 break-all">
+                      {newQRCode.type === 'whatsapp' 
+                        ? `${newQRCode.eventName} id:XXXXXX`
+                        : `${window.location.origin}/form?event=${encodeURIComponent(newQRCode.eventName)}&tracking=XXXXXX`
+                      }
+                    </p>
+                  )}
                   <p className="text-xs text-muted-foreground mt-2">
-                    O ID real será gerado automaticamente (6 caracteres)
+                    {newQRCode.type === 'both' 
+                      ? 'Dois IDs únicos serão gerados automaticamente (6 caracteres cada)'
+                      : 'O ID real será gerado automaticamente (6 caracteres)'
+                    }
                   </p>
                 </div>
               )}
